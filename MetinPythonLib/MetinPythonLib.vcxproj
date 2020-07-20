@@ -147,10 +147,12 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="App.cpp" />
     <ClCompile Include="Hook.cpp" />
     <ClCompile Include="JMPMidFuncHook.cpp" />
     <ClCompile Include="JMPStartFuncHook.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="Network.cpp" />
     <ClCompile Include="Patterns.cpp" />
     <ClCompile Include="PythonModule.cpp" />
     <ClCompile Include="PythonUtils.cpp" />
@@ -159,9 +161,11 @@
     <ClCompile Include="utils.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="App.h" />
     <ClInclude Include="Hook.h" />
     <ClInclude Include="JMPMidFuncHook.h" />
     <ClInclude Include="JMPStartFuncHook.h" />
+    <ClInclude Include="Network.h" />
     <ClInclude Include="Patterns.h" />
     <ClInclude Include="PythonModule.h" />
     <ClInclude Include="PythonUtils.h" />

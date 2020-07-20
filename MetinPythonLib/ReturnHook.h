@@ -7,6 +7,7 @@
 //Do not replace relative instruciton like JMP
 //The function is called when the original returns
 //Return value is not saved, the caller is responsible for the same
+//Also the caller is responsible for poping the arguments a __stdcall is recomended
 class ReturnHook : public Hook
 {
 

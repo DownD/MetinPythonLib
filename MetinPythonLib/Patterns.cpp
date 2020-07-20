@@ -83,13 +83,13 @@ DWORD Patterns::FindPattern(const char *pattern, const char *mask)
 
 
 
-DWORD* Patterns::GetPatternAddress(const char *pattern, const char *mask, int offset) {
+DWORD* Patterns::GetPatternAddress(Pattern* pat) {
 	
-	DWORD* addr = (DWORD*)FindPattern(pattern, mask);
-	if (addr) { return (DWORD*)((int)addr + offset); }
+	DWORD* addr = (DWORD*)FindPattern(pat->pattern, pat->mask);
+	if (addr) { return (DWORD*)((int)addr + pat->offset); }
 	else {
 		std::string msg("Pattern code: ");
-		msg += mask;
+		msg += pat->mask;
 		MessageBox(NULL, msg.c_str(), "ERROR FINDING PATTERN", MB_ICONWARNING | MB_YESNO);	
 	}
 

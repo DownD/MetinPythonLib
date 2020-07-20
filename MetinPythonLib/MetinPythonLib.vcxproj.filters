@@ -48,11 +48,14 @@
     <ClCompile Include="PythonModule.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Network.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="App.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Patterns.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
     <ClInclude Include="utils.h">
       <Filter>Source Files</Filter>
     </ClInclude>
@@ -75,6 +78,15 @@
       <Filter>HookLib</Filter>
     </ClInclude>
     <ClInclude Include="PythonModule.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Network.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Patterns.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="App.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

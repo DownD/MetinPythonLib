@@ -7,12 +7,20 @@
 #include <tlhelp32.h>
 
 
+struct Pattern {
+	Pattern(int ofset, const char* pat, const char*masc) { offset = ofset; pattern = pat; mask = masc; }
+	int offset;
+	const char* pattern;
+	const char* mask;
+};
+
+
 class Patterns {
 public:
 	Patterns(HMODULE hMod);
 	~Patterns();
 
-	DWORD* GetPatternAddress(const char *pattern, const char *mask, int offset);
+	DWORD* GetPatternAddress(Pattern* pat);
 
 
 
