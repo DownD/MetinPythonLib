@@ -6,6 +6,7 @@
 #include "Patterns.h"
 #include "PythonModule.h"
 #include "Network.h"
+#include "MapCollision.h"
 
 
 Hook* sendHook = 0;
@@ -67,6 +68,7 @@ void init() {
 
 
 
+	//Hooks
 	getEtherPacketHook = new ReturnHook(getEtherPackAddr, GetEter, 7, 5);
 	recvHook = new ReturnHook(recvAddr, __RecvPacketJMP, 5, 2);
 
@@ -87,6 +89,8 @@ void exit() {
 	delete sendHook;
 	delete recvHook;
 	delete getEtherPacketHook;
+
+	freeCurrentMap();
 
 	fclose(stdin);
 	fclose(stdout);

@@ -7,6 +7,7 @@
 #include <Python.h>
 #endif
 #include <windows.h>
+#include <string>
 #define SET_EXCEPTION(x) PyErr_SetString(PyExc_RuntimeError, #x)
 
 bool PyTuple_GetString(PyObject* poArgs, int pos, char** ret);
@@ -25,6 +26,7 @@ bool PyTuple_GetBoolean(PyObject* poArgs, int pos, bool* ret);
 bool PyCallClassMemberFunc(PyObject* poClass, const char* c_szFunc, PyObject* poArgs);
 bool PyCallClassMemberFunc(PyObject* poClass, const char* c_szFunc, PyObject* poArgs, bool* pisRet);
 bool PyCallClassMemberFunc(PyObject* poClass, const char* c_szFunc, PyObject* poArgs, long * plRetValue);
+bool PyCallClassMemberFunc(PyObject* poClass, const char* c_szFunc, PyObject* poArgs, std::string& str);
 
 bool PyCallClassMemberFunc_ByPyString(PyObject* poClass, PyObject* poFuncName, PyObject* poArgs);
 bool PyCallClassMemberFunc(PyObject* poClass, PyObject* poFunc, PyObject* poArgs);

@@ -211,6 +211,7 @@ bool PyCallClassMemberFunc(PyObject* poClass, PyObject* poFunc, PyObject* poArgs
 	return true;
 }
 
+
 bool PyCallClassMemberFunc(PyObject* poClass, const char* c_szFunc, PyObject* poArgs)
 {
 	PyObject* poRet;
@@ -263,6 +264,24 @@ bool PyCallClassMemberFunc(PyObject* poClass, const char* c_szFunc, PyObject* po
 	return true;
 }
 
+bool PyCallClassMemberFunc(PyObject* poClass, const char* c_szFunc, PyObject* poArgs, std::string& str)
+{
+	PyObject* poRet;
+	if (!__PyCallClassMemberFunc_ByCString(poClass, c_szFunc, poArgs, &poRet))
+		return false;
+
+	if (PyObject_TypeCheck(poRet, &PyBaseString_Type))
+	{
+		const char* retStr = PyString_AsString(poRet);
+		str = std::string(retStr);
+		Py_DECREF(poRet);
+		return true;
+	}
+
+	Py_DECREF(poRet);
+	return false;
+}
+
 bool PyCallClassMemberFunc(PyObject* poClass, const char* c_szFunc, PyObject* poArgs, long * plRetValue)
 {
 	PyObject* poRet;
@@ -294,7 +313,9 @@ bool __PyCallClassMemberFunc_ByCString(PyObject* poClass, const char* c_szFunc, 
 		return false;
 	}
 
+
 	PyObject * poFunc = PyObject_GetAttrString(poClass, (char *)c_szFunc);	// New Reference
+
 
 	if (!poFunc)
 	{
@@ -302,6 +323,7 @@ bool __PyCallClassMemberFunc_ByCString(PyObject* poClass, const char* c_szFunc, 
 		Py_XDECREF(poArgs);
 		return false;
 	}
+
 
 	if (!PyCallable_Check(poFunc))
 	{

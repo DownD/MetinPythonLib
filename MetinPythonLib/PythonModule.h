@@ -14,7 +14,13 @@
 
 
 extern PyObject* packet_mod;
-extern PyObject* instanceList;
+extern PyObject* instanceList; //Instances
+
+struct EterFile {
+	void* data;
+	int size;
+	std::string name;
+};
 
 #pragma pack(push, 1)
 struct CMappedFile {
@@ -44,11 +50,15 @@ struct CMappedFile {
 
 void executeScript(const char* name, char* _path);
 
-//NEEDS TO BE CALLED AFTER SCRIPT EXECUTION
+
+
 //TEST FOR MEMORY LEAKS
 PyObject* GetEterPacket(PyObject * poSelf, PyObject * poArgs);
+PyObject* IsPositionBlocked(PyObject * poSelf, PyObject * poArgs);
+PyObject* GetCurrentPhase(PyObject * poSelf, PyObject * poArgs);
 
+//Hooked function
 DWORD __stdcall _GetEter(DWORD return_value, CMappedFile* file, const char* fileName, void** buffer, const char* uknown, bool uknown_2);
 
-
+EterFile* CGetEter(const char* name);
 void initModule();

@@ -3,7 +3,9 @@
 #include <iostream>
 
 enum {
-	PHASE_LOADING = 4
+	PHASE_LOADING = 4,
+	PHASE_CHARACTER_CHOSE = 2,
+	PHASE_GAME = 5
 };
 
 
@@ -84,6 +86,8 @@ void logPacket(Packet * packet);
 DWORD __stdcall __RecvPacket(DWORD return_value, int size, void* buffer);
 void SendPacket(int size, void*buffer);
 void __SendPacket(int size, void*buffer);
+
+int getCurrentPhase();
 
 
 

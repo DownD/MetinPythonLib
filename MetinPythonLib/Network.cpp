@@ -1,7 +1,10 @@
 #include "Network.h"
 #include "PythonModule.h"
+#include "MapCollision.h"
 
 using namespace PacketHeaders;
+
+static int gamePhase = 0;
 
 void logPacket(Packet * packet) {
 	printf("Header: %d\n", packet->header);
@@ -14,17 +17,15 @@ void logPacket(Packet * packet) {
 }
 
 DWORD __stdcall __RecvPacket(DWORD return_value,int size, void* buffer) {
-	//DWORD return_value;
-	//__asm {
-	//	MOV return_value, eax
-	//}
-	if (return_value != 0 && size > 0) {
+	if (return_value != 0 && size > 0 && *(BYTE*)buffer != 0) {
 		BYTE* bbuffer = (BYTE*)buffer;
 		Packet packet;
 		packet.header = *bbuffer;
 		packet.data_size = size - 1;
 		packet.data = (BYTE*)((int)bbuffer + 1);
-		logPacket(&packet);
+#ifdef _DEBUG
+		//logPacket(&packet);
+#endif
 		switch (packet.header) {
 		case HEADER_GC_CHARACTER_ADD: {
 			if (packet.data_size == 0) {
@@ -49,9 +50,13 @@ DWORD __stdcall __RecvPacket(DWORD return_value,int size, void* buffer) {
 		case HEADER_GC_PHASE: {
 			ChangPhasePacket phase;
 			fillPacket(&packet, &phase);
+			gamePhase = phase.phase;
 			if (phase.phase == PHASE_LOADING) {
 				PyDict_Clear(instanceList);
-
+				freeCurrentMap();
+			}
+			else if (phase.phase == PHASE_GAME) {
+				setCurrentCollisionMap();
 			}
 			break;
 
@@ -69,4 +74,9 @@ void SendPacket(int size, void*buffer) {
 
 
 void __SendPacket(int size, void*buffer){
+}
+
+int getCurrentPhase()
+{
+	return gamePhase;
 }
