@@ -52,6 +52,11 @@ inline bool MapCollision::isBlocked(int x, int y){
 	return map[y*maxX + x] & 0x1;
 }
 
+inline BYTE MapCollision::getByte(int x, int y)
+{
+	return map[y*maxX + x];
+}
+
 bool MapCollision::findPath(int x_start, int y_start, int x_end, int y_end, std::vector<Point>& path)
 {
 	JPS::PathVector pathBuf;
@@ -342,6 +347,12 @@ bool isBlockedPosition(int x, int y)
 	else {
 		return true;
 	}
+}
+
+BYTE getAttrByte(int x, int y)
+{
+	if (currMap)
+		return currMap->getByte(x, y);
 }
 
 bool findPath(int x_start, int y_start, int x_end, int y_end, std::vector<Point>& path)

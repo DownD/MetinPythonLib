@@ -211,10 +211,25 @@ PyObject * GetCurrentPhase(PyObject * poSelf, PyObject * poArgs)
 	return Py_BuildValue("i", phase);
 }
 
+PyObject * GetAttrByte(PyObject * poSelf, PyObject * poArgs)
+{
+	int x, y;
+	if (!PyTuple_GetInteger(poArgs, 0, &x))
+		return Py_BuildException();
+	if (!PyTuple_GetInteger(poArgs, 1, &y))
+		return Py_BuildException();
+	x /= 100;
+	y /= 100;
+
+	BYTE b = getAttrByte(x, y);
+	return Py_BuildValue("i", b);
+}
+
 static PyMethodDef s_methods[] =
 {
 	{ "Get",					GetEterPacket,		METH_VARARGS },
 	{ "IsPositionBlocked",		IsPositionBlocked,	METH_VARARGS },
+	{ "GetAttrByte",			GetAttrByte,		METH_VARARGS },
 	{ "GetCurrentPhase",		GetCurrentPhase,	METH_VARARGS },
 	{ "FindPath",				FindPath,			METH_VARARGS },
 	{ NULL, NULL }

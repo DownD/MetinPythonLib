@@ -56,6 +56,7 @@ void executeScript(const char* name, char* _path);
 PyObject* GetEterPacket(PyObject * poSelf, PyObject * poArgs);
 PyObject* IsPositionBlocked(PyObject * poSelf, PyObject * poArgs);
 PyObject* GetCurrentPhase(PyObject * poSelf, PyObject * poArgs);
+PyObject* GetAttrByte(PyObject * poSelf, PyObject * poArgs); //Debug purposes
 
 //Hooked function
 DWORD __stdcall _GetEter(DWORD return_value, CMappedFile* file, const char* fileName, void** buffer, const char* uknown, bool uknown_2);

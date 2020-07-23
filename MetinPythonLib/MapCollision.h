@@ -10,6 +10,8 @@ public:
 
 
 	inline bool isBlocked(int x, int y);
+	inline BYTE getByte(int x, int y);
+
 	const char* getMapName() { return mapName.c_str(); }
 	bool findPath(int x_start, int y_start, int x_end, int y_end, std::vector<Point>& path);
 
@@ -62,4 +64,5 @@ MapCollision* getCurrentCollisionMap();
 void freeCurrentMap();
 
 bool isBlockedPosition(int x, int y);
+BYTE getAttrByte(int x, int y);
 bool findPath(int x_start, int y_start, int x_end, int y_end, std::vector<Point>& path);
