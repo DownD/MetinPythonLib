@@ -30,7 +30,11 @@ MapCollision::MapCollision(const char* map_name){
 	pathFinding = new JPS::Searcher<MapCollision>(*this);
 
 
-	//printToFile("map.txt");
+	printToFile("map_normal.txt");
+
+	increaseBlockedArea();
+
+	printToFile("map_extra_block.txt");
 
 }
 
@@ -177,6 +181,62 @@ void MapCollision::printToFile(const char* name)
 	}
 	myfile.close();
 	
+}
+
+inline void MapCollision::setByte(BYTE  b, int x, int y)
+{
+	map[y*maxX + x] = b;
+}
+
+void MapCollision::increaseBlockedArea()
+{
+	std::list<Point> bufferPoints;
+	for (int y = 0; y < maxY; y++) {
+		for (int x = 0; x < maxX; x++) {
+			if (!isBlocked(x,y)) {
+				if (isBlocked(x-1, y-1)) {
+					bufferPoints.push_back(Point(x, y));
+					continue;
+				}
+				if (isBlocked(x-1, y)) {
+					bufferPoints.push_back(Point(x, y));
+					continue;
+				}
+				if (isBlocked(x-1, y+1)) {
+					bufferPoints.push_back(Point(x, y));
+					continue;
+				}
+				if (isBlocked(x + 1, y-1)) {
+					bufferPoints.push_back(Point(x, y));
+					continue;
+				}
+				if (isBlocked(x + 1, y)) {
+					bufferPoints.push_back(Point(x, y));
+					continue;
+				}
+				if (isBlocked(x + 1, y+1)) {
+					bufferPoints.push_back(Point(x, y));
+					continue;
+				}
+				if (isBlocked(x, y+1)) {
+					bufferPoints.push_back(Point(x, y));
+					continue;
+				}
+				if (isBlocked(x, y-1)) {
+					bufferPoints.push_back(Point(x, y));
+					continue;
+				}
+			}
+		}
+	}
+	 
+	for (Point &a : bufferPoints) {
+		setByte(1, a.x, a.y);
+	}
+
+
+
+
 }
 
 

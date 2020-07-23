@@ -41,6 +41,11 @@ private:
 	bool addMapPiece(MapPiece* piece);
 	void printToFile(const char* name);
 
+	inline void setByte(BYTE b, int x, int y);
+
+	//Adds one extra blocked area to the edges of the map
+	void increaseBlockedArea();
+
 
 	std::string mapName;
 	int maxX;
