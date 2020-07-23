@@ -2,6 +2,20 @@
 #include "PythonModule.h"
 #include "JPS.h"
 
+class AreaData {
+
+public:
+	struct Object {
+		float x, y, z;
+		unsigned int crc; //Not working
+		float rotX, rotY, rotZ;
+		float uknown;
+	};
+	void loadFile(char* buffer, int size);
+
+	std::vector<Object> vec;
+};
+
 class MapCollision
 {
 public:
@@ -19,11 +33,13 @@ public:
 private:
 
 	struct MapPiece{
-		MapPiece(EterFile* file, int x, int y);
+		MapPiece(EterFile* attrFile ,int x, int y, std::string path);
 		~MapPiece();
 
 		BYTE* getMapData();
 		void printToFile(const char* name);
+
+		//Adds objects to the attr map file (impossible to know objects sizes)
 
 		WORD version;
 		WORD height;
@@ -33,6 +49,7 @@ private:
 		BYTE* entireMap;
 		int xStart;
 		int yStart;
+		AreaData area;
 	};
 
 
@@ -42,6 +59,9 @@ private:
 	bool constructMap();
 	bool addMapPiece(MapPiece* piece);
 	void printToFile(const char* name);
+
+	//Adds objects to the attr map file (impossible to know objects sizes)
+	void addObjectsCollisions();
 
 	inline void setByte(BYTE b, int x, int y);
 
@@ -53,8 +73,10 @@ private:
 	int maxX;
 	int maxY;
 	BYTE* map;
+	std::vector<AreaData::Object> objects;
 	JPS::Searcher<MapCollision>* pathFinding;
 };
+
 
 
 //REAL COORDINATES FROM PYTHON FUNCTIONS NEEDS TO BE DIVIDED BY 100

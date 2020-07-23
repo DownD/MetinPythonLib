@@ -29,12 +29,12 @@ MapCollision::MapCollision(const char* map_name){
 
 	pathFinding = new JPS::Searcher<MapCollision>(*this);
 
-
-	printToFile("map_normal.txt");
+	//printToFile("map_no_objects.txt");
+	addObjectsCollisions();
 
 	increaseBlockedArea();
 
-	printToFile("map_extra_block.txt");
+	//printToFile("map_objects.txt");
 
 }
 
@@ -120,7 +120,7 @@ bool MapCollision::constructMap()
 			std::string fullPath = baseFolder + x_folder.str() + y_folder.str() + "\\attr.atr";
 			if (fileExists(fullPath.c_str())) {
 				EterFile* f = CGetEter(fullPath.c_str());
-				MapPiece *p = new MapPiece(f, x, y);
+				MapPiece *p = new MapPiece(f, x, y, baseFolder + x_folder.str() + y_folder.str());
 				buffer.push_back(p);
 				//p->printToFile((x_folder.str() + y_folder.str()).c_str());
 
@@ -152,6 +152,10 @@ bool MapCollision::constructMap()
 			#endif
 			return false;
 		}
+		for (auto & object : mapPiece->area.vec) {
+			objects.push_back(object);
+		}
+
 		delete mapPiece;
 	}
 	return true;
@@ -186,6 +190,13 @@ void MapCollision::printToFile(const char* name)
 	}
 	myfile.close();
 	
+}
+
+void MapCollision::addObjectsCollisions()
+{
+	for (auto obj : objects) {
+		setByte(1,obj.x / 100, abs(obj.y / 100));
+	}
 }
 
 inline void MapCollision::setByte(BYTE  b, int x, int y)
@@ -245,7 +256,7 @@ void MapCollision::increaseBlockedArea()
 }
 
 
-MapCollision::MapPiece::MapPiece(EterFile * file,int x,int y)
+MapCollision::MapPiece::MapPiece(EterFile * file,int x,int y,std::string path)
 {
 	size = file->size;
 	entireMap = (BYTE*)malloc(size);
@@ -257,6 +268,11 @@ MapCollision::MapPiece::MapPiece(EterFile * file,int x,int y)
 	dataSize = size - HEADER_SIZE;
 	xStart = x*ATTR_WIDTH;
 	yStart = y*ATTR_HEIGHT;
+
+	std::string areaData = path + "\\areadata.txt";
+	auto eterArea = CGetEter(areaData.c_str());
+	area.loadFile((char*)eterArea->data,eterArea->size);
+
 	//printf("version %d width= %d height =%d size=%d x=%d y=%d\n", version, width, height, size, xStart, yStart);
 
 }
@@ -372,5 +388,41 @@ bool findPath(int x_start, int y_start, int x_end, int y_end, std::vector<Point>
 	}
 	else {
 		return false;
+	}
+}
+
+void AreaData::loadFile(char * buffer, int size)
+{
+	std::stringstream membuf(std::ios::in | std::ios::out | std::ios::binary);
+	membuf.write(buffer, size);
+	membuf.seekg(std::ios::beg);
+	std::string line;
+	std::string startObjectsPrefix = "Start Object";
+	while (std::getline(membuf, line)) {
+		if (line.find(startObjectsPrefix) != std::string::npos) {
+			Object obj;
+			//Coords
+			std::getline(membuf, line);
+			const char* coordsText = line.c_str();
+			sscanf(coordsText, "%f %f %f", &obj.x, &obj.y, &obj.z);
+
+			//crc
+			std::getline(membuf, line);
+			/*coordsText = line.c_str();
+			sscanf(coordsText, "%d", &obj.crc);*/
+
+			//Rotation
+			std::getline(membuf, line);
+			coordsText = line.c_str();
+			sscanf(coordsText, "%f#%f#%f", &obj.rotX, &obj.rotY, &obj.rotZ);
+
+			//Uknown
+			std::getline(membuf, line);
+			coordsText = line.c_str();
+			sscanf(coordsText, "%d", &obj.uknown);
+
+			vec.push_back(obj);
+		}
+
 	}
 }
