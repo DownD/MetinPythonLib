@@ -50,6 +50,8 @@ private:
 };
 
 
+//REAL COORDINATES FROM PYTHON FUNCTIONS NEEDS TO BE DIVIDED BY 100
+//BEFORE PASSING TO THE NEXT FUNCTIONS
 bool setCurrentCollisionMap();
 MapCollision* getCurrentCollisionMap();
 void freeCurrentMap();

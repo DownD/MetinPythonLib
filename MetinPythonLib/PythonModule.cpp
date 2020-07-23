@@ -164,6 +164,9 @@ PyObject * IsPositionBlocked(PyObject * poSelf, PyObject * poArgs)
 	if (!PyTuple_GetInteger(poArgs, 1, &y))
 		return Py_BuildException();
 
+	x /= 100;
+	y /= 100;
+
 	return Py_BuildValue("i", isBlockedPosition(x, y));
 }
 
@@ -179,6 +182,11 @@ PyObject * FindPath(PyObject * poSelf, PyObject * poArgs)
 	if (!PyTuple_GetInteger(poArgs, 3, &y_end))
 		return Py_BuildException();
 
+	x_start /= 100;
+	y_start /= 100;
+	x_end /= 100;
+	y_end /= 100;
+
 
 	std::vector<Point> path;
 	bool val = findPath(x_start, y_start, x_end, y_end, path);
@@ -188,7 +196,7 @@ PyObject * FindPath(PyObject * poSelf, PyObject * poArgs)
 	}
 	int i = 0;
 	for (Point& p : path) {
-		PyObject* obj = Py_BuildValue("ii", p.x, p.y);
+		PyObject* obj = Py_BuildValue("ii", p.x*100, p.y*100);
 		PyList_Append(pList, obj);
 	}
 
