@@ -2,6 +2,7 @@
 #include <Windows.h>
 #include <iostream>
 
+
 enum {
 	PHASE_LOADING = 4,
 	PHASE_CHARACTER_CHOSE = 2,
@@ -13,12 +14,17 @@ namespace PacketHeaders {
 	enum {
 		HEADER_GC_CHARACTER_ADD = 1,
 		HEADER_GC_CHARACTER_DEL = 2,
-		HEADER_GC_PHASE = 0xFD
+		HEADER_GC_PHASE = 0xFD,
+
+		//To server
+		HEADER_CG_SEND_CHAT = 3,
+		HEADER_CG_CHARACTER_MOVE = 7
 	};
 }
 
 
 struct Packet {
+	Packet(int size, void* buffer);
 	BYTE header;
 	int data_size;
 	BYTE* data;
@@ -33,6 +39,26 @@ void fillPacket(Packet*p, T* _struct) {
 	int size = min(p->data_size, sizeof(T));
 	memcpy(_struct, p->data, size);
 }
+
+struct AttackPacket
+{
+	BYTE	header;
+	BYTE	bType;			
+	DWORD	dwVictimVID;
+	BYTE	bCRCMagicCubeProcPiece;
+	BYTE	bCRCMagicCubeFilePiece;
+};
+
+struct MovePlayerPacket {
+	BYTE		bFunc;
+	BYTE		bArg;
+	BYTE		uknown1;
+	BYTE		bRot;
+	LONG		lX;
+	LONG		lY;
+	DWORD		dwTime;
+	DWORD		uknown2;
+};
 
 struct ChangPhasePacket
 {
@@ -83,11 +109,17 @@ struct PlayerCreatePacket {
 
 
 void logPacket(Packet * packet);
+
+//Hook Functions
 DWORD __stdcall __RecvPacket(DWORD return_value, int size, void* buffer);
-void SendPacket(int size, void*buffer);
 void __SendPacket(int size, void*buffer);
 
+
+void SendPacket(int size, void*buffer);
 int getCurrentPhase();
+
+void SetNetClassPointer(void* stackPointer);
+void SetSendFunctionPointer(void* p);
 
 
 

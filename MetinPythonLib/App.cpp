@@ -25,6 +25,9 @@ namespace memory_patterns {
 
 	//https://gyazo.com/509c7cc703d48fb8e31bea3150687c07
 	Pattern getEtherPackFunction = Pattern(0, "\x55\x8b\xec\x56\x8b\x75\x00\x57\xff\x75\x00\x8b\xf9\x56", "xxxxxx?xxx?xxx");
+
+	//Pattern from Send On_Click Packet caller
+	Pattern NetworkClassPointer = Pattern(2, "\x8b\x35\x00\x00\x00\x00\xa3", "xx????x");
 }
 
 //THREADING MITGH BE A PROBLEM
@@ -58,6 +61,17 @@ void init() {
 	void* recvAddr = patternFinder.GetPatternAddress(&recv);
 	void* sendAddr = patternFinder.GetPatternAddress(&send);
 	void* getEtherPackAddr = patternFinder.GetPatternAddress(&getEther);
+	void** netClassPointer = (void**)patternFinder.GetPatternAddress(&memory_patterns::NetworkClassPointer);
+
+	if (!netClassPointer) {
+		MessageBox(NULL, "Network Class Pointer not found", "Critical Error", MB_OK);
+		exit();
+	}
+
+	if (!sendAddr) {
+		MessageBox(NULL, "Network Send Packet Pointer not found", "Critical Error", MB_OK);
+		exit();
+	}
 
 #ifdef _DEBUG
 	printf("Send Addr: %#x\n", sendAddr);
@@ -66,14 +80,18 @@ void init() {
 	system("pause");
 #endif
 
+	SetNetClassPointer(*netClassPointer);
+	SetSendFunctionPointer(sendAddr);
 
 
 	//Hooks
 	getEtherPacketHook = new ReturnHook(getEtherPackAddr, GetEter, 7, 5);
 	recvHook = new ReturnHook(recvAddr, __RecvPacketJMP, 5, 2);
+	sendHook = new JMPStartFuncHook(sendAddr, __SendPacket, 6, THIS_CALL);
 
 	recvHook->HookFunction();
 	getEtherPacketHook->HookFunction();
+	sendHook->HookFunction();
 
 	initModule();
 }

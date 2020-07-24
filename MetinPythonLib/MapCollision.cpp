@@ -64,9 +64,9 @@ bool MapCollision::findPath(int x_start, int y_start, int x_end, int y_end, std:
 
 #ifdef _DEBUG
 	if(found)
-		printf("Path found from (%d,%d) to (%d,%d) with %d points!\n", x_start, y_start, x_end, y_end,path.size());
+		printf("Path found from (%d,%d) to (%d,%d) with %d points!\n", x_start, y_start, x_end, y_end, pathBuf.size());
 	else
-		printf("No Path from (%d,%d) to (%d,%d)!!!\n", x_start, y_start, x_end, y_end, path.size());
+		printf("No Path from (%d,%d) to (%d,%d)!!!\n", x_start, y_start, x_end, y_end, pathBuf.size());
 #endif
 	if (found) {
 		for (JPS::PathVector::iterator it = pathBuf.begin(); it != pathBuf.end(); ++it)
@@ -105,6 +105,7 @@ bool MapCollision::constructMap()
 	baseFolder += "\\";
 	int counter = 0;
 	int xPieces = 0;
+	int largestYPiece = 0;
 	for (int x = 0; ; x++, xPieces++) {
 		std::ostringstream x_folder;
 		x_folder << std::setw(3) << std::setfill('0') << x;
@@ -113,7 +114,7 @@ bool MapCollision::constructMap()
 		if (!fileExists(firstPiece.c_str())) {
 			break;
 		}
-		for (int y = 0, yPieces = 0; ; y++) {
+		for (int y = 0; ; y++) {
 			std::ostringstream y_folder;
 			y_folder << std::setw(3) << std::setfill('0') << y;
 
@@ -126,6 +127,9 @@ bool MapCollision::constructMap()
 
 			}
 			else {
+				if (y > largestYPiece) {
+					largestYPiece = y;
+				}
 				break;
 			}
 		}
@@ -139,11 +143,12 @@ bool MapCollision::constructMap()
 
 
 
-	maxY = (buffer.size() / xPieces)*ATTR_HEIGHT;
+	maxY = largestYPiece *ATTR_HEIGHT;
 	maxX = xPieces * ATTR_WIDTH;
 
-	int allocSpace = ATTR_WIDTH * ATTR_HEIGHT*buffer.size();
+	int allocSpace = maxX *maxY;
 	map = (BYTE*)malloc(allocSpace);
+	memset(map, 1, allocSpace);
 
 	for (auto mapPiece : buffer) {
 		if (!addMapPiece(mapPiece)) {
@@ -369,6 +374,7 @@ BYTE getAttrByte(int x, int y)
 {
 	if (currMap)
 		return currMap->getByte(x, y);
+	return 0;
 }
 
 bool findPath(int x_start, int y_start, int x_end, int y_end, std::vector<Point>& path)

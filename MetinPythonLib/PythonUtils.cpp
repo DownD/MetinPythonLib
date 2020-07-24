@@ -162,6 +162,23 @@ bool PyTuple_GetUnsignedInteger(PyObject* poArgs, int pos, unsigned int* ret)
 	return true;
 }
 
+bool PyTuple_GetByteArray(PyObject * poArgs, int pos, BYTE ** arr)
+{
+	if (pos >= PyTuple_Size(poArgs))
+		return false;
+
+	PyObject* poItem = PyTuple_GetItem(poArgs, pos);
+
+	if (!poItem)
+		return false;
+
+	if (!PyByteArray_Check(poItem))
+		return false;
+
+	*arr = (BYTE*)PyByteArray_AsString(poItem);
+	return true;
+}
+
 bool PyTuple_GetString(PyObject* poArgs, int pos, char** ret)
 {
 	if (pos >= PyTuple_Size(poArgs))

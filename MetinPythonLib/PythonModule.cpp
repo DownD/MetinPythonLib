@@ -187,10 +187,61 @@ PyObject * FindPath(PyObject * poSelf, PyObject * poArgs)
 	x_end /= 100;
 	y_end /= 100;
 
+	int x_start_unblocked = -1;
+	int y_start_unblocked = -1;
+
+	//Try to find adjacent unblocked
+	if (isBlockedPosition(x_start, y_start)) {
+		if (!isBlockedPosition(x_start + 1, y_start)) {
+			x_start_unblocked = x_start+1;
+			y_start_unblocked = y_start;
+		}
+		else if (!isBlockedPosition(x_start + 1, y_start+1)) {
+			x_start_unblocked = x_start + 1;
+			y_start_unblocked = y_start + 1;
+		}
+
+		else if (!isBlockedPosition(x_start + 1, y_start - 1)) {
+			x_start_unblocked = x_start + 1;
+			y_start_unblocked = y_start - 1;
+		}
+		else if (!isBlockedPosition(x_start - 1, y_start + 1)) {
+			x_start_unblocked = x_start - 1;
+			y_start_unblocked = y_start + 1;
+		}
+		else if (!isBlockedPosition(x_start - 1, y_start)) {
+			x_start_unblocked = x_start - 1;
+			y_start_unblocked = y_start;
+		}
+		else if (!isBlockedPosition(x_start - 1, y_start - 1)) {
+			x_start_unblocked = x_start - 1;
+			y_start_unblocked = y_start - 1;
+		}
+		else if (!isBlockedPosition(x_start, y_start + 1)) {
+			x_start_unblocked = x_start;
+			y_start_unblocked = y_start + 1;
+		}else if (!isBlockedPosition(x_start, y_start - 1)) {
+			x_start_unblocked = x_start;
+			y_start_unblocked = y_start - 1;
+		}
+
+
+	}
+
 
 	std::vector<Point> path;
-	bool val = findPath(x_start, y_start, x_end, y_end, path);
 	PyObject* pList = PyList_New(0);
+	bool val = false;
+	if (x_start_unblocked != -1) {
+		val = findPath(x_start_unblocked, y_start_unblocked, x_end, y_end, path);
+		if (val)
+			PyList_Append(pList, Py_BuildValue("ii", x_start_unblocked * 100, y_start_unblocked * 100));
+	}
+	else {
+		val = findPath(x_start, y_start, x_end, y_end, path);
+	}
+
+
 	if (!val) {
 		return pList;
 	}
@@ -225,6 +276,19 @@ PyObject * GetAttrByte(PyObject * poSelf, PyObject * poArgs)
 	return Py_BuildValue("i", b);
 }
 
+PyObject * pySendPacket(PyObject * poSelf, PyObject * poArgs)
+{
+	int size;
+	BYTE* arr;
+	if (!PyTuple_GetInteger(poArgs, 0, &size))
+		return Py_BuildException();
+	if (!PyTuple_GetByteArray(poArgs, 1, &arr))
+		return Py_BuildException();
+
+	SendPacket(size, arr);
+	return Py_BuildNone();
+}
+
 static PyMethodDef s_methods[] =
 {
 	{ "Get",					GetEterPacket,		METH_VARARGS },
@@ -232,6 +296,7 @@ static PyMethodDef s_methods[] =
 	{ "GetAttrByte",			GetAttrByte,		METH_VARARGS },
 	{ "GetCurrentPhase",		GetCurrentPhase,	METH_VARARGS },
 	{ "FindPath",				FindPath,			METH_VARARGS },
+	{ "SendPacket",				pySendPacket,			METH_VARARGS },
 	{ NULL, NULL }
 };
 
