@@ -13,7 +13,7 @@
 
 ## Python Exports
 - Module net_packet
--- Get(<string> filePath) returns <bytearray>
+  -- Get(<string> filePath) returns <bytearray>
   -> Similar to old app.Get, allows to extract any file encrypted.
 -- IsPositionBlocked(<int>x,<int>y) returns <boolean>
   -> Allows to check if a map position is walkable(mobs don't count), true if is walkable or false if is not walkable
