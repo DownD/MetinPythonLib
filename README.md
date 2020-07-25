@@ -6,9 +6,9 @@
 - Patterns of send, recvm GetEther and network class pointer
 - Structure of CMappedFile
 - All original modules on init.py, the script is resposible for making sure the following functions work properly:
--- Module app
---- Function OpenTextFile
---- Function IsExistFile
+  - Module app
+    - Function OpenTextFile
+    - Function IsExistFile
 
 
 ## Python Exports
