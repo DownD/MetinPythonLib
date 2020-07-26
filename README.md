@@ -51,6 +51,9 @@
     Note: Use the keys as vids, the values may be changed on a new version<br>
     
   - \<string\>PATH<br>
-    -> Path of the location where the library was injected<br>
+    Path of the location where the library was injected<br>
+    
+  - IsDead(\<int\>vid) returns 1 or 0
+    Returns 1 if the instance with the vid provided is dead ordoesn't exist and returns 0 otherwise
 
 
