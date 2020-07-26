@@ -24,6 +24,14 @@
     -> Finds a path between 2 points using A* Jump Point Search(https://github.com/fgenesis/tinypile) solves any path tested in less then 200ms.<br>
   - SendPacket(\<int\>size,\<bytearray\>buffer) return None<br>
     -> Sends a packet to the server bypassing any encryption set<br>
+  - SendAttackPacket(\<int\>vid,\<byte\>type)<br>
+    -> Sends an attack packet to the server, the type is usually 0<br>
+  - SendStatePacket(\<float\>x,\<float\>y,\<float\>rotation angle,\<byte\>eFunc, \<byte>\>uArgs)<br>
+    -> Sends a packet containing the current state of the main player, can be used to change position,rotation and attack state server side only)<br>
+       The value eFunc can take the fallowing values: 	CHAR_STATE_ATTACK,CHAR_STATE_STOP,CHAR_STATE_WALK<br>
+       If eFunc == CHAR_STATE_ATTACK then the uArgs value can take one of the following values: 	CHAR_STATE_ARG_NONE,CHAR_STATE_ARG_HORSE_ATTACK1,CHAR_STATE_ARG_HORSE_ATTACK2,CHAR_STATE_ARG_HORSE_ATTACK3,CHAR_STATE_ARG_COMBO_ATTACK1,CHAR_STATE_ARG_COMBO_ATTACK2,CHAR_STATE_ARG_COMBO_ATTACK3,CHAR_STATE_ARG_COMBO_ATTACK4
+       otherwise the value can be NULL or CHAR_STATE_ARG_NONE
+       
   - \<dict\>InstancesList<br>
     -> Is a dictionary containing all vids currently in sight as keys and values<br>
   - \<string\>PATH<br>
