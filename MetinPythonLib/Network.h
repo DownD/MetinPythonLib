@@ -1,7 +1,23 @@
 #pragma once
 #include <Windows.h>
 #include <iostream>
+#include "utils.h"
 
+
+enum {
+	CHAR_STATE_FUNC_STOP = 0,
+	CHAR_STATE_FUNC_WALK = 1,
+	CHAR_STATE_FUNC_ATTACK = 3,
+
+	CHAR_STATE_ARG_HORSE_ATTACK1 = 14,
+	CHAR_STATE_ARG_HORSE_ATTACK2 = 15,
+	CHAR_STATE_ARG_HORSE_ATTACK3 = 16,
+
+	CHAR_STATE_ARG_COMBO_ATTACK1 = 14,
+	CHAR_STATE_ARG_COMBO_ATTACK2 = 15,
+	CHAR_STATE_ARG_COMBO_ATTACK3 = 16,
+	CHAR_STATE_ARG_COMBO_ATTACK4 = 17,
+};
 
 enum {
 	PHASE_LOADING = 4,
@@ -115,11 +131,15 @@ DWORD __stdcall __RecvPacket(DWORD return_value, int size, void* buffer);
 void __SendPacket(int size, void*buffer);
 
 
+void SendBattlePacket(DWORD vid, BYTE type);
+void SendStatePacket(fPoint & pos, float rot, BYTE eFunc, BYTE uArg);
 void SendPacket(int size, void*buffer);
 int getCurrentPhase();
 
 void SetNetClassPointer(void* stackPointer);
 void SetSendFunctionPointer(void* p);
+void SetSendBattlePacket(void* func);
+void SetSendStatePacket(void* func);
 
 
 

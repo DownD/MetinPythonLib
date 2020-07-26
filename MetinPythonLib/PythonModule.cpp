@@ -276,6 +276,43 @@ PyObject * GetAttrByte(PyObject * poSelf, PyObject * poArgs)
 	return Py_BuildValue("i", b);
 }
 
+PyObject * pySendAttackPacket(PyObject * poSelf, PyObject * poArgs)
+{
+	int vid;
+	BYTE type;
+	if (!PyTuple_GetInteger(poArgs, 0, &vid))
+		return Py_BuildException();
+	if (!PyTuple_GetByte(poArgs, 1, &type))
+		return Py_BuildException();
+
+	SendBattlePacket(vid, type);
+	
+	return Py_BuildNone();
+}
+
+PyObject * pySendStatePacket(PyObject * poSelf, PyObject * poArgs)
+{
+	float x, y;
+	float rot;
+	BYTE eFunc;
+	BYTE uArg;
+	if (!PyTuple_GetFloat(poArgs, 0, &x))
+		return Py_BuildException();
+	if (!PyTuple_GetFloat(poArgs, 1, &y))
+		return Py_BuildException();
+	if (!PyTuple_GetFloat(poArgs, 2, &rot))
+		return Py_BuildException();
+	if (!PyTuple_GetByte(poArgs, 3, &eFunc))
+		return Py_BuildException();
+	if (!PyTuple_GetByte(poArgs, 4, &uArg))
+		return Py_BuildException();
+
+	fPoint p(x, y);
+	SendStatePacket(p, rot, eFunc, uArg);
+
+	return Py_BuildNone();
+}
+
 PyObject * pySendPacket(PyObject * poSelf, PyObject * poArgs)
 {
 	int size;
@@ -296,7 +333,9 @@ static PyMethodDef s_methods[] =
 	{ "GetAttrByte",			GetAttrByte,		METH_VARARGS },
 	{ "GetCurrentPhase",		GetCurrentPhase,	METH_VARARGS },
 	{ "FindPath",				FindPath,			METH_VARARGS },
-	{ "SendPacket",				pySendPacket,			METH_VARARGS },
+	{ "SendPacket",				pySendPacket,		METH_VARARGS },
+	{ "SendAttackPacket",		pySendAttackPacket,	METH_VARARGS },
+	{ "SendStatePacket",		pySendStatePacket,	METH_VARARGS },
 	{ NULL, NULL }
 };
 
@@ -313,6 +352,23 @@ void initModule() {
 	instanceList = PyDict_New();
 	PyModule_AddObject(packet_mod, "InstancesList", instanceList);
 	PyModule_AddStringConstant(packet_mod, "PATH", dllPath);
+
+	PyModule_AddIntConstant(packet_mod, "CHAR_STATE_ATTACK", CHAR_STATE_FUNC_ATTACK);
+	PyModule_AddIntConstant(packet_mod, "CHAR_STATE_STOP", CHAR_STATE_FUNC_STOP);
+	PyModule_AddIntConstant(packet_mod, "CHAR_STATE_WALK", CHAR_STATE_FUNC_WALK);
+
+
+	PyModule_AddIntConstant(packet_mod, "CHAR_STATE_ARG_NONE", 0);
+
+	PyModule_AddIntConstant(packet_mod, "CHAR_STATE_ARG_HORSE_ATTACK1", CHAR_STATE_ARG_HORSE_ATTACK1);
+	PyModule_AddIntConstant(packet_mod, "CHAR_STATE_ARG_HORSE_ATTACK2", CHAR_STATE_ARG_HORSE_ATTACK2);
+	PyModule_AddIntConstant(packet_mod, "CHAR_STATE_ARG_HORSE_ATTACK3", CHAR_STATE_ARG_HORSE_ATTACK3);
+
+	PyModule_AddIntConstant(packet_mod, "CHAR_STATE_ARG_COMBO_ATTACK1", CHAR_STATE_ARG_COMBO_ATTACK1);
+	PyModule_AddIntConstant(packet_mod, "CHAR_STATE_ARG_COMBO_ATTACK2", CHAR_STATE_ARG_COMBO_ATTACK2);
+	PyModule_AddIntConstant(packet_mod, "CHAR_STATE_ARG_COMBO_ATTACK3", CHAR_STATE_ARG_COMBO_ATTACK3);
+	PyModule_AddIntConstant(packet_mod, "CHAR_STATE_ARG_COMBO_ATTACK4", CHAR_STATE_ARG_COMBO_ATTACK4);
+
 
 	executeScript("script.py", dllPath);
 

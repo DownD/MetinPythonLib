@@ -7,7 +7,11 @@ using namespace PacketHeaders;
 static int gamePhase = 0;
 
 typedef bool(__thiscall *tSendPacket)(DWORD classPointer, int size, void* buffer);
+typedef bool(__thiscall *tSendAttackPacket)(DWORD classPointer, DWORD arg0,BYTE type, DWORD vid, DWORD arg1);
+typedef bool(__thiscall *tSendStatePacket)(DWORD classPointer, fPoint& pos, float rot, BYTE eFunc, BYTE uArg, BYTE arg0);
 
+tSendStatePacket fSendStatePacket;
+tSendAttackPacket fSendAttackPacket;
 tSendPacket fSendPacket;
 DWORD *networkclassPointer;
 
@@ -68,6 +72,16 @@ DWORD __stdcall __RecvPacket(DWORD return_value,int size, void* buffer) {
 
 }
 
+void SendBattlePacket(DWORD vid, BYTE type)
+{
+	fSendAttackPacket(*networkclassPointer, 0, type, vid, 0);
+}
+
+void SendStatePacket(fPoint & pos, float rot, BYTE eFunc, BYTE uArg)
+{
+	fSendStatePacket(*networkclassPointer, pos, rot, eFunc, uArg,0);
+}
+
 void SendPacket(int size, void*buffer) {
 	fSendPacket(*networkclassPointer, size, buffer);
 	//Packet packet(size, (BYTE*)buffer);
@@ -86,7 +100,7 @@ void __SendPacket(int size, void*buffer){
 			MovePlayerPacket move;
 			fillPacket(&packet, &move);
 			#ifdef _DEBUG
-			//printf("bFunc=%d bArg=%d u1=%d bRot=%d lX=%d lY=%d time=%d u2=%d\n",move.bFunc,move.bArg, move.uknown1,move.bRot,move.lX,move.lY,move.uknown2 );
+			printf("bFunc=%d bArg=%d u1=%d bRot=%d lX=%d lY=%d time=%d u2=%d\n",move.bFunc,move.bArg, move.uknown1,move.bRot,move.lX,move.lY,move.uknown2 );
 			#endif
 		}
 	}
@@ -105,6 +119,16 @@ void SetNetClassPointer(void * stackPointer)
 void SetSendFunctionPointer(void * p)
 {
 	fSendPacket = (tSendPacket)p;
+}
+
+void SetSendBattlePacket(void * func)
+{
+	fSendAttackPacket = (tSendAttackPacket)func;
+}
+
+void SetSendStatePacket(void * func)
+{
+	fSendStatePacket = (tSendStatePacket)func;
 }
 
 Packet::Packet(int size, void * buffer)

@@ -28,6 +28,12 @@ namespace memory_patterns {
 
 	//Pattern from Send On_Click Packet caller
 	Pattern NetworkClassPointer = Pattern(2, "\x8b\x35\x00\x00\x00\x00\xa3", "xx????x");
+
+	Pattern sendAttackPacket = Pattern(0, "\x55\x8b\xec\x83\xec\x00\x53\x56\x57\x89\x4d\x00\xeb", "xxxxx?xxxxx?x");
+
+
+	//https://gyazo.com/2b8f2dcde97423b42470b343649ae0f6
+	Pattern sendCharacterStatePacket = Pattern(0, "\x55\x8b\xec\x83\xec\x00\xa1\x00\x00\x00\x00\x33\xc5\x89\x45\x00\x53\x56\x57\x89\x4d", "xxxxx?x????xxxx?xxxxx");
 }
 
 //THREADING MITGH BE A PROBLEM
@@ -61,6 +67,8 @@ void init() {
 	void* recvAddr = patternFinder.GetPatternAddress(&recv);
 	void* sendAddr = patternFinder.GetPatternAddress(&send);
 	void* getEtherPackAddr = patternFinder.GetPatternAddress(&getEther);
+	void* attackPacketAddr = patternFinder.GetPatternAddress(&memory_patterns::sendAttackPacket);
+	void* statePacketAddr = patternFinder.GetPatternAddress(&memory_patterns::sendCharacterStatePacket);
 	void** netClassPointer = (void**)patternFinder.GetPatternAddress(&memory_patterns::NetworkClassPointer);
 
 	if (!netClassPointer) {
@@ -69,7 +77,16 @@ void init() {
 	}
 
 	if (!sendAddr) {
-		MessageBox(NULL, "Network Send Packet Pointer not found", "Critical Error", MB_OK);
+		MessageBox(NULL, "Network Send Packet Function not found", "Critical Error", MB_OK);
+		exit();
+	}
+
+	if (!attackPacketAddr) {
+		MessageBox(NULL, "Network Send Attack Packet Function not found", "Critical Error", MB_OK);
+		exit();
+	}
+	if (!statePacketAddr) {
+		MessageBox(NULL, "Network Send State Packet Function not found", "Critical Error", MB_OK);
 		exit();
 	}
 
@@ -82,6 +99,8 @@ void init() {
 
 	SetNetClassPointer(*netClassPointer);
 	SetSendFunctionPointer(sendAddr);
+	SetSendBattlePacket(attackPacketAddr);
+	SetSendStatePacket(statePacketAddr);
 
 
 	//Hooks

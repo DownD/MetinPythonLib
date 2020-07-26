@@ -99,3 +99,8 @@ struct Point {
 	Point(int x, int y) : x(x), y(y){}
 	int x, y;
 };
+
+struct fPoint {
+	fPoint(float x, float y) : x(x), y(y) {}
+	float x, y;
+};

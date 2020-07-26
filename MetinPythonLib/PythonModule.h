@@ -57,6 +57,9 @@ PyObject* GetEterPacket(PyObject * poSelf, PyObject * poArgs);
 PyObject* IsPositionBlocked(PyObject * poSelf, PyObject * poArgs);
 PyObject* GetCurrentPhase(PyObject * poSelf, PyObject * poArgs);
 PyObject* GetAttrByte(PyObject * poSelf, PyObject * poArgs); //Debug purposes
+PyObject* pySendAttackPacket(PyObject * poSelf, PyObject * poArgs);
+PyObject* pySendStatePacket(PyObject * poSelf, PyObject * poArgs);
+PyObject* pySendPacket(PyObject * poSelf, PyObject * poArgs);
 
 //Hooked function
 DWORD __stdcall _GetEter(DWORD return_value, CMappedFile* file, const char* fileName, void** buffer, const char* uknown, bool uknown_2);
