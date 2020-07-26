@@ -53,7 +53,7 @@
   - \<string\>PATH<br>
     Path of the location where the library was injected<br>
     
-  - IsDead(\<int\>vid) returns 1 or 0
-    Returns 1 if the instance with the vid provided is dead ordoesn't exist and returns 0 otherwise
+  - IsDead(\<int\>vid) returns 1 or 0<br>
+    Returns 1 if the instance with the vid provided is dead ordoesn't exist and returns 0 otherwise<br>
 
 
