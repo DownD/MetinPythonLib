@@ -42,7 +42,7 @@
 	- CHAR_STATE_ARG_COMBO_ATTACK1
 	- CHAR_STATE_ARG_COMBO_ATTACK2
 	- CHAR_STATE_ARG_COMBO_ATTACK3
-	- CHAR_STATE_ARG_COMBO_ATTACK4
+	- CHAR_STATE_ARG_COMBO_ATTACK4<br>
      otherwise the value can be NULL or CHAR_STATE_ARG_NONE<br>
      All this constantes are defined in the module.<br>
        
