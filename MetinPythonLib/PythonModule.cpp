@@ -2,6 +2,7 @@
 #include "App.h"
 #include "Network.h"
 #include "MapCollision.h"
+#include <unordered_map>
 
 
 static std::string pythonAddSearchPath;
@@ -10,10 +11,19 @@ static bool pass = true;
 bool error = false;
 Hook* hook;
 PyObject* packet_mod;
-PyObject* instanceList;
+PyObject* pyVIDList;
 
 bool getTrigger = false;
 EterFile eterFile = { 0 };
+
+struct Instance {
+	DWORD vid;
+	BYTE isDead;
+	//float x, y; not needed for now
+};
+
+std::unordered_map<DWORD, Instance> instances;
+
 
 bool pythonExecuteFile(char* filePath) {
 	char* arr = new char[strlen(filePath)];
@@ -124,6 +134,39 @@ EterFile* CGetEter(const char* name) {
 	GetEterPacket(0, obj);
 	Py_DECREF(obj);
 	return &eterFile;
+}
+
+void appendNewInstance(DWORD vid)
+{
+	PyObject* pVid = PyLong_FromLong(vid);
+	PyDict_SetItem(pyVIDList, pVid, pVid);
+
+	Instance i = { 0 };
+	i.vid = vid;
+
+	instances[vid] = i;
+}
+
+void deleteInstance(DWORD vid)
+{
+	PyObject* pVid = PyLong_FromLong(vid);
+	PyDict_DelItem(pyVIDList, pVid);
+	instances.erase(vid);
+}
+
+void changeInstanceIsDead(DWORD vid, BYTE isDead)
+{
+	PyObject* pVid = PyLong_FromLong(vid);
+	PyDict_DelItem(pyVIDList, pVid);
+	if (instances.find(vid) != instances.end()) {
+		instances[vid].isDead = 1;
+	}
+}
+
+void clearInstances()
+{
+	instances.clear();
+	PyDict_Clear(pyVIDList);
 }
 
 
@@ -326,6 +369,18 @@ PyObject * pySendPacket(PyObject * poSelf, PyObject * poArgs)
 	return Py_BuildNone();
 }
 
+PyObject * pyIsDead(PyObject * poSelf, PyObject * poArgs)
+{
+	int vid;
+	if (!PyTuple_GetInteger(poArgs, 0, &vid))
+		return Py_BuildException();
+
+	if (instances.find(vid) != instances.end()) {
+		return Py_BuildValue("i",instances[vid].isDead);
+	}
+	return Py_BuildValue("i", 1);
+}
+
 static PyMethodDef s_methods[] =
 {
 	{ "Get",					GetEterPacket,		METH_VARARGS },
@@ -336,6 +391,7 @@ static PyMethodDef s_methods[] =
 	{ "SendPacket",				pySendPacket,		METH_VARARGS },
 	{ "SendAttackPacket",		pySendAttackPacket,	METH_VARARGS },
 	{ "SendStatePacket",		pySendStatePacket,	METH_VARARGS },
+	{ "IsDead",					pyIsDead,			METH_VARARGS },
 	{ NULL, NULL }
 };
 
@@ -349,8 +405,8 @@ void initModule() {
 #endif
 
 	packet_mod = Py_InitModule("net_packet", s_methods);
-	instanceList = PyDict_New();
-	PyModule_AddObject(packet_mod, "InstancesList", instanceList);
+	pyVIDList = PyDict_New();
+	PyModule_AddObject(packet_mod, "InstancesList", pyVIDList);
 	PyModule_AddStringConstant(packet_mod, "PATH", dllPath);
 
 	PyModule_AddIntConstant(packet_mod, "CHAR_STATE_ATTACK", CHAR_STATE_FUNC_ATTACK);
@@ -359,7 +415,6 @@ void initModule() {
 
 
 	PyModule_AddIntConstant(packet_mod, "CHAR_STATE_ARG_NONE", 0);
-
 	PyModule_AddIntConstant(packet_mod, "CHAR_STATE_ARG_HORSE_ATTACK1", CHAR_STATE_ARG_HORSE_ATTACK1);
 	PyModule_AddIntConstant(packet_mod, "CHAR_STATE_ARG_HORSE_ATTACK2", CHAR_STATE_ARG_HORSE_ATTACK2);
 	PyModule_AddIntConstant(packet_mod, "CHAR_STATE_ARG_HORSE_ATTACK3", CHAR_STATE_ARG_HORSE_ATTACK3);

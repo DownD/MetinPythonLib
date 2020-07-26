@@ -38,8 +38,7 @@ DWORD __stdcall __RecvPacket(DWORD return_value,int size, void* buffer) {
 			}
 			PlayerCreatePacket instance;
 			fillPacket(&packet, &instance);
-			PyObject* vid = PyLong_FromLong(instance.dwVID);
-			PyDict_SetItem(instanceList, vid, vid);
+			appendNewInstance(instance.dwVID);
 			break;
 		}
 		case HEADER_GC_CHARACTER_DEL: {
@@ -48,8 +47,7 @@ DWORD __stdcall __RecvPacket(DWORD return_value,int size, void* buffer) {
 			}
 			DeletePlayerPacket instance_;
 			fillPacket(&packet, &instance_);
-			PyObject* vid = PyLong_FromLong(instance_.dwVID);
-			PyDict_DelItem(instanceList, vid);
+			deleteInstance(instance_.dwVID);
 			break;
 		}
 		case HEADER_GC_PHASE: {
@@ -57,7 +55,7 @@ DWORD __stdcall __RecvPacket(DWORD return_value,int size, void* buffer) {
 			fillPacket(&packet, &phase);
 			gamePhase = phase.phase;
 			if (phase.phase == PHASE_LOADING) {
-				PyDict_Clear(instanceList);
+				clearInstances();
 				freeCurrentMap();
 			}
 			else if (phase.phase == PHASE_GAME) {
@@ -65,6 +63,11 @@ DWORD __stdcall __RecvPacket(DWORD return_value,int size, void* buffer) {
 			}
 			break;
 
+		}
+		case HEADER_GC_DEAD: {
+			DeadPacket dead;
+			fillPacket(&packet, &dead);
+			changeInstanceIsDead(dead.vid, 1);
 		}
 		}
 	}
@@ -100,7 +103,7 @@ void __SendPacket(int size, void*buffer){
 			MovePlayerPacket move;
 			fillPacket(&packet, &move);
 			#ifdef _DEBUG
-			printf("bFunc=%d bArg=%d u1=%d bRot=%d lX=%d lY=%d time=%d u2=%d\n",move.bFunc,move.bArg, move.uknown1,move.bRot,move.lX,move.lY,move.uknown2 );
+			//printf("bFunc=%d bArg=%d u1=%d bRot=%d lX=%d lY=%d time=%d u2=%d\n",move.bFunc,move.bArg, move.uknown1,move.bRot,move.lX,move.lY,move.uknown2 );
 			#endif
 		}
 	}

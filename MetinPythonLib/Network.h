@@ -30,7 +30,9 @@ namespace PacketHeaders {
 	enum {
 		HEADER_GC_CHARACTER_ADD = 1,
 		HEADER_GC_CHARACTER_DEL = 2,
+		HEADER_GC_DEAD = 14,
 		HEADER_GC_PHASE = 0xFD,
+
 
 		//To server
 		HEADER_CG_SEND_CHAT = 3,
@@ -55,6 +57,11 @@ void fillPacket(Packet*p, T* _struct) {
 	int size = min(p->data_size, sizeof(T));
 	memcpy(_struct, p->data, size);
 }
+
+struct DeadPacket
+{
+	DWORD	vid;
+};
 
 struct AttackPacket
 {

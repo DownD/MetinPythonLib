@@ -14,7 +14,8 @@
 
 
 extern PyObject* packet_mod;
-extern PyObject* instanceList; //Instances
+extern PyObject* pyVIDList; //Instances
+
 
 struct EterFile {
 	void* data;
@@ -60,9 +61,18 @@ PyObject* GetAttrByte(PyObject * poSelf, PyObject * poArgs); //Debug purposes
 PyObject* pySendAttackPacket(PyObject * poSelf, PyObject * poArgs);
 PyObject* pySendStatePacket(PyObject * poSelf, PyObject * poArgs);
 PyObject* pySendPacket(PyObject * poSelf, PyObject * poArgs);
+PyObject* pyIsDead(PyObject * poSelf, PyObject * poArgs);
 
 //Hooked function
 DWORD __stdcall _GetEter(DWORD return_value, CMappedFile* file, const char* fileName, void** buffer, const char* uknown, bool uknown_2);
 
 EterFile* CGetEter(const char* name);
+
+//Instances
+void appendNewInstance(DWORD vid);
+void deleteInstance(DWORD vid);
+void changeInstancePosition(DWORD vid, float x, float y);
+void changeInstanceIsDead(DWORD vid, BYTE isDead);
+void clearInstances();
+
 void initModule();
