@@ -43,8 +43,8 @@
 	- CHAR_STATE_ARG_COMBO_ATTACK2
 	- CHAR_STATE_ARG_COMBO_ATTACK3
 	- CHAR_STATE_ARG_COMBO_ATTACK4<br>
-    otherwise the value can be NULL or CHAR_STATE_ARG_NONE<br>
-    All this constantes are defined in the module.<br>
+   otherwise the value can be NULL or CHAR_STATE_ARG_NONE<br>
+   All this constantes are defined in the module.<br>
        
   - \<dict\>InstancesList<br>
     -> Is a dictionary containing all vids currently in sight as keys and values<br>
