@@ -17,8 +17,8 @@
     Similar to old app.Get, allows to extract any file encrypted.
     
   - IsPositionBlocked(\<int\>x,\<int\>y) returns \<boolean\><br>
-    Allows to check if a map position is walkable(mobs don't count), true if is walkable or false if is not walkable<br>
-    Note: For better pathfinding, unblocked points that are close(1 unit) to a blocked point, are considered blocked too<br>
+    Allows to check if a map position is walkable(mobs don't count), true if is walkable or false if is not walkable.<br>
+    Note: For better pathfinding, unblocked points that are close(1 unit) to a blocked point, are considered blocked too.<br>
     
   - GetCurrentPhase() returns \<int\><br>
     Allows to get the current phase in integer format.<br>
@@ -27,13 +27,13 @@
     Finds a path between 2 points using A* Jump Point Search(https://github.com/fgenesis/tinypile) solves any path tested in less then 200ms.<br>
     
   - SendPacket(\<int\>size,\<bytearray\>buffer) return None<br>
-    Sends a packet to the server bypassing any encryption set<br>
+    Sends a packet to the server bypassing any encryption set.<br>
     
   - SendAttackPacket(\<int\>vid,\<byte\>type)<br>
-    Sends an attack packet to the server, the type is usually 0<br>
+    Sends an attack packet to the server, the type is usually 0.<br>
     
   - SendStatePacket(\<float\>x,\<float\>y,\<float\>rotation_angle,\<byte\>eFunc, \<byte\>uArgs)<br>
-    Sends a packet containing the current state of the main player, can be used to change position,rotation and attack state on server side only)<br>
+    Sends a packet containing the current state of the main player, can be used to change position,rotation and attack state on server side only)
     The value eFunc can take the fallowing values: CHAR_STATE_ATTACK,CHAR_STATE_STOP,CHAR_STATE_WALK<br>
     If eFunc == CHAR_STATE_ATTACK then the uArgs value can take one of the following values:
         - CHAR_STATE_ARG_HORSE_ATTACK1
