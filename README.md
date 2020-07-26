@@ -33,7 +33,7 @@
     Sends an attack packet to the server, the type is usually 0.<br>
     
   - SendStatePacket(\<float\>x,\<float\>y,\<float\>rotation_angle,\<byte\>eFunc, \<byte\>uArgs)<br>
-    Sends a packet containing the current state of the main player, can be used to change position,rotation and attack state on server side only)
+    Sends a packet containing the current state of the main player, can be used to change position,rotation and attack state on server side only.
     The value eFunc can take the fallowing values: CHAR_STATE_ATTACK,CHAR_STATE_STOP,CHAR_STATE_WALK<br>
     If eFunc == CHAR_STATE_ATTACK then the uArgs value can take one of the following values:
         - CHAR_STATE_ARG_HORSE_ATTACK1
@@ -43,8 +43,8 @@
 	- CHAR_STATE_ARG_COMBO_ATTACK2
 	- CHAR_STATE_ARG_COMBO_ATTACK3
 	- CHAR_STATE_ARG_COMBO_ATTACK4<br>
-     otherwise the value can be NULL or CHAR_STATE_ARG_NONE<br>
-     All this constantes are defined in the module.<br>
+    otherwise the value can be NULL or CHAR_STATE_ARG_NONE<br>
+    All this constantes are defined in the module.<br>
        
   - \<dict\>InstancesList<br>
     -> Is a dictionary containing all vids currently in sight as keys and values<br>
