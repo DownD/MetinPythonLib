@@ -38,11 +38,11 @@ bool pythonExecuteFile(char* filePath) {
 	PyObject *sys = PyImport_ImportModule("sys");
 	PyObject *path = PyObject_GetAttrString(sys, "path");
 	PyList_Append(path, PyString_FromString(pythonAddSearchPath.c_str()));
-	int result = PyRun_SimpleFileEx(PyFile_AsFile(PyFileObject), "MyFile", 1);
-	if (result == -1)
-		return false;
-	else
-		return true;
+int result = PyRun_SimpleFileEx(PyFile_AsFile(PyFileObject), "MyFile", 1);
+if (result == -1)
+return false;
+else
+return true;
 }
 
 
@@ -130,7 +130,7 @@ DWORD __stdcall _GetEter(DWORD return_value, CMappedFile* file, const char* file
 
 //C Wrapper
 EterFile* CGetEter(const char* name) {
-	PyObject* obj = Py_BuildValue("(si)", name,1);
+	PyObject* obj = Py_BuildValue("(si)", name, 1);
 	GetEterPacket(0, obj);
 	Py_DECREF(obj);
 	return &eterFile;
@@ -138,17 +138,30 @@ EterFile* CGetEter(const char* name) {
 
 void appendNewInstance(DWORD vid)
 {
-	PyObject* pVid = PyLong_FromLong(vid);
-	PyDict_SetItem(pyVIDList, pVid, pVid);
-
+	if (instances.find(vid) != instances.end()){
+#ifdef _DEBUG
+		printf("On adding instance with vid=%d, already exists, ignoring packet!\n",vid);
+#endif
+		return;
+	}
 	Instance i = { 0 };
 	i.vid = vid;
 
 	instances[vid] = i;
+
+	PyObject* pVid = PyLong_FromLong(vid);
+	PyDict_SetItem(pyVIDList, pVid, pVid);
+
 }
 
 void deleteInstance(DWORD vid)
 {
+	if (instances.find(vid) == instances.end()) {
+#ifdef _DEBUG
+		printf("On deleting instance with vid=%d doesn't exists, ignoring packet!\n", vid);
+#endif
+		return;
+	}
 	PyObject* pVid = PyLong_FromLong(vid);
 	PyDict_DelItem(pyVIDList, pVid);
 	instances.erase(vid);
@@ -156,8 +169,6 @@ void deleteInstance(DWORD vid)
 
 void changeInstanceIsDead(DWORD vid, BYTE isDead)
 {
-	PyObject* pVid = PyLong_FromLong(vid);
-	PyDict_DelItem(pyVIDList, pVid);
 	if (instances.find(vid) != instances.end()) {
 		instances[vid].isDead = 1;
 	}

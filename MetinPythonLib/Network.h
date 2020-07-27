@@ -134,7 +134,7 @@ struct PlayerCreatePacket {
 void logPacket(Packet * packet);
 
 //Hook Functions
-DWORD __stdcall __RecvPacket(DWORD return_value, int size, void* buffer);
+bool __stdcall __RecvPacket(bool return_value, int size, void* buffer);
 void __SendPacket(int size, void*buffer);
 
 

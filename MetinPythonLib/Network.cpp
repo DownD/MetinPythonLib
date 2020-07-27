@@ -25,7 +25,7 @@ void logPacket(Packet * packet) {
 
 }
 
-DWORD __stdcall __RecvPacket(DWORD return_value,int size, void* buffer) {
+bool __stdcall __RecvPacket(bool return_value,int size, void* buffer) {
 	if (return_value != 0 && size > 0 && *(BYTE*)buffer != 0) {
 		Packet packet(size, (BYTE*)buffer);
 #ifdef _DEBUG
@@ -53,6 +53,7 @@ DWORD __stdcall __RecvPacket(DWORD return_value,int size, void* buffer) {
 		case HEADER_GC_PHASE: {
 			ChangPhasePacket phase;
 			fillPacket(&packet, &phase);
+			//printf("Phase Change %d\n",phase.phase);
 			gamePhase = phase.phase;
 			if (phase.phase == PHASE_LOADING) {
 				clearInstances();
