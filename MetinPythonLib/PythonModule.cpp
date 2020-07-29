@@ -144,6 +144,9 @@ void appendNewInstance(DWORD vid)
 #endif
 		return;
 	}
+#ifdef _DEBUG
+	//printf("Success Adding instance vid=%d!\n", vid);
+#endif
 	Instance i = { 0 };
 	i.vid = vid;
 
@@ -176,6 +179,9 @@ void changeInstanceIsDead(DWORD vid, BYTE isDead)
 
 void clearInstances()
 {
+#ifdef _DEBUG
+	printf("Instances Cleared\n");
+#endif
 	instances.clear();
 	PyDict_Clear(pyVIDList);
 }
@@ -224,6 +230,52 @@ PyObject * IsPositionBlocked(PyObject * poSelf, PyObject * poArgs)
 	return Py_BuildValue("i", isBlockedPosition(x, y));
 }
 
+bool getUnblockedAdjacentBlock(int x_start, int y_start , Point* adjPoint) {
+	if (!isBlockedPosition(x_start + 1, y_start)) {
+		adjPoint->x = x_start + 1;
+		adjPoint->y = y_start;
+		return true;
+	}
+	else if (!isBlockedPosition(x_start + 1, y_start + 1)) {
+		adjPoint->x = x_start + 1;
+		adjPoint->y = y_start + 1;
+		return true;
+	}
+
+	else if (!isBlockedPosition(x_start + 1, y_start - 1)) {
+		adjPoint->x = x_start + 1;
+		adjPoint->y = y_start - 1;
+		return true;
+	}
+	else if (!isBlockedPosition(x_start - 1, y_start + 1)) {
+		adjPoint->x = x_start - 1;
+		adjPoint->y = y_start + 1;
+		return true;
+	}
+	else if (!isBlockedPosition(x_start - 1, y_start)) {
+		adjPoint->x = x_start - 1;
+		adjPoint->y = y_start;
+		return true;
+	}
+	else if (!isBlockedPosition(x_start - 1, y_start - 1)) {
+		adjPoint->x = x_start - 1;
+		adjPoint->y = y_start - 1;
+		return true;
+	}
+	else if (!isBlockedPosition(x_start, y_start + 1)) {
+		adjPoint->x = x_start;
+		adjPoint->y = y_start + 1;
+		return true;
+	}
+	else if (!isBlockedPosition(x_start, y_start - 1)) {
+		adjPoint->x = x_start;
+		adjPoint->y = y_start - 1;
+		return true;
+	}
+
+	return false;
+}
+
 PyObject * FindPath(PyObject * poSelf, PyObject * poArgs)
 {
 	int x_start, y_start, x_end,y_end;
@@ -244,42 +296,20 @@ PyObject * FindPath(PyObject * poSelf, PyObject * poArgs)
 	int x_start_unblocked = -1;
 	int y_start_unblocked = -1;
 
-	//Try to find adjacent unblocked
 	if (isBlockedPosition(x_start, y_start)) {
-		if (!isBlockedPosition(x_start + 1, y_start)) {
-			x_start_unblocked = x_start+1;
-			y_start_unblocked = y_start;
+		Point a = { 0,0 };
+		if (getUnblockedAdjacentBlock(x_start, y_start,&a)) {
+			x_start_unblocked = a.x;
+			y_start_unblocked = a.y;
 		}
-		else if (!isBlockedPosition(x_start + 1, y_start+1)) {
-			x_start_unblocked = x_start + 1;
-			y_start_unblocked = y_start + 1;
-		}
+	}
 
-		else if (!isBlockedPosition(x_start + 1, y_start - 1)) {
-			x_start_unblocked = x_start + 1;
-			y_start_unblocked = y_start - 1;
+	if (isBlockedPosition(x_end, y_end)) {
+		Point a = { 0,0 };
+		if (getUnblockedAdjacentBlock(x_end, y_end, &a)) {
+			x_end = a.x;
+			y_end = a.y;
 		}
-		else if (!isBlockedPosition(x_start - 1, y_start + 1)) {
-			x_start_unblocked = x_start - 1;
-			y_start_unblocked = y_start + 1;
-		}
-		else if (!isBlockedPosition(x_start - 1, y_start)) {
-			x_start_unblocked = x_start - 1;
-			y_start_unblocked = y_start;
-		}
-		else if (!isBlockedPosition(x_start - 1, y_start - 1)) {
-			x_start_unblocked = x_start - 1;
-			y_start_unblocked = y_start - 1;
-		}
-		else if (!isBlockedPosition(x_start, y_start + 1)) {
-			x_start_unblocked = x_start;
-			y_start_unblocked = y_start + 1;
-		}else if (!isBlockedPosition(x_start, y_start - 1)) {
-			x_start_unblocked = x_start;
-			y_start_unblocked = y_start - 1;
-		}
-
-
 	}
 
 

@@ -34,8 +34,12 @@ MapCollision::MapCollision(const char* map_name){
 
 	increaseBlockedArea();
 
-	//printToFile("map_objects.txt");
+	std::string m(map_name);
+	m += ".txt";
 
+#ifdef _DEBUG
+	printToFile(m.c_str());
+#endif
 }
 
 
@@ -188,11 +192,12 @@ void MapCollision::printToFile(const char* name)
 	char* line = (char*)malloc(maxX);
 	for (int y = 0; y < maxY; y++) {
 		for (int x = 0; x < maxX; x++) {
-			line[x] = 48 + (int)isBlocked(x, y);
+			line[x] = 48 + isBlocked(x, y);
 		}
 		myfile << line;
 		myfile << "\n";
 	}
+	free(line);
 	myfile.close();
 	
 }

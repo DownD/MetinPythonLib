@@ -106,11 +106,11 @@ void init() {
 	//Hooks
 	getEtherPacketHook = new ReturnHook(getEtherPackAddr, GetEter, 7, 5);
 	recvHook = new ReturnHook(recvAddr, __RecvPacketJMP, 5, 2);
-	sendHook = new JMPStartFuncHook(sendAddr, __SendPacket, 6, THIS_CALL);
+	//sendHook = new JMPStartFuncHook(sendAddr, __SendPacket, 6, THIS_CALL);
 
 	recvHook->HookFunction();
 	getEtherPacketHook->HookFunction();
-	sendHook->HookFunction();
+	//sendHook->HookFunction();
 
 	initModule();
 }
