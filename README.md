@@ -1,11 +1,13 @@
 # MetinPythonLib V0.3.1
 
-## Things that need to be checked moving across servers:
+Adds some functions to the python API, and try to inject a script.py from the current directory. 
+
+## Things that need to be checked before moving across servers:
 
 - Packet Headers and structures
 - Patterns of send, recv, GetEther, SendAttackPacket, SendStatePacket and network class pointer
 - Structure of CMappedFile
-- All original modules on init.py, the script is resposible for making sure the following functions work properly:
+- The executed script is resposible for making sure the following functions work properly:
   - Module app
     - Function OpenTextFile
     - Function IsExistFile
