@@ -21,6 +21,7 @@ Adds some functions to the python API, and try to inject a script.py from the cu
   - IsPositionBlocked(\<int\>x,\<int\>y) returns \<boolean\><br>
     Allows to check if a map position is walkable(mobs don't count), true if is walkable or false if is not walkable.<br>
     Note: For better pathfinding, unblocked points that are close(1 unit) to a blocked point, are considered blocked too.<br>
+    There is a bug with objects, since i can't figure out how to load the objects.
     
   - GetCurrentPhase() returns \<int\><br>
     Allows to get the current phase in integer format.<br>
