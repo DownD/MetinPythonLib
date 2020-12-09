@@ -8,16 +8,18 @@
 
 
 struct Pattern {
-	Pattern(int ofset, const char* pat, const char*masc) { offset = ofset; pattern = pat; mask = masc; }
+	Pattern(const char* name,int ofset, const char* pat, const char* masc) { this->name = name; offset = ofset; pattern = pat; mask = masc;}
 	int offset;
 	const char* pattern;
 	const char* mask;
+	const char* name;
 };
 
 
+//If module pattern is provided, it will scan that pattern to find the memory location to search for next patterns
 class Patterns {
 public:
-	Patterns(HMODULE hMod);
+	Patterns(HMODULE hMod,Pattern* modulePattern = 0);
 	~Patterns();
 
 	DWORD* GetPatternAddress(Pattern* pat);
@@ -25,7 +27,7 @@ public:
 
 
 private:
-	bool Init();
+	bool Init(Pattern* modulePattern = 0);
 	bool setModuleInfo();
 
 	int getModuleSize(void* baseAddress);

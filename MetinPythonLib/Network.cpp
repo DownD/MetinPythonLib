@@ -2,10 +2,19 @@
 #include "PythonModule.h"
 #include "MapCollision.h"
 
-using namespace PacketHeaders;
 
+
+//PacketFilter
+bool filterInboundOnlyIncluded = false;
+bool filterOutboundOnlyIncluded = false;
+bool printToConsole = false;
+std::set<BYTE> inbound_header_filter;
+std::set<BYTE> outbound_header_filter;
+
+using namespace PacketHeaders;
 static int gamePhase = 0;
 
+typedef bool(__thiscall* tGlobalToLocalPosition)(DWORD classPointer, long& lx, long& ly);
 typedef bool(__thiscall *tSendPacket)(DWORD classPointer, int size, void* buffer);
 typedef bool(__thiscall *tSendAttackPacket)(DWORD classPointer, DWORD arg0,BYTE type, DWORD vid, DWORD arg1);
 typedef bool(__thiscall *tSendStatePacket)(DWORD classPointer, fPoint& pos, float rot, BYTE eFunc, BYTE uArg, BYTE arg0);
@@ -13,24 +22,121 @@ typedef bool(__thiscall *tSendStatePacket)(DWORD classPointer, fPoint& pos, floa
 tSendStatePacket fSendStatePacket;
 tSendAttackPacket fSendAttackPacket;
 tSendPacket fSendPacket;
+tGlobalToLocalPosition fGlobalToLocalPosition;
 DWORD *networkclassPointer;
 
-void logPacket(Packet * packet) {
-	printf("Header: %d\n", packet->header);
+void printPacket(DWORD calling_function, Packet* p, bool type) {
+	if (INBOUND == type) {
+		printf("[INBOUND]\n");
+	}
+	else {
+		printf("[OUTBOUND]\n");
+	}
+	printf("Header: %d\n", p->header);
+	printf("Size: %d\n", p->data_size);
+	printf("Calling Address: %#x\n", calling_function);
 	printf("Content-Bytes: ");
-	for (int i = 0; i < packet->data_size; i++) {
-		printf("%#x ", packet->data[i]);
+	for (int i = 0; i < p->data_size; i++) {
+		printf("%#x ", p->data[i]);
 	}
 	printf("\n\n");
-
 }
 
-bool __stdcall __RecvPacket(bool return_value,int size, void* buffer) {
+void setFilterMode(PACKET_TYPE t,bool val) {
+	if(t == INBOUND)
+		filterInboundOnlyIncluded = val;
+	else
+		filterOutboundOnlyIncluded = val;
+}
+
+void clearPacketFilter(PACKET_TYPE t) {
+	if (t == INBOUND)
+		inbound_header_filter.clear();
+	else
+		outbound_header_filter.clear();
+}
+
+void addHeaderFilter(BYTE header,PACKET_TYPE t) {
+	if (t == INBOUND)
+		inbound_header_filter.insert(header);
+	else
+		outbound_header_filter.insert(header);
+}
+
+void openConsole()
+{
+	filterInboundOnlyIncluded = false;
+	filterOutboundOnlyIncluded = false;
+	clearPacketFilter(OUTBOUND);
+	clearPacketFilter(INBOUND);
+	AllocConsole();
+#ifdef _DEBUG
+	setDebugOff();
+	return;
+#endif
+	system("cls");
+	SetConsoleTitle("PACKET SNIFFER");
+}
+
+void closeConsole()
+{
+	filterInboundOnlyIncluded = false;
+	filterOutboundOnlyIncluded = false;
+	stopFilterPacket();
+	clearPacketFilter(OUTBOUND);
+	clearPacketFilter(INBOUND);
+#ifdef _DEBUG
+	setDebugOn();
+	return;
+#endif
+	FreeConsole();
+}
+
+void startFilterPacket()
+{
+	printToConsole = true;
+}
+
+void stopFilterPacket()
+{
+	printToConsole = false;
+}
+
+void removeHeaderFilter(BYTE header, PACKET_TYPE t) {
+	if (t == INBOUND)
+		inbound_header_filter.erase(header);
+	else 
+		outbound_header_filter.erase(header);
+}
+
+std::set<BYTE>* getPacketFilter(PACKET_TYPE t) {
+	if (t == INBOUND)
+		return &inbound_header_filter;
+	else
+		return &outbound_header_filter;
+}
+
+bool __stdcall __RecvPacket(DWORD return_function,bool return_value,int size, void* buffer) {
+
+#ifdef USE_INJECTION_RECV_HOOK
+	_RecvRoutine();
+#endif
+
 	if (return_value != 0 && size > 0 && *(BYTE*)buffer != 0) {
 		Packet packet(size, (BYTE*)buffer);
-#ifdef _DEBUG
-		//logPacket(&packet);
-#endif
+
+		//PacketFilter
+		if (printToConsole) {
+			if (!filterInboundOnlyIncluded) {
+				if (inbound_header_filter.find(packet.header) == inbound_header_filter.end())
+					printPacket(return_function, &packet, INBOUND);
+			}
+			else {
+				if (inbound_header_filter.find(packet.header) != inbound_header_filter.end())
+					printPacket(return_function, &packet, INBOUND);
+			}
+		}
+
 		switch (packet.header) {
 		case HEADER_GC_CHARACTER_ADD: {
 			if (packet.data_size == 0) {
@@ -38,7 +144,18 @@ bool __stdcall __RecvPacket(bool return_value,int size, void* buffer) {
 			}
 			PlayerCreatePacket instance;
 			fillPacket(&packet, &instance);
-			appendNewInstance(instance.dwVID);
+			GlobalToLocalPosition(instance.x, instance.y);
+			appendNewInstance(instance);
+			break;
+		}
+		case HEADER_GC_CHARACTER_MOVE: {
+			if (packet.data_size == 0) {
+				break;
+			}
+			CharacterMovePacket instance;
+			fillPacket(&packet, &instance);
+			GlobalToLocalPosition(instance.lX, instance.lY);
+			changeInstancePosition(instance);
 			break;
 		}
 		case HEADER_GC_CHARACTER_DEL: {
@@ -51,7 +168,7 @@ bool __stdcall __RecvPacket(bool return_value,int size, void* buffer) {
 			break;
 		}
 		case HEADER_GC_PHASE: {
-			ChangPhasePacket phase;
+			ChangePhasePacket phase;
 			fillPacket(&packet, &phase);
 			//printf("Phase Change %d\n",phase.phase);
 			gamePhase = phase.phase;
@@ -92,22 +209,36 @@ void SendPacket(int size, void*buffer) {
 	//logPacket(&packet);
 }
 
+void GlobalToLocalPosition(long& lx, long& ly)
+{
+	fGlobalToLocalPosition(*networkclassPointer, lx,ly);
+}
+
 
 void __SendPacket(int size, void*buffer){
 	Packet packet(size, (BYTE*)buffer);
-#ifdef _DEBUG
-	//logPacket(&packet);
-#endif
+	//PacketFilter
+	if (printToConsole) {
+		if (!filterOutboundOnlyIncluded) {
+			if (outbound_header_filter.find(packet.header) == outbound_header_filter.end())
+				printPacket(0,&packet, OUTBOUND);
+		}
+		else {
+			if (outbound_header_filter.find(packet.header) != outbound_header_filter.end())
+				printPacket(0, &packet, OUTBOUND);
+		}
+	}
 
 	switch (packet.header) {
 		case HEADER_CG_CHARACTER_MOVE: {
-			MovePlayerPacket move;
-			fillPacket(&packet, &move);
+			//MovePlayerPacket move;
+			//fillPacket(&packet, &move);
 			#ifdef _DEBUG
 			//printf("bFunc=%d bArg=%d u1=%d bRot=%d lX=%d lY=%d time=%d u2=%d\n",move.bFunc,move.bArg, move.uknown1,move.bRot,move.lX,move.lY,move.uknown2 );
 			#endif
 		}
 	}
+	return;
 }
 
 int getCurrentPhase()
@@ -133,6 +264,11 @@ void SetSendBattlePacket(void * func)
 void SetSendStatePacket(void * func)
 {
 	fSendStatePacket = (tSendStatePacket)func;
+}
+
+void SetGlobalToLocalPacket(void* func)
+{
+	fGlobalToLocalPosition = (tGlobalToLocalPosition)func;
 }
 
 Packet::Packet(int size, void * buffer)

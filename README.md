@@ -39,7 +39,7 @@ Adds some functions to the python API, and try to inject a script.py from the cu
     Sends a packet containing the current state of the main player, can be used to change position,rotation and attack state on server side only.
     The value eFunc can take the fallowing values: CHAR_STATE_ATTACK,CHAR_STATE_STOP,CHAR_STATE_WALK<br>
     If eFunc == CHAR_STATE_ATTACK then the uArgs value can take one of the following values:
-        - CHAR_STATE_ARG_HORSE_ATTACK1
+  - CHAR_STATE_ARG_HORSE_ATTACK1
 	- CHAR_STATE_ARG_HORSE_ATTACK2
 	- CHAR_STATE_ARG_HORSE_ATTACK3
 	- CHAR_STATE_ARG_COMBO_ATTACK1
@@ -47,7 +47,7 @@ Adds some functions to the python API, and try to inject a script.py from the cu
 	- CHAR_STATE_ARG_COMBO_ATTACK3
 	- CHAR_STATE_ARG_COMBO_ATTACK4<br>
    otherwise the value can be NULL or CHAR_STATE_ARG_NONE<br>
-   All this constantes are defined in the module.<br>
+   All this constants are defined in the module.<br>
        
   - \<dict\>InstancesList<br>
     -> Is a dictionary containing all vids currently in sight as keys and values<br>
@@ -60,3 +60,44 @@ Adds some functions to the python API, and try to inject a script.py from the cu
     Returns 1 if the instance with the vid provided is dead ordoesn't exist and returns 0 otherwise<br>
 
 
+### This are relative to a Packet Filter for debug purposes
+By default every packet will be shown.
+
+  - LaunchPacketFilter()<br>
+    Launches a console to print the packets.
+  
+  - ClosePacketFilter()<br>
+    Closes the console from packet filter.
+  
+  - StartPacketFilter()<br>
+    Start filtering packets.
+
+  - StopPacketFilter()<br>
+    Stop filtering packets.
+
+  - SkipInHeader(\<int\>packet header)<br>
+    Skips a packet coming from the server.
+
+  - SkipOutHeader(\<int\>packet header)<br>
+    Skips a packet going to the server.
+  
+  - DoNotSkipInHeader(\<int\>packet header)<br>
+    Removes a packet coming from the server from the skipped packets.
+
+  - DoNotSkipInHeader(\<int\>packet header)<br>
+    Removes a packet going to the server from the skipped packets.
+
+  - ClearOutput()<br>
+    Clear what's in the console.
+  
+  - ClearInFilter()<br>
+    Clear all headers from the filter coming from the server.
+
+  - ClearOutFilter()<br>
+    Clear all headers from the filter going to the server.
+
+  - SetOutFilterMode(\<int\>mode)<br>
+    Changes filter mode for outgoing packets, if set to 1, it will shows all packets that  correspond to the filter, if set to 0 it will show all packets that are not within the filter.
+
+  - SetInFilterMode(\<int\>mode)<br>
+    Changes filter mode for incoming packets, if set to 1, it will shows all packets that  correspond to the filter, if set to 0 it will show all packets that are not within the filter

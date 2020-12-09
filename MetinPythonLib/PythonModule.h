@@ -11,6 +11,13 @@
 #include <string>
 #include "shlwapi.h"
 #include "PythonUtils.h"
+#include "Network.h"
+
+
+/*SELECT THE METHOD USED TO INJECT THE PYTHON FILE, UNCOMMENT ONLY ONE*/
+//#define USE_INJECTION_SLEEP_HOOK
+#define USE_INJECTION_RECV_HOOK
+
 
 
 extern PyObject* packet_mod;
@@ -52,6 +59,10 @@ struct CMappedFile {
 void executeScript(const char* name, char* _path);
 
 
+//SET OLD FUNCTION
+PyObject* GetPixelPosition(PyObject* poSelf, PyObject* poArgs);
+
+
 
 //TEST FOR MEMORY LEAKS
 PyObject* GetEterPacket(PyObject * poSelf, PyObject * poArgs);
@@ -63,15 +74,35 @@ PyObject* pySendStatePacket(PyObject * poSelf, PyObject * poArgs);
 PyObject* pySendPacket(PyObject * poSelf, PyObject * poArgs);
 PyObject* pyIsDead(PyObject * poSelf, PyObject * poArgs);
 
-//Hooked function
-DWORD __stdcall _GetEter(DWORD return_value, CMappedFile* file, const char* fileName, void** buffer, const char* uknown, bool uknown_2);
 
+//PACKET FILTER
+PyObject* launchPacketFilter(PyObject* poSelf, PyObject* poArgs);
+PyObject* closePacketFilter(PyObject* poSelf, PyObject* poArgs);
+PyObject* startPacketFilter(PyObject* poSelf, PyObject* poArgs);
+PyObject* stopPacketFilter(PyObject* poSelf, PyObject* poArgs);
+PyObject* skipInHeader(PyObject* poSelf, PyObject* poArgs);
+PyObject* skipOutHeader(PyObject* poSelf, PyObject* poArgs);
+PyObject* doNotSkipInHeader(PyObject* poSelf, PyObject* poArgs);
+PyObject* doNotSkipOutHeader(PyObject* poSelf, PyObject* poArgs);
+PyObject* clearOutput(PyObject* poSelf, PyObject* poArgs);
+PyObject* clearInFilter(PyObject* poSelf, PyObject* poArgs);
+PyObject* clearOutFilter(PyObject* poSelf, PyObject* poArgs);
+PyObject* setInFilterMode(PyObject* poSelf, PyObject* poArgs);
+PyObject* setOutFilterMode(PyObject* poSelf, PyObject* poArgs);
+
+
+
+//Hooked function
+DWORD __stdcall _GetEter(DWORD return_value, CMappedFile* file, const char* fileName, void** buffer);
+void _RecvRoutine();
+
+//Decrypt files
 EterFile* CGetEter(const char* name);
 
 //Instances
-void appendNewInstance(DWORD vid);
+void changeInstancePosition(CharacterMovePacket & packet_move);
+void appendNewInstance(PlayerCreatePacket & player);
 void deleteInstance(DWORD vid);
-void changeInstancePosition(DWORD vid, float x, float y);
 void changeInstanceIsDead(DWORD vid, BYTE isDead);
 void clearInstances();
 

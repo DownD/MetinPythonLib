@@ -1,5 +1,7 @@
 #include "utils.h"
 
+char DLLPATH[256] = { 0 };
+bool debug_print = 1;
 int split(char * str, char c, std::vector<std::string>* vec)
 {
 	std::istringstream f(str);
@@ -74,19 +76,51 @@ void Stack::printDebug()
 	}
 }
 
+bool isDebugEnable()
+{
+	return debug_print;
+}
+
+void setDebugOn()
+{
+	debug_print = 1;
+}
+
+void setDebugOff()
+{
+	debug_print = 0;
+}
+
 bool getCurrentPath(HMODULE hMod, char* dllPath, int size)
 {
 	int len = GetModuleFileNameA(hMod, dllPath, size);
 	if (!len) {
 		return false;
 	}
-	for (int i = len; i >= 0; --i) {
+	stripFileFromPath(dllPath, len);
+
+	return true;
+}
+
+void stripFileFromPath(char* dllPath, int size)
+{
+	for (int i = size; i >= 0; --i) {
 		if (dllPath[i] == '\\')
-			return true;;
+			return;
 		dllPath[i] = 0;
 	}
+	return;
+}
 
-	return false;
+const char* getDllPath()
+{
+	return DLLPATH;
+}
+
+void setDllPath(char* file)
+{
+	strcpy(DLLPATH, file);
+	stripFileFromPath(DLLPATH,256);
 }
 
 

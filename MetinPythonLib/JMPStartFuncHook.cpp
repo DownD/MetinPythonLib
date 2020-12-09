@@ -154,7 +154,7 @@ BYTE * JMPStartFuncHook::generateShellCode()
 	assembler.patchRelativeInstruction(jmpIndex, (void*)((DWORD)addressToHook + sizeHook), trampolineFunction);
 
 	bool val = assembler.getCurrentInstructions()->copy(trampolineFunction, size);
-	printf("addr = %#x, val= %d\n", trampolineFunction, val);
+	//printf("addr = %#x, val= %d\n", trampolineFunction, val);
 
 	return trampolineFunction;
 }

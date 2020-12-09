@@ -1,19 +1,44 @@
 #include "Patterns.h"
 
-Patterns::Patterns(HMODULE hMod) : hMod(hMod){
-	if(!Init())
+Patterns::Patterns(HMODULE hMod, Pattern* modulePattern) : hMod(hMod){
+	if(!Init(modulePattern))
 		throw std::exception("Fail to Initialize Patterns Class");
 }
 
 Patterns::~Patterns(){
 }
-bool Patterns::Init() {
+bool Patterns::Init(Pattern* modulePattern) {
 
-	if (!setModuleInfo())
-		throw std::runtime_error("Error setting module");
+	if (!modulePattern) {
+		if (!setModuleInfo())
+			throw std::runtime_error("Error setting module");
+	}
+	else {
+		mInfo.lpBaseOfDll = 0;
+		mInfo.SizeOfImage = 0x7FFFFFFF;
+		DWORD result = FindPattern(modulePattern->pattern, modulePattern->mask);
+		int a = 0;
+
+		if (result) {
+			MEMORY_BASIC_INFORMATION mi;
+			int size = VirtualQuery((LPCVOID)result, &mi, sizeof(mi));
+			mInfo.EntryPoint = 0;
+			mInfo.lpBaseOfDll = mi.AllocationBase;
+			mInfo.SizeOfImage = mi.RegionSize + ((DWORD)mi.BaseAddress - (DWORD)mi.AllocationBase);
+			if (mi.State & MEM_FREE) {
+				throw std::runtime_error("Memory location for pattern search is not allocated");
+			}
+
+			if (!(mi.AllocationProtect & PAGE_EXECUTE || mi.AllocationProtect & PAGE_EXECUTE_READ || mi.AllocationProtect & PAGE_EXECUTE_READWRITE || mi.AllocationProtect & PAGE_EXECUTE_WRITECOPY)) {
+				DEBUG_INFO("ATTENTION location for pattern search is not executable.");
+			}
+		}
+		else {
+			throw std::runtime_error("Pattern not found in entire memory space!");
+		}
+	}
 
 	DEBUG_INFO("Module start address: %x\nModule Size:%x", mInfo.lpBaseOfDll, mInfo.SizeOfImage);
-
 
 	return true;
 }
@@ -26,8 +51,6 @@ DWORD Patterns::FindPattern(const char *pattern, const char *mask)
 		printf("%#x ", (BYTE)pattern[i]);
 	}
 	printf("\n\n");*/
-
-
 
 	DWORD patternLength = (DWORD)strlen(mask);
 	MEMORY_BASIC_INFORMATION PermInfo;
@@ -43,14 +66,17 @@ DWORD Patterns::FindPattern(const char *pattern, const char *mask)
 			{
 				if (VirtualQuery((LPCVOID*)(indexAddr), &PermInfo, sizeof(PermInfo)))
 				{
-					if (PermInfo.Protect != PAGE_NOACCESS) {
-						indexAddr = (DWORD)PermInfo.BaseAddress;
-						pageEndAddr = indexAddr + PermInfo.RegionSize;
-					}
-					else {
+					//printf("Permission info %#x\n", PermInfo.Protect);
+					//printf("State info %#x\n", PermInfo.State);
+					//system("pause");
+					if ((PermInfo.State == MEM_RESERVE )|| PermInfo.Protect & PAGE_NOACCESS || PermInfo.Protect & PAGE_GUARD) {
 						pageEndAddr += PermInfo.RegionSize;
 						indexAddr = pageEndAddr;
 						continue;
+					}
+					else {
+						indexAddr = (DWORD)PermInfo.BaseAddress;
+						pageEndAddr = indexAddr + PermInfo.RegionSize;
 					}
 				}
 				else {
@@ -88,9 +114,7 @@ DWORD* Patterns::GetPatternAddress(Pattern* pat) {
 	DWORD* addr = (DWORD*)FindPattern(pat->pattern, pat->mask);
 	if (addr) { return (DWORD*)((int)addr + pat->offset); }
 	else {
-		std::string msg("Pattern code: ");
-		msg += pat->mask;
-		MessageBox(NULL, msg.c_str(), "ERROR FINDING PATTERN", MB_ICONWARNING | MB_YESNO);	
+		DEBUG_INFO("ERROR FINDING PATTERN -> %s",pat->name);	
 	}
 
 	return addr;

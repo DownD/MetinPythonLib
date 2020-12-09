@@ -5,9 +5,28 @@
 #include <string>
 #include <sstream> 
 
-#define DEBUG_INFO(...); {printf(__VA_ARGS__); printf("\n");}
+bool isDebugEnable();
+void setDebugOn();
+void setDebugOff();
+
+#define DEBUG_INFO(...); {if(isDebugEnable()){printf(__VA_ARGS__); printf("\n");}}
+
+
+
 
 bool getCurrentPath(HMODULE hMod, char* dllPath, int size);
+void stripFileFromPath(char* dllPath, int size);
+const char* getDllPath();
+void setDllPath(char* file);
+
+
+inline void* getRelativeCallAddress(void* startCallAddr) {
+	DWORD addr = (DWORD)startCallAddr;
+	DWORD* offset = (DWORD*)(addr + 1);
+	void* _final = (void*)(addr + *offset + 5);
+	return  _final;
+}
+
 
 class Stack {
 public:
@@ -104,3 +123,4 @@ struct fPoint {
 	fPoint(float x, float y) : x(x), y(y) {}
 	float x, y;
 };
+
