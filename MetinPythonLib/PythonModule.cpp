@@ -3,10 +3,23 @@
 #include "Network.h"
 #include "MapCollision.h"
 #include <unordered_map>
-
+#include <map>
 
 static std::string pythonAddSearchPath;
 static std::string path;
+
+
+
+
+//Client Functions
+typedef bool(__thiscall* tMoveToDestPosition)(void* classPointer, fPoint& pos);
+
+tMoveToDestPosition fMoveToDestPosition;
+
+//Client characterManager stuff
+std::map<DWORD, void*>* clientInstanceMap;
+DWORD* characterManagerClassPointer;
+
 
 //SYNCRONIZATION
 static bool pass = true;
@@ -17,6 +30,7 @@ Hook* hook;
 PyObject* packet_mod;
 PyObject* pyVIDList;
 
+//File Related
 bool getTrigger = false;
 EterFile eterFile = { 0 };
 
@@ -140,6 +154,22 @@ PyObject* GetPixelPosition(PyObject* poSelf, PyObject* poArgs)
 		return Py_BuildValue("fff", (float)instance.x, (float)instance.y, (float)0);
 	}
 	return Py_BuildException();
+}
+
+PyObject* moveToDestPosition(PyObject* poSelf, PyObject* poArgs)
+{
+	int vid, x, y;
+	if (!PyTuple_GetInteger(poArgs, 0, &vid))
+		return Py_BuildException();
+	if (!PyTuple_GetInteger(poArgs, 1, &x))
+		return Py_BuildException();
+	if (!PyTuple_GetInteger(poArgs, 2, &y))
+		return Py_BuildException();
+
+	fPoint pos(x,y);
+
+	moveToDestPosition(vid, pos);
+	return Py_BuildNone();
 }
 
 DWORD __stdcall _GetEter(DWORD return_value, CMappedFile* file, const char* fileName, void** buffer) {
@@ -561,6 +591,16 @@ PyObject* setOutFilterMode(PyObject* poSelf, PyObject* poArgs)
 	return Py_BuildNone();
 }
 
+void* getInstancePtr(DWORD vid)
+{
+	auto itor = clientInstanceMap->find(vid);
+
+	if (clientInstanceMap->end() == itor)
+		return NULL;
+
+	return itor->second;
+}
+
 PyObject * pyIsDead(PyObject * poSelf, PyObject * poArgs)
 {
 	int vid;
@@ -601,6 +641,7 @@ static PyMethodDef s_methods[] =
 	{ "SetOutFilterMode",		setInFilterMode,	METH_VARARGS },
 	{ "SetInFilterMode",		setInFilterMode,	METH_VARARGS },
 	{ "GetPixelPosition",		GetPixelPosition,	METH_VARARGS },
+	{ "MoveToDestPosition",     moveToDestPosition, METH_VARARGS},
 	{ NULL, NULL }
 };
 
@@ -637,4 +678,26 @@ void initModule() {
 
 	executeScript("script.py", (char *)getDllPath());
 
+}
+
+void SetChrMngrClassPointer(void* classPointer)
+{
+	characterManagerClassPointer = (DWORD*)classPointer;
+	printf("%#x\n", (void*)characterManagerClassPointer);
+	int finalAddr = *characterManagerClassPointer + OFFSET_CLIENT_ALIVE_MAP;
+	clientInstanceMap = (std::map<DWORD, void*>*)finalAddr;
+	printf("%#x\n", (void*)clientInstanceMap);
+}
+
+void SetMoveToDistPositionFunc(void* func)
+{
+	fMoveToDestPosition = (tMoveToDestPosition)func;
+}
+
+bool moveToDestPosition(DWORD vid,fPoint& pos) {
+	void* p = getInstancePtr(vid);
+	if (p)
+		return fMoveToDestPosition(p, pos);
+	else
+		return 0;
 }

@@ -14,6 +14,9 @@
 #include "Network.h"
 
 
+#define OFFSET_CLIENT_ALIVE_MAP 0x20
+
+
 /*SELECT THE METHOD USED TO INJECT THE PYTHON FILE, UNCOMMENT ONLY ONE*/
 //#define USE_INJECTION_SLEEP_HOOK
 #define USE_INJECTION_RECV_HOOK
@@ -61,6 +64,7 @@ void executeScript(const char* name, char* _path);
 
 //SET OLD FUNCTION
 PyObject* GetPixelPosition(PyObject* poSelf, PyObject* poArgs);
+PyObject* moveToDestPosition(PyObject* poSelf, PyObject* poArgs);
 
 
 
@@ -90,6 +94,10 @@ PyObject* clearOutFilter(PyObject* poSelf, PyObject* poArgs);
 PyObject* setInFilterMode(PyObject* poSelf, PyObject* poArgs);
 PyObject* setOutFilterMode(PyObject* poSelf, PyObject* poArgs);
 
+//Client stuff
+void* getInstancePtr(DWORD vid);
+bool  moveToDestPosition(DWORD vid,fPoint& pos);
+
 
 
 //Hooked function
@@ -106,4 +114,7 @@ void deleteInstance(DWORD vid);
 void changeInstanceIsDead(DWORD vid, BYTE isDead);
 void clearInstances();
 
+//Intialize stuf
 void initModule();
+void SetChrMngrClassPointer(void* classPointer);
+void SetMoveToDistPositionFunc(void* func);

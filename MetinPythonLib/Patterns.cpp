@@ -112,8 +112,12 @@ DWORD Patterns::FindPattern(const char *pattern, const char *mask)
 DWORD* Patterns::GetPatternAddress(Pattern* pat) {
 	
 	DWORD* addr = (DWORD*)FindPattern(pat->pattern, pat->mask);
-	if (addr) { return (DWORD*)((int)addr + pat->offset); }
-	else {
+	if (addr) { 
+		
+		DWORD*result = (DWORD*)((int)addr + pat->offset);
+		DEBUG_INFO("Pattern %s with address -> %#x", pat->name, result);
+
+	}else {
 		DEBUG_INFO("ERROR FINDING PATTERN -> %s",pat->name);	
 	}
 

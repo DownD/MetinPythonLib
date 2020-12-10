@@ -16,9 +16,17 @@ HMODULE hDll = 0;
 
 
 namespace memory_patterns {
+
+	//From CPythonCharacterManager::Instance()
+	//https://gyazo.com/7fee4a91c3432b3ba859627612e21dce
+	Pattern characterManagerClassPointer = Pattern("ChracterManager Pointer", 4, "\x89\x55\x00\xa1\x00\x00\x00\x00\x89\x45\x00\x8b\x4d\x00\xe8\x00\x00\x00\x00\x89\x45\x00\x83\x7d", "xx?x????xx?xx?x????xx?xx");
+
+	//Search for string CPythonPlayer::__OnPressItem, go to caller of that function and find the __OnPressGround function, and a reference will be inside
+	//https://gyazo.com/46f70061fc47d132496d61e92af78bc5	
+	Pattern moveToDest = Pattern("MoveToDest Pointer", 0, "\x55\x8b\xec\x83\xec\x00\x89\x4d\x00\x8d\x45\x00\x50\x8b\x4d\x00\xe8\x00\x00\x00\x00\x8b\x4d", "xxxxx?xx?xx?xxx?x????xx");
+
 	//https://gyazo.com/6696a0db5abb62a59203d7282bc4f90a //From RecvCharMovePacket
 	//\xe8\x00\x00\x00\x00\x8d\x4d\x00\xe8\x00\x00\x00\x00\x0f\xb6\x4d x????xx?x????xxx
-
 	Pattern globalToLocalPositionFunction = Pattern("GlobalToLocal Function", 0, "\xe8\x00\x00\x00\x00\x8d\x4d\x00\xe8\x00\x00\x00\x00\x0f\xb6\x4d", "x????xx?x????xxx");
 
 	//SendExchangeStartPacket 
@@ -101,23 +109,25 @@ void init() {
 	void* attackPacketAddr = patternFinder->GetPatternAddress(&memory_patterns::sendAttackPacket);
 	void* statePacketAddr = patternFinder->GetPatternAddress(&memory_patterns::sendCharacterStatePacket);
 	void** netClassPointer = (void**)patternFinder->GetPatternAddress(&memory_patterns::NetworkClassPointer);
+	void* chrMgrClassPointer = patternFinder->GetPatternAddress(&memory_patterns::characterManagerClassPointer);
+	void* moveToDestAddr = patternFinder->GetPatternAddress(&memory_patterns::moveToDest);
 	void* globalToLocalPositionPointer = patternFinder->GetPatternAddress(&memory_patterns::globalToLocalPositionFunction); //getRelativeCallAddress
 	globalToLocalPositionPointer = getRelativeCallAddress(globalToLocalPositionPointer);
-	printf("%#x\n", globalToLocalPositionPointer);
 
 
 #ifdef _DEBUG
-	printf("Send Addr: %#x\n", sendAddr);
-	printf("Recv Addr: %#x\n", recvAddr);
-	printf("GetEterFunction Addr: %#x\n", getEtherPackAddr);
 	system("pause");
 #endif
+	printf("#%x\n", chrMgrClassPointer);
+	printf("#%x\n", *(DWORD*)chrMgrClassPointer);
 
 	SetNetClassPointer(*netClassPointer);
 	SetSendFunctionPointer(sendAddr);
 	SetSendBattlePacket(attackPacketAddr);
 	SetSendStatePacket(statePacketAddr);
 	SetGlobalToLocalPacket(globalToLocalPositionPointer);
+	SetChrMngrClassPointer((void*)*(DWORD*)chrMgrClassPointer);
+	SetMoveToDistPositionFunc(moveToDestAddr);
 
 
 	//Hooks
