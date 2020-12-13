@@ -13,6 +13,7 @@ std::set<BYTE> outbound_header_filter;
 
 using namespace PacketHeaders;
 static int gamePhase = 0;
+DWORD mainCharacterVID = 0;
 
 typedef bool(__thiscall* tGlobalToLocalPosition)(DWORD classPointer, long& lx, long& ly);
 typedef bool(__thiscall *tSendPacket)(DWORD classPointer, int size, void* buffer);
@@ -127,12 +128,12 @@ bool __stdcall __RecvPacket(DWORD return_function,bool return_value,int size, vo
 
 		//PacketFilter
 		if (printToConsole) {
-			if (!filterInboundOnlyIncluded) {
-				if (inbound_header_filter.find(packet.header) == inbound_header_filter.end())
+			if (inbound_header_filter.find(packet.header) == inbound_header_filter.end()) {
+				if(!filterInboundOnlyIncluded)
 					printPacket(return_function, &packet, INBOUND);
 			}
 			else {
-				if (inbound_header_filter.find(packet.header) != inbound_header_filter.end())
+				if (filterInboundOnlyIncluded)
 					printPacket(return_function, &packet, INBOUND);
 			}
 		}
@@ -180,12 +181,22 @@ bool __stdcall __RecvPacket(DWORD return_function,bool return_value,int size, vo
 				setCurrentCollisionMap();
 			}
 			break;
-
 		}
+
+		case HEADER_GC_MAIN_CHARACTER:{
+			if (PHASE_LOADING) {
+				MainCharacterPacket m;
+				fillPacket(&packet, &m);
+				mainCharacterVID = m.dwVID;
+			}
+			break;
+		}
+
 		case HEADER_GC_DEAD: {
 			DeadPacket dead;
 			fillPacket(&packet, &dead);
 			changeInstanceIsDead(dead.vid, 1);
+			break;
 		}
 		}
 	}
@@ -219,24 +230,23 @@ void __SendPacket(int size, void*buffer){
 	Packet packet(size, (BYTE*)buffer);
 	//PacketFilter
 	if (printToConsole) {
-		if (!filterOutboundOnlyIncluded) {
-			if (outbound_header_filter.find(packet.header) == outbound_header_filter.end())
-				printPacket(0,&packet, OUTBOUND);
+		if (outbound_header_filter.find(packet.header) == outbound_header_filter.end()) {
+			if (!filterOutboundOnlyIncluded)
+				printPacket(0, &packet, OUTBOUND);
 		}
 		else {
-			if (outbound_header_filter.find(packet.header) != outbound_header_filter.end())
+			if (filterOutboundOnlyIncluded)
 				printPacket(0, &packet, OUTBOUND);
 		}
 	}
 
 	switch (packet.header) {
-		case HEADER_CG_CHARACTER_MOVE: {
-			//MovePlayerPacket move;
-			//fillPacket(&packet, &move);
-			#ifdef _DEBUG
-			//printf("bFunc=%d bArg=%d u1=%d bRot=%d lX=%d lY=%d time=%d u2=%d\n",move.bFunc,move.bArg, move.uknown1,move.bRot,move.lX,move.lY,move.uknown2 );
-			#endif
-		}
+	case HEADER_CG_CHARACTER_MOVE: {
+		CharacterStatePacket move;
+		fillPacket(&packet, &move);
+
+		break;
+	}
 	}
 	return;
 }
@@ -244,6 +254,11 @@ void __SendPacket(int size, void*buffer){
 int getCurrentPhase()
 {
 	return gamePhase;
+}
+
+DWORD getMainCharacterVID()
+{
+	return mainCharacterVID;
 }
 
 void SetNetClassPointer(void * stackPointer)

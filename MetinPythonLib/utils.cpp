@@ -326,7 +326,7 @@ bool AssemblerX86::patchRelativeInstruction(int index, void* target, void* baseA
 			break;
 		}
 		default:
-			DEBUG_INFO("Not a Relative instrcution");
+			DEBUG_INFO_LEVEL_1("Not a Relative instrcution");
 			return false;
 	}
 	return true;

@@ -8,17 +8,20 @@
 static std::string pythonAddSearchPath;
 static std::string path;
 
-
-
+PyObject* playerModule;
+PyObject* getMainPlayerPosition;
 
 //Client Functions
 typedef bool(__thiscall* tMoveToDestPosition)(void* classPointer, fPoint& pos);
+typedef void*(__thiscall* tGetInstancePointer)(DWORD classPointer, DWORD vid);
 
 tMoveToDestPosition fMoveToDestPosition;
+tGetInstancePointer fGetInstancePointer;
 
 //Client characterManager stuff
-std::map<DWORD, void*>* clientInstanceMap;
+std::map<DWORD, void*>* clientInstanceMap; //Not working
 DWORD* characterManagerClassPointer;
+DWORD characterManagerSubClass;
 
 
 //SYNCRONIZATION
@@ -137,33 +140,39 @@ void executeScript(const char* name, char*_path) {
 	hook->UnHookFunction();
 	delete hook;
 #endif
-	DEBUG_INFO("Python script execution complete!");
+	DEBUG_INFO_LEVEL_1("Python script execution complete!");
 }
 
 PyObject* GetPixelPosition(PyObject* poSelf, PyObject* poArgs)
 {
 	int vid = 0;
+	int main_vid = getMainCharacterVID();
+	if (vid = main_vid)
+		return PyObject_CallObject(getMainPlayerPosition, NULL);
+
 
 	if (!PyTuple_GetInteger(poArgs, 0, &vid))
 		return Py_BuildException();
 
 	if (instances.find(vid) != instances.end()) {
 		auto &instance = instances[vid];
-		printf("%d\n", instance.x);
 
 		return Py_BuildValue("fff", (float)instance.x, (float)instance.y, (float)0);
 	}
-	return Py_BuildException();
+
+
+	return PyObject_CallObject(getMainPlayerPosition, NULL);
 }
 
 PyObject* moveToDestPosition(PyObject* poSelf, PyObject* poArgs)
 {
-	int vid, x, y;
+	int vid;
+	float x, y;
 	if (!PyTuple_GetInteger(poArgs, 0, &vid))
 		return Py_BuildException();
-	if (!PyTuple_GetInteger(poArgs, 1, &x))
+	if (!PyTuple_GetFloat(poArgs, 1, &x))
 		return Py_BuildException();
-	if (!PyTuple_GetInteger(poArgs, 2, &y))
+	if (!PyTuple_GetFloat(poArgs, 2, &y))
 		return Py_BuildException();
 
 	fPoint pos(x,y);
@@ -211,26 +220,42 @@ EterFile* CGetEter(const char* name) {
 	return &eterFile;
 }
 
-void changeInstancePosition(CharacterMovePacket& packet_move)
+void changeInstancePosition(CharacterStatePacket& packet_move)
 {
-	if (instances.find(packet_move.dwVID) != instances.end()) {
+	/*DEBUG_INFO_LEVEL_1("MAIN Character X:%d Y:%d", packet_move.lX, packet_move.lY);
+	if (instances.find(packet_move.dwVID) == instances.end()) {
+		DEBUG_INFO_LEVEL_1("Error on changing instance position no vid found");
 		return;
 	}
 	auto& instance = instances[packet_move.dwVID];
 	instance.x = packet_move.lX;
 	instance.y = packet_move.lY;
+	//DEBUG_INFO("VID %d-> X:%d Y:%d", packet_move.dwVID, packet_move.lX, packet_move.lY);*/
+}
+
+void changeInstancePosition(CharacterMovePacket& packet_move)
+{
+	DEBUG_INFO_LEVEL_1("VID %d-> X:%d Y:%d", packet_move.dwVID, packet_move.lX, packet_move.lY);
+	if (instances.find(packet_move.dwVID) == instances.end()) {
+		DEBUG_INFO_LEVEL_1("Error on changing instance position no vid found");
+		return;
+	}
+	auto& instance = instances[packet_move.dwVID];
+	instance.x = packet_move.lX;
+	instance.y = packet_move.lY;
+	//DEBUG_INFO("VID %d-> X:%d Y:%d", packet_move.dwVID, packet_move.lX, packet_move.lY);
 }
 
 void appendNewInstance(PlayerCreatePacket & player)
 {
 	if (instances.find(player.dwVID) != instances.end()){
 #ifdef _DEBUG
-		DEBUG_INFO("On adding instance with vid=%d, already exists, ignoring packet!\n", player.dwVID);
+		DEBUG_INFO_LEVEL_1("On adding instance with vid=%d, already exists, ignoring packet!\n", player.dwVID);
 #endif
 		return;
 	}
 #ifdef _DEBUG
-	DEBUG_INFO("Success Adding instance vid=%d!\n", player.dwVID);
+	DEBUG_INFO_LEVEL_1("Success Adding instance vid=%d!\n", player.dwVID);
 #endif
 	Instance i = { 0 };
 	i.vid = player.dwVID;
@@ -253,7 +278,7 @@ void deleteInstance(DWORD vid)
 {
 	if (instances.find(vid) == instances.end()) {
 #ifdef _DEBUG
-	DEBUG_INFO("On deleting instance with vid=%d doesn't exists, ignoring packet!\n", vid);
+	DEBUG_INFO_LEVEL_1("On deleting instance with vid=%d doesn't exists, ignoring packet!\n", vid);
 #endif
 		return;
 	}
@@ -272,7 +297,7 @@ void changeInstanceIsDead(DWORD vid, BYTE isDead)
 void clearInstances()
 {
 #ifdef _DEBUG
-	DEBUG_INFO("Instances Cleared\n");
+	DEBUG_INFO_LEVEL_1("Instances Cleared\n");
 #endif
 	instances.clear();
 	PyDict_Clear(pyVIDList);
@@ -593,12 +618,19 @@ PyObject* setOutFilterMode(PyObject* poSelf, PyObject* poArgs)
 
 void* getInstancePtr(DWORD vid)
 {
-	auto itor = clientInstanceMap->find(vid);
 
-	if (clientInstanceMap->end() == itor)
+
+	return fGetInstancePointer(characterManagerSubClass,vid);
+	/*auto itor = clientInstanceMap->find(vid);
+
+	if (clientInstanceMap->end() == itor) {
+		DEBUG_INFO_LEVEL_4("Could not get instance by VID:%d",vid);
 		return NULL;
+	}
 
-	return itor->second;
+	DEBUG_INFO_LEVEL_4("Got Instance!");
+	return itor->second;*/
+
 }
 
 PyObject * pyIsDead(PyObject * poSelf, PyObject * poArgs)
@@ -638,10 +670,12 @@ static PyMethodDef s_methods[] =
 	{ "ClearOutput",			clearOutput,		METH_VARARGS },
 	{ "ClearInFilter",			clearInFilter,		METH_VARARGS },
 	{ "ClearOutFilter",			clearOutFilter,		METH_VARARGS },
-	{ "SetOutFilterMode",		setInFilterMode,	METH_VARARGS },
+	{ "SetOutFilterMode",		setOutFilterMode,	METH_VARARGS },
 	{ "SetInFilterMode",		setInFilterMode,	METH_VARARGS },
+#ifdef METIN_GF
 	{ "GetPixelPosition",		GetPixelPosition,	METH_VARARGS },
 	{ "MoveToDestPosition",     moveToDestPosition, METH_VARARGS},
+#endif
 	{ NULL, NULL }
 };
 
@@ -652,6 +686,20 @@ void initModule() {
 	//printf("%#x\n", hDll);
 #ifdef _DEBUG
 	printf("Executable current path %s\n", getDllPath());
+#endif
+
+#ifdef METIN_GF
+	playerModule =  PyImport_ImportModule("playerm2g2");
+	if (!playerModule) {
+		MessageBox(NULL, "Error Importing playerm2g2 module", "ERROR IMPOTRING MODULE", MB_OK);
+		exit();
+	}
+
+	getMainPlayerPosition = PyObject_GetAttrString(playerModule, "GetMainCharacterPosition");
+	if (!getMainPlayerPosition) {
+		MessageBox(NULL, "Error GetMainPlayerPosition", "ERROR IMPORTING FUNCTION", MB_OK);
+		exit();
+	}
 #endif
 
 	packet_mod = Py_InitModule("net_packet", s_methods);
@@ -680,13 +728,22 @@ void initModule() {
 
 }
 
-void SetChrMngrClassPointer(void* classPointer)
+void SetChrMngrAndInstanceMap(void* classPointer)
 {
 	characterManagerClassPointer = (DWORD*)classPointer;
-	printf("%#x\n", (void*)characterManagerClassPointer);
-	int finalAddr = *characterManagerClassPointer + OFFSET_CLIENT_ALIVE_MAP;
+
+
+	//Uses fixed offsets to obtain GetInstancePtr
+	characterManagerSubClass = (*characterManagerClassPointer + OFFSET_CLIENT_INSTANCE_PTR_1);
+	fGetInstancePointer = reinterpret_cast<tGetInstancePointer>(*(DWORD*)(*(DWORD*)characterManagerSubClass + OFFSET_CLIENT_INSTANCE_PTR_2));
+
+
+	//Not needed for now
+	/*int finalAddr = *characterManagerClassPointer + OFFSET_CLIENT_ALIVE_MAP;
 	clientInstanceMap = (std::map<DWORD, void*>*)finalAddr;
-	printf("%#x\n", (void*)clientInstanceMap);
+	DEBUG_INFO_LEVEL_1("InstanceMap Address %#x", clientInstanceMap);*/
+	DEBUG_INFO_LEVEL_1("Character Manager %#x", *characterManagerClassPointer);
+	DEBUG_INFO_LEVEL_1("GetInstancePointer %#x", fGetInstancePointer);
 }
 
 void SetMoveToDistPositionFunc(void* func)
@@ -696,8 +753,11 @@ void SetMoveToDistPositionFunc(void* func)
 
 bool moveToDestPosition(DWORD vid,fPoint& pos) {
 	void* p = getInstancePtr(vid);
-	if (p)
+	if (p) {
+		DEBUG_INFO_LEVEL_3("Moving VID %d to posititon X:%d y:%d!",vid,pos.x,pos.y);
 		return fMoveToDestPosition(p, pos);
-	else
+	}
+	else {
 		return 0;
+	}
 }

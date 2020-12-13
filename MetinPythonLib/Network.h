@@ -41,11 +41,12 @@ namespace PacketHeaders {
 		HEADER_GC_DEAD = 127,
 		HEADER_GC_PHASE = 255,
 		HEADER_GC_CHARACTER_MOVE = 85,
+		HEADER_GC_MAIN_CHARACTER = 75,
 
 
 		//To server
 		HEADER_CG_SEND_CHAT = 3,
-		HEADER_CG_CHARACTER_MOVE = 7
+		HEADER_CG_CHARACTER_MOVE = 19
 	};
 }
 
@@ -72,6 +73,16 @@ struct DeadPacket
 	DWORD	vid;
 };
 
+struct CharacterStatePacket
+{
+	BYTE		bFunc;
+	BYTE		bArg;
+	BYTE		bRot;
+	LONG		lX;
+	LONG		lY;
+	DWORD		dwTime;
+};
+
 struct AttackPacket
 {
 	BYTE	header;
@@ -79,6 +90,15 @@ struct AttackPacket
 	DWORD	dwVictimVID;
 	BYTE	bCRCMagicCubeProcPiece;
 	BYTE	bCRCMagicCubeFilePiece;
+};
+
+struct MainCharacterPacket
+{
+	DWORD       dwVID;
+	WORD		wRaceNum;
+	char        szName[25];
+	long        lX, lY, lZ;
+	BYTE		bySkillGroup;
 };
 
 
@@ -168,6 +188,7 @@ void SendStatePacket(fPoint & pos, float rot, BYTE eFunc, BYTE uArg);
 void SendPacket(int size, void*buffer);
 void GlobalToLocalPosition(long& lx, long& ly);
 int getCurrentPhase();
+DWORD getMainCharacterVID();
 
 void SetNetClassPointer(void* stackPointer);
 void SetSendFunctionPointer(void* p);

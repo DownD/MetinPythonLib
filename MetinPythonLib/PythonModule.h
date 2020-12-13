@@ -14,7 +14,9 @@
 #include "Network.h"
 
 
-#define OFFSET_CLIENT_ALIVE_MAP 0x20
+#define OFFSET_CLIENT_ALIVE_MAP 0x38
+#define OFFSET_CLIENT_INSTANCE_PTR_1 0x4
+#define OFFSET_CLIENT_INSTANCE_PTR_2 0x8
 
 
 /*SELECT THE METHOD USED TO INJECT THE PYTHON FILE, UNCOMMENT ONLY ONE*/
@@ -108,6 +110,7 @@ void _RecvRoutine();
 EterFile* CGetEter(const char* name);
 
 //Instances
+void changeInstancePosition(CharacterStatePacket& packet_move);
 void changeInstancePosition(CharacterMovePacket & packet_move);
 void appendNewInstance(PlayerCreatePacket & player);
 void deleteInstance(DWORD vid);
@@ -116,5 +119,5 @@ void clearInstances();
 
 //Intialize stuf
 void initModule();
-void SetChrMngrClassPointer(void* classPointer);
+void SetChrMngrAndInstanceMap(void* classPointer);
 void SetMoveToDistPositionFunc(void* func);

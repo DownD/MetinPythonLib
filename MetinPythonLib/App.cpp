@@ -29,6 +29,9 @@ namespace memory_patterns {
 	//\xe8\x00\x00\x00\x00\x8d\x4d\x00\xe8\x00\x00\x00\x00\x0f\xb6\x4d x????xx?x????xxx
 	Pattern globalToLocalPositionFunction = Pattern("GlobalToLocal Function", 0, "\xe8\x00\x00\x00\x00\x8d\x4d\x00\xe8\x00\x00\x00\x00\x0f\xb6\x4d", "x????xx?x????xxx");
 
+	//GetInstancePtr on source optional pattern
+	//Pattern globalToLocalPositionFunction = Pattern("GetInstancePtr Function", 0, "\x55\x8b\xec\x83\xec\x00\x89\x4d\x00\x8d\x45\x00\x50\x8d\x4d\x00\x51\x8b\x4d\x00\x83\xc1\x00\xe8\x00\x00\x00\x00\x8b\x55\x00\x83\xc2\x00\x89\x55\x00\x8b\x45\x00\x8b\x48\x00\x89\x4d\x00\xc7\x45\x00\x00\x00\x00\x00\x8b\x55\x00\x89\x55\x00\x83\x7d\x00\x00\x75\x00\xe8\x00\x00\x00\x00\x33\xc0\x75\x00\x8b\x4d\x00\x8b\x11\x89\x55\x00\x33\xc0\x83\x7d\x00\x00\x0f\x95\x00\x0f\xb6\x00\x85\xc9\x74\x00\x8b\x55\x00\x33\xc0\x3b\x55\x00\x0f\x94\x00\x0f\xb6\x00\x85\xc9\x75\x00\xe8\x00\x00\x00\x00\x33\xd2\x75\x00\x8b\x45\x00\x33\xc9\x3b\x45\x00\x0f\x94\x00\x0f\xb6\x00\x85\xd2\x74\x00\x33\xc0\xeb\x00\x8d\x4d\x00\xe8\x00\x00\x00\x00\x8b\x40\x00\x8b\xe5\x5d\xc2\x00\x00\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\x55\x8b\xec\x51" "xxxxx?xx?xx?xxx?xxx?xx?x????xx?xx?xx?xx?xx?xx?xx?????xx?xx?xx??x?x????xxx?xx?xxxx?xxxx??xx?xx?xxx?xx?xxxx?xx?xx?xxx?x????xxx?xx?xxxx?xx?xx?xxx?xxx?xx?x????xx?xxxx??xxxxxxxxxxxxxxxx"
+
 	//SendExchangeStartPacket 
     Pattern globalPat = Pattern("Global Pattern",0,"\x55\x8b\xec\x83\xec\x00\x89\x4d\x00\xc6\x45\x00\x00\x8d\x45\x00\x50\x8b\x4d\x00\xe8\x00\x00\x00\x00\x0f\xb6\x00\x85\xc9\x75\x00\x32\xc0\xe9\x00\x00\x00\x00\x8b\x4d\x00\xe8\x00\x00\x00\x00\x0f\xb6\x00\x85\xd2\x75\x00\xb0\x00\xeb\x00\x8d\x45\x00\x89\x45\x00\x8b\x4d\x00\xc6\x01\x00\xba\x00\x00\x00\x00\x8b\x45\x00\x66\x89\x50\x00\x6a\x00\x6a\x00\x8d\x4d\x00\x51\xe8\x00\x00\x00\x00\x83\xc4\x00\xc6\x45\x00\x00\xc6\x45\x00\x00\x8b\x55", "xxxxx?xx?xx??xx?xxx?x????xx?xxx?xxx????xx?x????xx?xxx?x?x?xx?xx?xx?xx?x????xx?xxx?x?x?xx?xx????xx?xx??xx??xx");
 
@@ -109,7 +112,7 @@ void init() {
 	void* attackPacketAddr = patternFinder->GetPatternAddress(&memory_patterns::sendAttackPacket);
 	void* statePacketAddr = patternFinder->GetPatternAddress(&memory_patterns::sendCharacterStatePacket);
 	void** netClassPointer = (void**)patternFinder->GetPatternAddress(&memory_patterns::NetworkClassPointer);
-	void* chrMgrClassPointer = patternFinder->GetPatternAddress(&memory_patterns::characterManagerClassPointer);
+	void** chrMgrClassPointer = (void**)patternFinder->GetPatternAddress(&memory_patterns::characterManagerClassPointer);
 	void* moveToDestAddr = patternFinder->GetPatternAddress(&memory_patterns::moveToDest);
 	void* globalToLocalPositionPointer = patternFinder->GetPatternAddress(&memory_patterns::globalToLocalPositionFunction); //getRelativeCallAddress
 	globalToLocalPositionPointer = getRelativeCallAddress(globalToLocalPositionPointer);
@@ -118,15 +121,13 @@ void init() {
 #ifdef _DEBUG
 	system("pause");
 #endif
-	printf("#%x\n", chrMgrClassPointer);
-	printf("#%x\n", *(DWORD*)chrMgrClassPointer);
 
 	SetNetClassPointer(*netClassPointer);
 	SetSendFunctionPointer(sendAddr);
 	SetSendBattlePacket(attackPacketAddr);
 	SetSendStatePacket(statePacketAddr);
 	SetGlobalToLocalPacket(globalToLocalPositionPointer);
-	SetChrMngrClassPointer((void*)*(DWORD*)chrMgrClassPointer);
+	SetChrMngrAndInstanceMap(*chrMgrClassPointer);
 	SetMoveToDistPositionFunc(moveToDestAddr);
 
 

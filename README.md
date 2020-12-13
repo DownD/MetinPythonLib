@@ -59,6 +59,15 @@ Adds some functions to the python API, and try to inject a script.py from the cu
   - IsDead(\<int\>vid) returns 1 or 0<br>
     Returns 1 if the instance with the vid provided is dead ordoesn't exist and returns 0 otherwise<br>
 
+### Simulation of old functions
+These simulates the functions that were removed from the modules by Gameforge.
+
+  - GetPixelPosition(\<int\>vid) returns a tupple (x,y,z)<br>
+    Returns the position of the player by vid
+
+  - MoveToDestPosition(\<float\> x,\<float\> y)<br>
+    Moves to a destination.
+
 
 ### This are relative to a Packet Filter for debug purposes
 By default every packet will be shown.
@@ -101,3 +110,8 @@ By default every packet will be shown.
 
   - SetInFilterMode(\<int\>mode)<br>
     Changes filter mode for incoming packets, if set to 1, it will shows all packets that  correspond to the filter, if set to 0 it will show all packets that are not within the filter
+
+
+## Compiler Notes
+
+Python 2.7 (32 biits) needs to be installed in the system (C:/Python27) by default.

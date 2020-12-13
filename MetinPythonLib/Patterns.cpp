@@ -30,7 +30,7 @@ bool Patterns::Init(Pattern* modulePattern) {
 			}
 
 			if (!(mi.AllocationProtect & PAGE_EXECUTE || mi.AllocationProtect & PAGE_EXECUTE_READ || mi.AllocationProtect & PAGE_EXECUTE_READWRITE || mi.AllocationProtect & PAGE_EXECUTE_WRITECOPY)) {
-				DEBUG_INFO("ATTENTION location for pattern search is not executable.");
+				DEBUG_INFO_LEVEL_1("ATTENTION location for pattern search is not executable.");
 			}
 		}
 		else {
@@ -38,7 +38,7 @@ bool Patterns::Init(Pattern* modulePattern) {
 		}
 	}
 
-	DEBUG_INFO("Module start address: %x\nModule Size:%x", mInfo.lpBaseOfDll, mInfo.SizeOfImage);
+	DEBUG_INFO_LEVEL_1("Module start address: %x\nModule Size:%x", mInfo.lpBaseOfDll, mInfo.SizeOfImage);
 
 	return true;
 }
@@ -80,7 +80,7 @@ DWORD Patterns::FindPattern(const char *pattern, const char *mask)
 					}
 				}
 				else {
-					DEBUG_INFO("Error Querying memory at %#x", indexAddr);
+					DEBUG_INFO_LEVEL_1("Error Querying memory at %#x", indexAddr);
 					continue;
 				}
 			}
@@ -114,11 +114,12 @@ DWORD* Patterns::GetPatternAddress(Pattern* pat) {
 	DWORD* addr = (DWORD*)FindPattern(pat->pattern, pat->mask);
 	if (addr) { 
 		
-		DWORD*result = (DWORD*)((int)addr + pat->offset);
-		DEBUG_INFO("Pattern %s with address -> %#x", pat->name, result);
+		DWORD* result = (DWORD*)((int)addr + pat->offset);
+		DEBUG_INFO_LEVEL_1("Pattern %s with address -> %#x", pat->name, result);
+		return result;
 
 	}else {
-		DEBUG_INFO("ERROR FINDING PATTERN -> %s",pat->name);	
+		DEBUG_INFO_LEVEL_1("ERROR FINDING PATTERN -> %s",pat->name);	
 	}
 
 	return addr;
@@ -133,7 +134,7 @@ bool Patterns::setModuleInfo()
 
 
 	if (!path_size) {
-		DEBUG_INFO("Fail to Get Module FileName");
+		DEBUG_INFO_LEVEL_1("Fail to Get Module FileName");
 		return false;
 	}
 
@@ -173,7 +174,7 @@ void Patterns::printModules()
 
 	HANDLE Snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE, 0);
 	if (Snapshot == INVALID_HANDLE_VALUE) {
-		DEBUG_INFO("Error CreatingToolhelp32, code: %#x", GetLastError());
+		DEBUG_INFO_LEVEL_1("Error CreatingToolhelp32, code: %#x", GetLastError());
 		return;
 	}
 
@@ -181,7 +182,7 @@ void Patterns::printModules()
 	module.dwSize = sizeof(MODULEENTRY32);
 
 	if (!Module32First(Snapshot, &module)) {
-		DEBUG_INFO("Error on Module32First, code: %#x", GetLastError());
+		DEBUG_INFO_LEVEL_1("Error on Module32First, code: %#x", GetLastError());
 		return;
 	}
 
