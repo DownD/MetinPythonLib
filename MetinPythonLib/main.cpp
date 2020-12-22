@@ -32,6 +32,7 @@ DWORD WINAPI ThreadProc(LPVOID lpParameter)
 	DEBUG_INFO_LEVEL_1("Dll Loaded From %s", getDllPath());
 #endif
 	init();
+	MessageBox(NULL, "Success Loading", "SUCCESS", MB_OK);
 	return true;
 }
 

@@ -71,6 +71,8 @@ public:
 	virtual bool HookFunction() override;
 	virtual bool UnHookFunction() override;
 
+	inline void* getReturnAddress() { return (void*)storeReturn; }
+
 private:
 	//Needs to have permission to access data
 	bool setTrampolineFunction();

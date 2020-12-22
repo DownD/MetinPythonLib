@@ -52,12 +52,30 @@ Adds some functions to the python API, and try to inject a script.py from the cu
   - \<dict\>InstancesList<br>
     -> Is a dictionary containing all vids currently in sight as keys and values<br>
     Note: Use the keys as vids, the values may be changed on a new version<br>
+
+  - IsDead(\<int\>vid) returns 1 or 0<br>
+    Returns 1 if the instance with the vid provided is dead or doesn't exist and returns 0 otherwise<br>
+
+  - SendStartFishing(\<word\>direction)<br>
+    Sends a packet to the server to start fishing, the direction parameter is a word only understandable by the server(will be converted in the future).
     
+  - SendStartFishing(\<byte\>type,\<float\>timeLeft)<br>
+    Sends a packet to the server to stop fishing, the type can be any of the following parameters:<br>
+    - SUCCESS_FISHING -> The mini game was solve successfully.
+    - UNSUCCESS_FISHING -> The mini game was not solve.<br>
+    The timeLeft represents the time left to fish.<br>
+
+  -	SendAddFlyTarget(\<int\>vid,\<float\>x,\<float\>y)<br>
+    Sends a packet to send an arrow at an enemy.<br>
+
+	- SendShoot(\<byte\>uSkill)<br>
+    Sends an attack packet to the current selected enemy (should be used after SendAddFlyTarget).<br>
+    uSkill can be:<br>
+    - COMBO_SKILL_ARCH -> Normal attack.
+
   - \<string\>PATH<br>
     Path of the location where the library was injected<br>
     
-  - IsDead(\<int\>vid) returns 1 or 0<br>
-    Returns 1 if the instance with the vid provided is dead ordoesn't exist and returns 0 otherwise<br>
 
 ### Simulation of old functions
 These simulates the functions that were removed from the modules by Gameforge.

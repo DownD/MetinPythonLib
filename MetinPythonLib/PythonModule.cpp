@@ -5,11 +5,10 @@
 #include <unordered_map>
 #include <map>
 
-static std::string pythonAddSearchPath;
-static std::string path;
+static std::string fileName;
 
-PyObject* playerModule;
-PyObject* getMainPlayerPosition;
+/* PyObject* playerModule;
+PyObject* getMainPlayerPosition;*/
 
 //Client Functions
 typedef bool(__thiscall* tMoveToDestPosition)(void* classPointer, fPoint& pos);
@@ -25,9 +24,7 @@ DWORD characterManagerSubClass;
 
 
 //SYNCRONIZATION
-static bool pass = true;
-bool error = false;
-bool executeFile = false;
+static bool executeFile = false;
 
 Hook* hook;
 PyObject* packet_mod;
@@ -52,58 +49,67 @@ struct Instance {
 std::unordered_map<DWORD, Instance> instances;
 
 
-bool pythonExecuteFile(char* filePath) {
-	char* arr = new char[strlen(filePath)];
-	strcpy(arr, filePath);
-	PathStripPathA(arr);
-
-	PyObject* PyFileObject = PyFile_FromString(filePath, (char*)"r");
-	if (PyFileObject == NULL) {
-		printf("Error Not a File\n");
-		return 0;
+bool addPathToInterpreter(const char* path) {
+	PyObject* sys = PyImport_ImportModule("sys");
+	if (!sys) {
+		return false;
 	}
-	PyObject *sys = PyImport_ImportModule("sys");
-	PyObject *path = PyObject_GetAttrString(sys, "path");
-	PyList_Append(path, PyString_FromString(pythonAddSearchPath.c_str()));
-int result = PyRun_SimpleFileEx(PyFile_AsFile(PyFileObject), "MyFile", 1);
-if (result == -1)
-return false;
-else
-return true;
+	PyObject* py_path = PyObject_GetAttrString(sys, "path");
+	if (!py_path) {
+		Py_DECREF(sys);
+		return false;
+	}
+	PyList_Append(py_path, PyString_FromString(path));
+	Py_DECREF(sys);
+	Py_DECREF(py_path);
+	return true;
 }
 
-
-//Execute from main thread
-//Add the current path to the search path
-void functionHook() {
-	if (pass)
-		return;
-	if (pythonExecuteFile((char*)path.c_str())) {
-		error = false;
-		pass = true;
-		return;
+//The file name will be appended to the path of the dll
+bool executePythonFile(char* file) {
+	int result = 0;
+	char path[256] = { 0 };
+	strcpy(path,getDllPath());
+	//char del = '\';
+	//strncat(path, &del, 1);
+	strcat(path, file);
+	DEBUG_INFO_LEVEL_1("Executing Python file: %s", path);
+	PyObject* PyFileObject = PyFile_FromString(path, (char*)"r");
+	if (PyFileObject == NULL) {
+		DEBUG_INFO_LEVEL_1("%s  is not a File!",path);
+		goto error_code;
+	}
+	result = PyRun_SimpleFileEx(PyFile_AsFile(PyFileObject), "MyFile", 1);
+	if (result == -1) {
+		DEBUG_INFO_LEVEL_1("Error executing python script!");
+		goto error_code;
 	}
 	else {
-		error = true;
+		DEBUG_INFO_LEVEL_1("Python script execution complete!");
+		return true;
 	}
-	pass = true;
-	return;
+
+error_code:
+	int message = MessageBoxA(NULL, "Fail To Inject Script!\nEither script failed or does not exist.\nDo you want to try again?", "Error", MB_ICONWARNING | MB_YESNO);
+	switch (message)
+	{
+	case IDYES:
+		return executePythonFile(file);
+		break;
+	case IDNO:
+		return 0;
+		break;
+	default:
+		return 0;
+	}
 }
 
 
 
-//setup to run form main thread
-void executeScript(const char* name, char*_path) {
-	path = std::string(_path);
-	path.append(name);
-	pythonAddSearchPath = std::string(_path);
-	pythonAddSearchPath[pythonAddSearchPath.size()] = 0;
-#ifdef _DEBUG
-	printf("Trying to load %s on %s\n", name, _path);
-#endif
-	//MessageBox(NULL, pythonAddSearchPath.c_str(), "Error", MB_ICONWARNING | MB_YESNO);
+//setup to run from main thread
+void executeScriptFromMainThread(const char* name) {
+	fileName = std::string(name);
 
-	pass = false;
 
 #ifdef USE_INJECTION_SLEEP_HOOK
 	//hook = SleepFunctionHook::setupHook(functionHook);
@@ -112,56 +118,48 @@ void executeScript(const char* name, char*_path) {
 #ifdef USE_INJECTION_RECV_HOOK
 	executeFile = true;
 #endif
-
-	while (!pass) {
-
-	}
-	while (error) {
-		int message = MessageBoxA(NULL, "Fail To Inject Script!\nDo you want to try again?", "Error", MB_ICONWARNING | MB_YESNO);
-		switch (message)
-		{
-		case IDYES:
-			error = false;
-			pass = false;
-			executeFile = true;
-			while (!pass) {
-
-			}
-			break;
-		case IDNO:
-			error = false;
-			break;
-		default:
-			error = false;
-		}
+	Sleep(50);
+	while (executeFile) {
+		
 	}
 
 #ifdef USE_INJECTION_SLEEP_HOOK
 	hook->UnHookFunction();
 	delete hook;
 #endif
-	DEBUG_INFO_LEVEL_1("Python script execution complete!");
 }
 
 PyObject* GetPixelPosition(PyObject* poSelf, PyObject* poArgs)
 {
 	int vid = 0;
-	int main_vid = getMainCharacterVID();
-	if (vid = main_vid)
-		return PyObject_CallObject(getMainPlayerPosition, NULL);
-
 
 	if (!PyTuple_GetInteger(poArgs, 0, &vid))
 		return Py_BuildException();
+
+	fPoint3D pos = { 0 };
+	getCharacterPosition(vid, &pos);
+	return Py_BuildValue("fff", (float)pos.x, (float)pos.y, (float)pos.z);
+
+
+	/*int vid = 0;
+	int main_vid = getMainCharacterVID();
+
+	if (!PyTuple_GetInteger(poArgs, 0, &vid))
+		return Py_BuildException();
+
+	if (vid == main_vid)
+		return PyObject_CallObject(getMainPlayerPosition, NULL);
+
+
 
 	if (instances.find(vid) != instances.end()) {
 		auto &instance = instances[vid];
 
 		return Py_BuildValue("fff", (float)instance.x, (float)instance.y, (float)0);
-	}
+	}*/
 
 
-	return PyObject_CallObject(getMainPlayerPosition, NULL);
+	return Py_BuildValue("fff", 0, 0, 0);
 }
 
 PyObject* moveToDestPosition(PyObject* poSelf, PyObject* poArgs)
@@ -182,16 +180,10 @@ PyObject* moveToDestPosition(PyObject* poSelf, PyObject* poArgs)
 }
 
 DWORD __stdcall _GetEter(DWORD return_value, CMappedFile* file, const char* fileName, void** buffer) {
-#ifdef _DEBUG 
-	//printf("Loading %s, uknown_1 = %s, uknown_2 = %d, return = %d, length=%d\n", fileName, uknown, uknown_2, return_value, file->m_dwSize);
 
-#endif
 
 	if (getTrigger && strcmp(eterFile.name.c_str(), fileName) == 0) {
 
-#ifdef _DEBUG 
-		//printf("File address %#x, File size address %#x, buffer address = %#x\n",file, &(file->m_dwSize), buffer);
-#endif
 		if (eterFile.data != 0) {
 			free(eterFile.data);
 		}
@@ -204,11 +196,11 @@ DWORD __stdcall _GetEter(DWORD return_value, CMappedFile* file, const char* file
 	return return_value;
 }
 
-void _RecvRoutine()
-{
+void _RecvRoutine(){
 	if (executeFile) {
+		DEBUG_INFO_LEVEL_1("Executing Python file from Recv Hook");
+		executePythonFile((char*)fileName.c_str());
 		executeFile = 0;
-		functionHook();
 	}
 }
 
@@ -249,14 +241,10 @@ void changeInstancePosition(CharacterMovePacket& packet_move)
 void appendNewInstance(PlayerCreatePacket & player)
 {
 	if (instances.find(player.dwVID) != instances.end()){
-#ifdef _DEBUG
-		DEBUG_INFO_LEVEL_1("On adding instance with vid=%d, already exists, ignoring packet!\n", player.dwVID);
-#endif
+		DEBUG_INFO_LEVEL_4("On adding instance with vid=%d, already exists, ignoring packet!\n", player.dwVID);
 		return;
 	}
-#ifdef _DEBUG
-	DEBUG_INFO_LEVEL_1("Success Adding instance vid=%d!\n", player.dwVID);
-#endif
+	DEBUG_INFO_LEVEL_4("Success Adding instance vid=%d!\n", player.dwVID);
 	Instance i = { 0 };
 	i.vid = player.dwVID;
 	i.angle = player.angle;
@@ -277,9 +265,7 @@ void appendNewInstance(PlayerCreatePacket & player)
 void deleteInstance(DWORD vid)
 {
 	if (instances.find(vid) == instances.end()) {
-#ifdef _DEBUG
-	DEBUG_INFO_LEVEL_1("On deleting instance with vid=%d doesn't exists, ignoring packet!\n", vid);
-#endif
+	DEBUG_INFO_LEVEL_3("On deleting instance with vid=%d doesn't exists, ignoring packet!\n", vid);
 		return;
 	}
 	PyObject* pVid = PyLong_FromLong(vid);
@@ -296,11 +282,22 @@ void changeInstanceIsDead(DWORD vid, BYTE isDead)
 
 void clearInstances()
 {
-#ifdef _DEBUG
-	DEBUG_INFO_LEVEL_1("Instances Cleared\n");
-#endif
+	DEBUG_INFO_LEVEL_2("Instances Cleared\n");
 	instances.clear();
 	PyDict_Clear(pyVIDList);
+}
+
+bool getCharacterPosition(DWORD vid, fPoint3D* pos)
+{
+	void* instanceBase = getInstancePtr(vid);
+	if (instanceBase) {
+		fPoint3D* iPos = (fPoint3D*)(reinterpret_cast<DWORD>(instanceBase) + OFFSET_CLIENT_CHARACTER_POS);
+		pos->x = iPos->x;
+		pos->y = -iPos->y;
+		pos->z = iPos->z;
+		return true;
+	}
+	return false;
 }
 
 
@@ -621,15 +618,6 @@ void* getInstancePtr(DWORD vid)
 
 
 	return fGetInstancePointer(characterManagerSubClass,vid);
-	/*auto itor = clientInstanceMap->find(vid);
-
-	if (clientInstanceMap->end() == itor) {
-		DEBUG_INFO_LEVEL_4("Could not get instance by VID:%d",vid);
-		return NULL;
-	}
-
-	DEBUG_INFO_LEVEL_4("Got Instance!");
-	return itor->second;*/
 
 }
 
@@ -643,6 +631,56 @@ PyObject * pyIsDead(PyObject * poSelf, PyObject * poArgs)
 		return Py_BuildValue("i",instances[vid].isDead);
 	}
 	return Py_BuildValue("i", 1);
+}
+
+
+PyObject* pySendStartFishing(PyObject* poSelf, PyObject* poArgs) {
+	int direction;
+	if (!PyTuple_GetInteger(poArgs, 0, &direction))
+		return Py_BuildException();
+
+	bool val = SendStartFishing((WORD)direction);
+
+	return Py_BuildValue("i", val);
+}
+PyObject* pySendStopFishing(PyObject* poSelf, PyObject* poArgs) {
+	int type;
+	float timeLeft;
+	if (!PyTuple_GetInteger(poArgs, 0, &type))
+		return Py_BuildException();
+
+	if (!PyTuple_GetFloat(poArgs, 1, &timeLeft))
+		return Py_BuildException();
+
+
+	bool val = SendStopFishing(type,timeLeft);
+	return Py_BuildValue("i", val);
+}
+
+
+PyObject* pySendAddFlyTarget(PyObject* poSelf, PyObject* poArgs) {
+	int vid;
+	float x,y;
+	if (!PyTuple_GetInteger(poArgs, 0, &vid))
+		return Py_BuildException();
+
+	if (!PyTuple_GetFloat(poArgs, 1, &x))
+		return Py_BuildException();
+
+	if (!PyTuple_GetFloat(poArgs, 2, &y))
+		return Py_BuildException();
+
+	bool val = SendAddFlyTargetingPacket(vid, x, y);
+	return Py_BuildValue("i", val);
+}
+PyObject* pySendShoot(PyObject* poSelf, PyObject* poArgs) {
+	int type;
+	if (!PyTuple_GetInteger(poArgs, 0, &type))
+		return Py_BuildException();
+
+	bool val = SendShootPacket(type);
+	return Py_BuildValue("i", val);
+
 }
 
 
@@ -672,7 +710,12 @@ static PyMethodDef s_methods[] =
 	{ "ClearOutFilter",			clearOutFilter,		METH_VARARGS },
 	{ "SetOutFilterMode",		setOutFilterMode,	METH_VARARGS },
 	{ "SetInFilterMode",		setInFilterMode,	METH_VARARGS },
+	{ "SendAddFlyTarget",		pySendAddFlyTarget,	METH_VARARGS },
+	{ "SendShoot",				pySendShoot,		METH_VARARGS },
 #ifdef METIN_GF
+	{ "SendStartFishing",		pySendStartFishing,	METH_VARARGS },
+	{ "SendStopFishing",		pySendStopFishing,	METH_VARARGS },
+
 	{ "GetPixelPosition",		GetPixelPosition,	METH_VARARGS },
 	{ "MoveToDestPosition",     moveToDestPosition, METH_VARARGS},
 #endif
@@ -684,12 +727,9 @@ void initModule() {
 	//char dllPath[MAX_PATH] = { 0 };
 	//getCurrentPath(hDll, dllPath, MAX_PATH);
 	//printf("%#x\n", hDll);
-#ifdef _DEBUG
-	printf("Executable current path %s\n", getDllPath());
-#endif
 
 #ifdef METIN_GF
-	playerModule =  PyImport_ImportModule("playerm2g2");
+	/*playerModule =  PyImport_ImportModule("playerm2g2");
 	if (!playerModule) {
 		MessageBox(NULL, "Error Importing playerm2g2 module", "ERROR IMPOTRING MODULE", MB_OK);
 		exit();
@@ -699,7 +739,7 @@ void initModule() {
 	if (!getMainPlayerPosition) {
 		MessageBox(NULL, "Error GetMainPlayerPosition", "ERROR IMPORTING FUNCTION", MB_OK);
 		exit();
-	}
+	}*/
 #endif
 
 	packet_mod = Py_InitModule("net_packet", s_methods);
@@ -724,8 +764,18 @@ void initModule() {
 	PyModule_AddIntConstant(packet_mod, "CHAR_STATE_ARG_COMBO_ATTACK4", CHAR_STATE_ARG_COMBO_ATTACK4);
 
 
-	executeScript("script.py", (char *)getDllPath());
+	PyModule_AddIntConstant(packet_mod, "COMBO_SKILL_ARCH", COMBO_SKILL_ARCH);
 
+	//PHISHING
+	PyModule_AddIntConstant(packet_mod, "SUCCESS_FISHING", SUCESS_ON_FISHING);
+	PyModule_AddIntConstant(packet_mod, "UNSUCCESS_FISHING", UNSUCESS_ON_FISHING);
+
+	if (!addPathToInterpreter(getDllPath())) {
+		DEBUG_INFO_LEVEL_1("Error adding current path to intepreter!");
+		MessageBox(NULL, "Error adding current path to intepreter!", "Error", MB_OK);
+		exit();
+	}
+	executeScriptFromMainThread("init.py");
 }
 
 void SetChrMngrAndInstanceMap(void* classPointer)

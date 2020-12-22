@@ -18,6 +18,13 @@ enum {
 	CHAR_STATE_ARG_COMBO_ATTACK2 = 15,
 	CHAR_STATE_ARG_COMBO_ATTACK3 = 16,
 	CHAR_STATE_ARG_COMBO_ATTACK4 = 17,
+
+	COMBO_SKILL_ARCH = 0
+};
+
+enum {
+	SUCESS_ON_FISHING = 3,
+	UNSUCESS_ON_FISHING = 0
 };
 
 enum {
@@ -26,27 +33,26 @@ enum {
 	PHASE_GAME = 5
 };
 
-//85 - Char Move
-//84 -  Remove?
-//125 - Add?
-//82 chat
-//95 255 7
-//Dead 
-//24, firstbyte appears to be 1, size of 9
-//124 size of 9
 namespace PacketHeaders {
 	enum {
+		//FROM SERVER
 		HEADER_GC_CHARACTER_ADD = 125,
 		HEADER_GC_CHARACTER_DEL = 84,
-		HEADER_GC_DEAD = 127,
+		HEADER_GC_DEAD = 124,
 		HEADER_GC_PHASE = 255,
 		HEADER_GC_CHARACTER_MOVE = 85,
 		HEADER_GC_MAIN_CHARACTER = 75,
 
 
-		//To server
+		//TO SERVER
 		HEADER_CG_SEND_CHAT = 3,
-		HEADER_CG_CHARACTER_MOVE = 19
+		HEADER_CG_CHARACTER_MOVE = 11,//19, 
+		HEADER_CG_FISHING = 14,
+		HEADER_CG_SHOOT = 4,
+		HEADER_CG_SELECT_TARGET = 82,
+		HEADER_CG_BATTLE_ATTACK = 85,
+		HEADER_CG_ADD_FLY_TARGETING = 77
+		//Packet 77 something related before attacking
 	};
 }
 
@@ -83,13 +89,18 @@ struct CharacterStatePacket
 	DWORD		dwTime;
 };
 
-struct AttackPacket
+struct AddFlyTargetingPacket
 {
-	BYTE	header;
-	BYTE	bType;			
-	DWORD	dwVictimVID;
-	BYTE	bCRCMagicCubeProcPiece;
-	BYTE	bCRCMagicCubeFilePiece;
+	BYTE		header = PacketHeaders::HEADER_CG_ADD_FLY_TARGETING;
+	DWORD		dwTargetVID;
+	long		lX;
+	long		lY;
+};
+
+struct ShootPacket
+{
+	BYTE		header = PacketHeaders::HEADER_CG_SHOOT;
+	BYTE		type;
 };
 
 struct MainCharacterPacket
@@ -99,6 +110,23 @@ struct MainCharacterPacket
 	char        szName[25];
 	long        lX, lY, lZ;
 	BYTE		bySkillGroup;
+};
+
+struct StartFishing
+{
+	BYTE		header = PacketHeaders::HEADER_CG_FISHING;
+	WORD		u1 = 6;   //6
+	BYTE		u2 = 6;	  //6
+	WORD		direction;
+};
+
+struct StopFishing
+{
+	BYTE		header = PacketHeaders::HEADER_CG_FISHING;
+	WORD        u1 = 12;	  //12
+	BYTE		u2 = 8;   //8
+	DWORD		type;	  //0 - unsuccess, 3 sucess
+	float		timeLeft; //seconds
 };
 
 
@@ -180,13 +208,19 @@ std::set<BYTE>* getPacketFilter(PACKET_TYPE t);
 
 //Hook Functions
 bool __stdcall __RecvPacket(DWORD returnFunction, bool return_value, int size, void* buffer);
-void __SendPacket(int size, void*buffer);
+void __SendPacket(void* retAddress,int size, void*buffer);
 
 
 void SendBattlePacket(DWORD vid, BYTE type);
 void SendStatePacket(fPoint & pos, float rot, BYTE eFunc, BYTE uArg);
-void SendPacket(int size, void*buffer);
+bool SendPacket(int size, void*buffer);
+bool SendSequencePacket();
+bool SendAddFlyTargetingPacket(DWORD dwTargetVID, float x, float y);
+bool SendShootPacket(BYTE uSkill);
+bool SendStartFishing(WORD direction);
+bool SendStopFishing(BYTE type, float timeLeft);
 void GlobalToLocalPosition(long& lx, long& ly);
+void LocalToGlobalPosition(LONG& rLocalX, LONG& rLocalY);
 int getCurrentPhase();
 DWORD getMainCharacterVID();
 
@@ -194,7 +228,11 @@ void SetNetClassPointer(void* stackPointer);
 void SetSendFunctionPointer(void* p);
 void SetSendBattlePacket(void* func);
 void SetSendStatePacket(void* func);
-void SetGlobalToLocalPacket(void* func);
+void SetGlobalToLocalFunction(void* func);
+void SetSendSequenceFunction(void* func);
+void SetLocalToGlobalFunction(void* func);
+
+
 
 
 

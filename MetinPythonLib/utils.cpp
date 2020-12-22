@@ -1,5 +1,8 @@
 #include "utils.h"
+#include <map>
+#include <iomanip>
 
+static std::map<tTimePoint, tTimerFunction> timer_functions;
 char DLLPATH[256] = { 0 };
 bool debug_print = 1;
 int split(char * str, char c, std::vector<std::string>* vec)
@@ -78,7 +81,11 @@ void Stack::printDebug()
 
 bool isDebugEnable()
 {
+#ifdef _DEBUG
 	return debug_print;
+#else
+	return false;
+#endif
 }
 
 void setDebugOn()
@@ -91,7 +98,7 @@ void setDebugOff()
 	debug_print = 0;
 }
 
-bool getCurrentPath(HMODULE hMod, char* dllPath, int size)
+bool getCurrentPathFromModule(HMODULE hMod, char* dllPath, int size)
 {
 	int len = GetModuleFileNameA(hMod, dllPath, size);
 	if (!len) {
@@ -121,6 +128,55 @@ void setDllPath(char* file)
 {
 	strcpy(DLLPATH, file);
 	stripFileFromPath(DLLPATH,256);
+}
+
+
+std::string return_current_time_and_date(tTimePoint date)
+{
+	auto now = date;
+	auto in_time_t = std::chrono::system_clock::to_time_t(now);
+
+	std::stringstream ss;
+	ss << std::put_time(std::localtime(&in_time_t), "%Y-%m-%d %X");
+	return ss.str();
+}
+
+void setTimerFunction(tTimerFunction func,float sec)
+{
+	auto timer = std::chrono::system_clock::now();
+	timer += std::chrono::milliseconds((int)(sec*1000));
+	timer_functions.insert(std::pair<tTimePoint,tTimerFunction>(timer,func));
+	//DEBUG_INFO_LEVEL_4("Function set to trigger at %s ", return_current_time_and_date(timer).c_str());
+}
+
+
+
+//Smoehow deleting directly inside the loop is giving segmentation fault
+void executeTimerFunctions()
+{
+	if (timer_functions.empty())
+		return;
+
+	//DEBUG_INFO_LEVEL_4("Going Trough");
+	auto start = std::chrono::system_clock::now();
+	auto it = timer_functions.begin();
+
+	for (auto it = timer_functions.begin(); it != timer_functions.end();)
+	{
+		auto end = it->first;
+		auto delta = end - start;
+		if (delta.count() > 0) {
+			return;
+		}
+		else {
+			auto func = it->second;
+			DEBUG_INFO_LEVEL_4("Executing Timer Function");
+			func();
+			it = timer_functions.erase(it); //WHY ERROR?
+			return;
+		}
+		++it;
+	}
 }
 
 

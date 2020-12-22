@@ -4,6 +4,8 @@
 #include <vector>
 #include <string>
 #include <sstream> 
+#include <chrono>
+#include <ctime>    
 
 bool isDebugEnable();
 void setDebugOn();
@@ -15,12 +17,18 @@ void setDebugOff();
 #define DEBUG_INFO_LEVEL_4(...); {DEBUG_INFO_LEVEL_1(__VA_ARGS__); }
 
 
+typedef void (__stdcall *tTimerFunction)();
+typedef std::chrono::time_point<std::chrono::system_clock> tTimePoint;
 
-
-bool getCurrentPath(HMODULE hMod, char* dllPath, int size);
+bool getCurrentPathFromModule(HMODULE hMod, char* dllPath, int size);
 void stripFileFromPath(char* dllPath, int size);
 const char* getDllPath();
 void setDllPath(char* file);
+
+
+//There are bugs here that migh crash the process
+void setTimerFunction(tTimerFunction func,float sec);
+void executeTimerFunctions();
 
 
 inline void* getRelativeCallAddress(void* startCallAddr) {
@@ -125,5 +133,9 @@ struct Point {
 struct fPoint {
 	fPoint(float x, float y) : x(x), y(y) {}
 	float x, y;
+};
+
+struct fPoint3D {
+	float x, y, z;
 };
 

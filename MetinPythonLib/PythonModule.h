@@ -17,6 +17,7 @@
 #define OFFSET_CLIENT_ALIVE_MAP 0x38
 #define OFFSET_CLIENT_INSTANCE_PTR_1 0x4
 #define OFFSET_CLIENT_INSTANCE_PTR_2 0x8
+#define OFFSET_CLIENT_CHARACTER_POS 0x7BC
 
 
 /*SELECT THE METHOD USED TO INJECT THE PYTHON FILE, UNCOMMENT ONLY ONE*/
@@ -61,7 +62,7 @@ struct CMappedFile {
 };
 #pragma pack(pop)
 
-void executeScript(const char* name, char* _path);
+bool executePythonFile(char* fileName);
 
 
 //SET OLD FUNCTION
@@ -69,8 +70,6 @@ PyObject* GetPixelPosition(PyObject* poSelf, PyObject* poArgs);
 PyObject* moveToDestPosition(PyObject* poSelf, PyObject* poArgs);
 
 
-
-//TEST FOR MEMORY LEAKS
 PyObject* GetEterPacket(PyObject * poSelf, PyObject * poArgs);
 PyObject* IsPositionBlocked(PyObject * poSelf, PyObject * poArgs);
 PyObject* GetCurrentPhase(PyObject * poSelf, PyObject * poArgs);
@@ -79,7 +78,10 @@ PyObject* pySendAttackPacket(PyObject * poSelf, PyObject * poArgs);
 PyObject* pySendStatePacket(PyObject * poSelf, PyObject * poArgs);
 PyObject* pySendPacket(PyObject * poSelf, PyObject * poArgs);
 PyObject* pyIsDead(PyObject * poSelf, PyObject * poArgs);
-
+PyObject* pySendStartFishing(PyObject* poSelf, PyObject* poArgs);
+PyObject* pySendStopFishing(PyObject* poSelf, PyObject* poArgs);
+PyObject* pySendAddFlyTarget(PyObject* poSelf, PyObject* poArgs);
+PyObject* pySendShoot(PyObject* poSelf, PyObject* poArgs);
 
 //PACKET FILTER
 PyObject* launchPacketFilter(PyObject* poSelf, PyObject* poArgs);
@@ -116,6 +118,8 @@ void appendNewInstance(PlayerCreatePacket & player);
 void deleteInstance(DWORD vid);
 void changeInstanceIsDead(DWORD vid, BYTE isDead);
 void clearInstances();
+
+bool getCharacterPosition(DWORD vid, fPoint3D* pos);
 
 //Intialize stuf
 void initModule();

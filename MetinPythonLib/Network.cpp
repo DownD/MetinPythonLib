@@ -1,7 +1,8 @@
 #include "Network.h"
 #include "PythonModule.h"
 #include "MapCollision.h"
-
+#include <chrono>
+#include <ctime>    
 
 
 //PacketFilter
@@ -16,13 +17,17 @@ static int gamePhase = 0;
 DWORD mainCharacterVID = 0;
 
 typedef bool(__thiscall* tGlobalToLocalPosition)(DWORD classPointer, long& lx, long& ly);
+typedef bool(__thiscall* tLocalToGlobalPosition)(DWORD classPointer, LONG& rLocalX, LONG& rLocalY);
 typedef bool(__thiscall *tSendPacket)(DWORD classPointer, int size, void* buffer);
-typedef bool(__thiscall *tSendAttackPacket)(DWORD classPointer, DWORD arg0,BYTE type, DWORD vid, DWORD arg1);
-typedef bool(__thiscall *tSendStatePacket)(DWORD classPointer, fPoint& pos, float rot, BYTE eFunc, BYTE uArg, BYTE arg0);
+typedef bool(__thiscall *tSendAttackPacket)(DWORD classPointer, BYTE type, DWORD vid);
+typedef bool(__thiscall *tSendStatePacket)(DWORD classPointer, fPoint& pos, float rot, BYTE eFunc, BYTE uArg);
+typedef bool(__thiscall* tSendSequencePacket)(DWORD classPointer);
 
+tLocalToGlobalPosition fLocalToGlobalPosition;
 tSendStatePacket fSendStatePacket;
 tSendAttackPacket fSendAttackPacket;
 tSendPacket fSendPacket;
+tSendSequencePacket fSendSequencePacket;
 tGlobalToLocalPosition fGlobalToLocalPosition;
 DWORD *networkclassPointer;
 
@@ -117,8 +122,12 @@ std::set<BYTE>* getPacketFilter(PACKET_TYPE t) {
 		return &outbound_header_filter;
 }
 
-bool __stdcall __RecvPacket(DWORD return_function,bool return_value,int size, void* buffer) {
+void __stdcall executeScript() {
+	executePythonFile((char*)"script.py");
+}
 
+bool __stdcall __RecvPacket(DWORD return_function,bool return_value,int size, void* buffer) {
+	executeTimerFunctions();
 #ifdef USE_INJECTION_RECV_HOOK
 	_RecvRoutine();
 #endif
@@ -179,14 +188,29 @@ bool __stdcall __RecvPacket(DWORD return_function,bool return_value,int size, vo
 			}
 			else if (phase.phase == PHASE_GAME) {
 				setCurrentCollisionMap();
+				static bool hasPassed = 0;
+				if (!hasPassed) {
+					//setTimerFunction(executeScript, 2);
+					executeScript();
+					hasPassed = true;
+					/*static auto start = std::chrono::system_clock::now();
+					auto end = std::chrono::system_clock::now();
+					auto elapsed_seconds = end - start;
+
+					if (elapsed_seconds.count() > 4) {
+						executePythonFile((char*)"script.py");
+						hasPassed = true;
+					}*/
+				}
 			}
 			break;
 		}
 
 		case HEADER_GC_MAIN_CHARACTER:{
-			if (PHASE_LOADING) {
+			if (PHASE_LOADING == gamePhase) {
 				MainCharacterPacket m;
 				fillPacket(&packet, &m);
+				DEBUG_INFO_LEVEL_2("MAIN VID: %d", m.dwVID);
 				mainCharacterVID = m.dwVID;
 			}
 			break;
@@ -200,24 +224,76 @@ bool __stdcall __RecvPacket(DWORD return_function,bool return_value,int size, vo
 		}
 		}
 	}
+
+
+
 	return return_value;
 
 }
 
 void SendBattlePacket(DWORD vid, BYTE type)
 {
-	fSendAttackPacket(*networkclassPointer, 0, type, vid, 0);
+	fSendAttackPacket(*networkclassPointer, type, vid);
 }
 
 void SendStatePacket(fPoint & pos, float rot, BYTE eFunc, BYTE uArg)
 {
-	fSendStatePacket(*networkclassPointer, pos, rot, eFunc, uArg,0);
+	fSendStatePacket(*networkclassPointer, pos, rot, eFunc, uArg);
 }
 
-void SendPacket(int size, void*buffer) {
-	fSendPacket(*networkclassPointer, size, buffer);
+bool SendPacket(int size, void*buffer) {
+	return fSendPacket(*networkclassPointer, size, buffer);
 	//Packet packet(size, (BYTE*)buffer);
 	//logPacket(&packet);
+}
+
+bool SendSequencePacket()
+{
+	return fSendSequencePacket(*networkclassPointer);
+}
+
+bool SendAddFlyTargetingPacket(DWORD dwTargetVID, float x, float y)
+{
+	AddFlyTargetingPacket packet;
+	packet.dwTargetVID = dwTargetVID;
+	packet.lX = (long)x;
+	packet.lY = (long)y;
+	LocalToGlobalPosition(packet.lX, packet.lY);
+
+	if (SendPacket(sizeof(AddFlyTargetingPacket), &packet))
+		return SendSequencePacket();
+	return false;
+}
+bool SendShootPacket(BYTE uSkill)
+{
+	ShootPacket packet;
+	packet.type = uSkill;
+
+	if (SendPacket(sizeof(ShootPacket), &packet))
+		return SendSequencePacket();
+	return false;
+}
+
+bool SendStartFishing(WORD direction)
+{
+	StartFishing packet;
+	packet.direction = direction;
+	if (SendPacket(sizeof(StartFishing), &packet))
+		return SendSequencePacket();
+
+	return false;
+
+}
+
+bool SendStopFishing(BYTE type, float timeLeft)
+{
+	StopFishing packet;
+	packet.type = type;
+	packet.timeLeft = timeLeft;
+	if (SendPacket(sizeof(StopFishing), &packet))
+		return SendSequencePacket();
+
+	return false;
 }
 
 void GlobalToLocalPosition(long& lx, long& ly)
@@ -225,18 +301,23 @@ void GlobalToLocalPosition(long& lx, long& ly)
 	fGlobalToLocalPosition(*networkclassPointer, lx,ly);
 }
 
+void LocalToGlobalPosition(LONG& rLocalX, LONG& rLocalY)
+{
+	fLocalToGlobalPosition(*networkclassPointer, rLocalX, rLocalY);
+}
 
-void __SendPacket(int size, void*buffer){
+
+void __SendPacket(void* retAddress,int size, void*buffer){
 	Packet packet(size, (BYTE*)buffer);
 	//PacketFilter
 	if (printToConsole) {
 		if (outbound_header_filter.find(packet.header) == outbound_header_filter.end()) {
 			if (!filterOutboundOnlyIncluded)
-				printPacket(0, &packet, OUTBOUND);
+				printPacket((DWORD)retAddress, &packet, OUTBOUND);
 		}
 		else {
 			if (filterOutboundOnlyIncluded)
-				printPacket(0, &packet, OUTBOUND);
+				printPacket((DWORD)retAddress, &packet, OUTBOUND);
 		}
 	}
 
@@ -281,9 +362,20 @@ void SetSendStatePacket(void * func)
 	fSendStatePacket = (tSendStatePacket)func;
 }
 
-void SetGlobalToLocalPacket(void* func)
+void SetGlobalToLocalFunction(void* func)
 {
 	fGlobalToLocalPosition = (tGlobalToLocalPosition)func;
+}
+
+
+void SetSendSequenceFunction(void* func)
+{
+	fSendSequencePacket = (tSendSequencePacket)func;
+}
+
+void SetLocalToGlobalFunction(void* func)
+{
+	fLocalToGlobalPosition = (tLocalToGlobalPosition)func;
 }
 
 Packet::Packet(int size, void * buffer)
