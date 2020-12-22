@@ -65,10 +65,10 @@ Adds some functions to the python API, and try to inject a script.py from the cu
     - UNSUCCESS_FISHING -> The mini game was not solve.<br>
     The timeLeft represents the time left to fish.<br>
 
-  -	SendAddFlyTarget(\<int\>vid,\<float\>x,\<float\>y)<br>
+  - SendAddFlyTarget(\<int\>vid,\<float\>x,\<float\>y)<br>
     Sends a packet to send an arrow at an enemy.<br>
-
-	- SendShoot(\<byte\>uSkill)<br>
+ 
+  - SendShoot(\<byte\>uSkill)<br>
     Sends an attack packet to the current selected enemy (should be used after SendAddFlyTarget).<br>
     uSkill can be:<br>
     - COMBO_SKILL_ARCH -> Normal attack.
