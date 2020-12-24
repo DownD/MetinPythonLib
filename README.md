@@ -59,7 +59,7 @@ Adds some functions to the python API, and try to inject a script.py from the cu
   - SendStartFishing(\<word\>direction)<br>
     Sends a packet to the server to start fishing, the direction parameter is a word only understandable by the server(will be converted in the future).
     
-  - SendStartFishing(\<byte\>type,\<float\>timeLeft)<br>
+  - SendStopFishing(\<byte\>type,\<float\>timeLeft)<br>
     Sends a packet to the server to stop fishing, the type can be any of the following parameters:<br>
     - SUCCESS_FISHING -> The mini game was solve successfully.
     - UNSUCCESS_FISHING -> The mini game was not solve.<br>
