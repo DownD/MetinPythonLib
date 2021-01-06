@@ -55,8 +55,9 @@ private:
 
 
 private:
+	bool isMapSaved();
 	bool fileExists(const char* file);
-	bool constructMap();
+	bool constructMapFromClient();
 	bool addMapPiece(MapPiece* piece);
 	void printToFile(const char* name);
 
@@ -67,6 +68,9 @@ private:
 
 	//Adds one extra blocked area to the edges of the map
 	void increaseBlockedArea();
+
+	bool loadMapFromDisk();
+	void saveMap();
 
 
 	std::string mapName;

@@ -5,6 +5,7 @@
 #include "Network.h"
 #include <iostream>
 #include <fstream>
+#include <sstream>
 
 #define ATTR_WIDTH 256
 #define ATTR_HEIGHT 256
@@ -17,29 +18,30 @@ MapCollision::MapCollision(const char* map_name){
 	maxX = 0;
 	maxY = 0;
 	mapName = std::string(map_name);
-	bool val = constructMap();
+	bool val = false;
+	if (!isMapSaved()) {
+		val = constructMapFromClient();
+		if(val)
+			saveMap();
+	}else {
+		val = loadMapFromDisk();
+		if (!val) {
+			val = constructMapFromClient();
+			if (val)
+				saveMap();
+		}
+
+	}
 #ifdef _DEBUG
 	if(val)
-		printf("Current map %s loaded with success! Max-X: %d  Max-Y: %d\n",map_name,maxX,maxY);
+		DEBUG_INFO_LEVEL_1("Current map %s loaded with success! Max-X: %d  Max-Y: %d\n",map_name,maxX,maxY);
 #endif
 	if (!val) {
-		MessageBoxA(NULL, "Error constructing map! Functions that need map information  will not work", "Error", MB_OK);
+		DEBUG_INFO_LEVEL_1("Error constructing map! Functions that need map information  will not work");
 		return;
 	}
 
 	pathFinding = new JPS::Searcher<MapCollision>(*this);
-
-	//printToFile("map_no_objects.txt");
-	addObjectsCollisions();
-
-	increaseBlockedArea();
-
-	std::string m(map_name);
-	m += ".txt";
-
-#ifdef _DEBUG
-	printToFile(m.c_str());
-#endif
 }
 
 
@@ -67,10 +69,10 @@ bool MapCollision::findPath(int x_start, int y_start, int x_end, int y_end, std:
 	bool found = pathFinding->findPath(pathBuf, JPS::Pos(x_start, y_start), JPS::Pos(x_end, y_end), 0);
 
 #ifdef _DEBUG
-	if(found)
-		printf("Path found from (%d,%d) to (%d,%d) with %d points!\n", x_start, y_start, x_end, y_end, pathBuf.size());
-	else
-		printf("No Path from (%d,%d) to (%d,%d)!!!\n", x_start, y_start, x_end, y_end, pathBuf.size());
+	if (found) {
+		DEBUG_INFO_LEVEL_3("Path found from (%d,%d) to (%d,%d) with %d points!\n", x_start, y_start, x_end, y_end, pathBuf.size());
+	}else
+		DEBUG_INFO_LEVEL_2("No Path from (%d,%d) to (%d,%d)!!!\n", x_start, y_start, x_end, y_end, pathBuf.size());
 #endif
 	if (found) {
 		for (JPS::PathVector::iterator it = pathBuf.begin(); it != pathBuf.end(); ++it)
@@ -90,6 +92,21 @@ inline unsigned MapCollision::operator()(unsigned x, unsigned y) const
 
 
 
+bool MapCollision::isMapSaved()
+{
+
+	std::string dic(getMapsPath());
+	dic += mapName + std::string(".dat");
+	std::ifstream fin(dic.c_str());
+
+	if (fin.fail())
+	{
+		return false;
+	}
+	fin.close();
+	return true;
+}
+
 bool MapCollision::fileExists(const char * file)
 {
 	PyObject * mod = PyImport_ImportModule("app");
@@ -102,7 +119,7 @@ bool MapCollision::fileExists(const char * file)
 	return false;
 }
 
-bool MapCollision::constructMap()
+bool MapCollision::constructMapFromClient()
 {
 	std::vector<MapPiece*> buffer;
 	std::string baseFolder = mapName;
@@ -140,7 +157,7 @@ bool MapCollision::constructMap()
 	}
 	if (buffer.size() == 0) {
 #ifdef _DEBUG
-		printf("No map found with name %s\n", mapName.c_str());
+		DEBUG_INFO_LEVEL_1("No map found with name %s\n", mapName.c_str());
 #endif
 		return false;
 	}
@@ -156,9 +173,7 @@ bool MapCollision::constructMap()
 
 	for (auto mapPiece : buffer) {
 		if (!addMapPiece(mapPiece)) {
-			#ifdef _DEBUG
-			printf("MapPiece exceeds limits %s\n", mapName.c_str());
-			#endif
+			DEBUG_INFO_LEVEL_1("MapPiece exceeds limits %s\n", mapName.c_str());
 			return false;
 		}
 		for (auto & object : mapPiece->area.vec) {
@@ -167,6 +182,8 @@ bool MapCollision::constructMap()
 
 		delete mapPiece;
 	}
+	addObjectsCollisions();
+	increaseBlockedArea();
 	return true;
 
 }
@@ -265,6 +282,81 @@ void MapCollision::increaseBlockedArea()
 
 }
 
+bool MapCollision::loadMapFromDisk()
+{
+	std::string dic(getMapsPath());
+	dic += mapName + std::string(".dat");
+
+	std::ifstream fin(dic.c_str());
+
+	if (fin.fail())
+	{
+		return false;
+	}
+	std::string line;
+	std::getline(fin, line);
+	std::stringstream sl(line);
+	
+	sl >> maxX >> maxY;
+	if (maxX == 0 || maxY == 0) {
+		return false;
+	}
+	if (map) {
+		free(map);
+	}
+	map = (BYTE*)calloc(maxX * maxY,1);
+	int y = 0;
+	while (std::getline(fin, line)) {
+		for (int x = 0; x < maxX && x < line.size();x++) {
+			if (line.at(x) == '1') {
+				map[maxX * y + x] = 1;
+			}
+		}
+		y++;
+	}
+	DEBUG_INFO_LEVEL_1("Map %s in disk loaded from %s with X:%d ,Y:%d loaded with success!", mapName.c_str(), dic.c_str(), maxX, maxY);
+	fin.close();
+	return true;
+
+}
+
+void MapCollision::saveMap()
+{
+	std::string dic(getMapsPath());
+
+	/*if (!CreateDirectory(dic.c_str(), NULL)) {
+		DEBUG_INFO_LEVEL_1("Error Creating Directory %s, GetLastError %d", dic.c_str(),GetLastError());
+		return;
+	}*/
+
+	std::string consoleS("mkdir ");
+	consoleS += dic;
+	system(consoleS.c_str());
+
+	dic += mapName + std::string(".dat");
+
+	std::ofstream myfile;
+	myfile.open(dic.c_str());
+	if (myfile.fail()) {
+		DEBUG_INFO_LEVEL_1("Couldn't save current map to %s", dic.c_str());
+		return;
+	}
+
+	myfile << maxX << " " << maxY << "\n";
+	char* line = (char*)calloc(maxX+2,1);
+	for (int y = 0; y < maxY; y++) {
+		int x = 0;
+		for (x = 0; x < maxX; x++) {
+			line[x] = 48 + isBlocked(x, y);
+		}
+		line[x] = '\n';
+		myfile << line;
+	}
+	DEBUG_INFO_LEVEL_1("Current map saved to %s", dic.c_str());
+	free(line);
+	myfile.close();
+}
+
 
 MapCollision::MapPiece::MapPiece(EterFile * file,int x,int y,std::string path)
 {
@@ -322,7 +414,7 @@ bool setCurrentCollisionMap()
 
 	if (!PyCallClassMemberFunc(mod, "GetCurrentMapName", poArgs, map_name)) {
 #ifdef _DEBUG
-		printf("Error calling GetCurrenMap %s\n", map_name.c_str());
+		DEBUG_INFO_LEVEL_1("Error calling GetCurrenMap %s\n", map_name.c_str());
 #endif
 		Py_DECREF(mod);
 		Py_DECREF(poArgs);

@@ -4,6 +4,7 @@
 
 static std::map<tTimePoint, tTimerFunction> timer_functions;
 char DLLPATH[256] = { 0 };
+char MAP_PATH[256] = { 0 };
 bool debug_print = 1;
 int split(char * str, char c, std::vector<std::string>* vec)
 {
@@ -124,10 +125,17 @@ const char* getDllPath()
 	return DLLPATH;
 }
 
+const char* getMapsPath()
+{
+	return MAP_PATH;
+}
+
 void setDllPath(char* file)
 {
 	strcpy(DLLPATH, file);
 	stripFileFromPath(DLLPATH,256);
+	strcpy(MAP_PATH, DLLPATH);
+	strcat(MAP_PATH, SUBPATH_MAPS);
 }
 
 

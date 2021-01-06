@@ -11,10 +11,12 @@ bool isDebugEnable();
 void setDebugOn();
 void setDebugOff();
 
+#define SUBPATH_MAPS "Resources\\Maps\\"
+
 #define DEBUG_INFO_LEVEL_1(...); {if(isDebugEnable()){printf(__VA_ARGS__); printf("\n");}}
 #define DEBUG_INFO_LEVEL_2(...); {DEBUG_INFO_LEVEL_1(__VA_ARGS__); }
 #define DEBUG_INFO_LEVEL_3(...); {DEBUG_INFO_LEVEL_1(__VA_ARGS__); }
-#define DEBUG_INFO_LEVEL_4(...); {DEBUG_INFO_LEVEL_1(__VA_ARGS__); }
+#define DEBUG_INFO_LEVEL_4(...); {}
 
 
 typedef void (__stdcall *tTimerFunction)();
@@ -23,6 +25,7 @@ typedef std::chrono::time_point<std::chrono::system_clock> tTimePoint;
 bool getCurrentPathFromModule(HMODULE hMod, char* dllPath, int size);
 void stripFileFromPath(char* dllPath, int size);
 const char* getDllPath();
+const char* getMapsPath();
 void setDllPath(char* file);
 
 

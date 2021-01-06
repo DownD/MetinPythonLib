@@ -2,7 +2,8 @@
 #include "PythonModule.h"
 #include "MapCollision.h"
 #include <chrono>
-#include <ctime>    
+#include <ctime>
+
 
 
 //PacketFilter
@@ -18,7 +19,6 @@ DWORD mainCharacterVID = 0;
 
 typedef bool(__thiscall* tGlobalToLocalPosition)(DWORD classPointer, long& lx, long& ly);
 typedef bool(__thiscall* tLocalToGlobalPosition)(DWORD classPointer, LONG& rLocalX, LONG& rLocalY);
-typedef bool(__thiscall *tSendPacket)(DWORD classPointer, int size, void* buffer);
 typedef bool(__thiscall *tSendAttackPacket)(DWORD classPointer, BYTE type, DWORD vid);
 typedef bool(__thiscall *tSendStatePacket)(DWORD classPointer, fPoint& pos, float rot, BYTE eFunc, BYTE uArg);
 typedef bool(__thiscall* tSendSequencePacket)(DWORD classPointer);
@@ -30,6 +30,11 @@ tSendPacket fSendPacket;
 tSendSequencePacket fSendSequencePacket;
 tGlobalToLocalPosition fGlobalToLocalPosition;
 DWORD *networkclassPointer;
+
+//If true, fishing packets will be blocked
+bool blockFishingPackets = 0;
+bool block_next_sequence = 0;
+
 
 void printPacket(DWORD calling_function, Packet* p, bool type) {
 	if (INBOUND == type) {
@@ -307,7 +312,7 @@ void LocalToGlobalPosition(LONG& rLocalX, LONG& rLocalY)
 }
 
 
-void __SendPacket(void* retAddress,int size, void*buffer){
+bool __stdcall __SendPacket(DWORD classPointer,DetoursHook<tSendPacket>* hook, void* retAddress,int size, void*buffer){
 	Packet packet(size, (BYTE*)buffer);
 	//PacketFilter
 	if (printToConsole) {
@@ -322,14 +327,32 @@ void __SendPacket(void* retAddress,int size, void*buffer){
 	}
 
 	switch (packet.header) {
-	case HEADER_CG_CHARACTER_MOVE: {
-		CharacterStatePacket move;
-		fillPacket(&packet, &move);
+		case HEADER_CG_CHARACTER_MOVE: {
+			CharacterStatePacket move;
+			fillPacket(&packet, &move);
 
-		break;
+			break;
+		}
+		//case 77:
+		case HEADER_CG_FISHING: {
+			if (blockFishingPackets) {
+				DEBUG_INFO_LEVEL_2("Blocking Fishing Packet");
+				block_next_sequence = 1; //Also block sequence packet
+				return 1;			//Block fishing packets
+			}
+			break;
+		}
 	}
+	return hook->originalFunction((DWORD)classPointer,size,buffer);
+}
+
+bool __fastcall __SendSequencePacket(DWORD classPointer)
+{
+	if (block_next_sequence) {
+		block_next_sequence = 0;
+		return 1;
 	}
-	return;
+	return fSendSequencePacket(classPointer);
 }
 
 int getCurrentPhase()
@@ -376,6 +399,11 @@ void SetSendSequenceFunction(void* func)
 void SetLocalToGlobalFunction(void* func)
 {
 	fLocalToGlobalPosition = (tLocalToGlobalPosition)func;
+}
+
+void SetFishingPacketsBlock(bool val)
+{
+	blockFishingPackets = val;
 }
 
 Packet::Packet(int size, void * buffer)

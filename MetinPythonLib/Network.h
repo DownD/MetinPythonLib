@@ -3,8 +3,10 @@
 #include <iostream>
 #include "utils.h"
 #include <set>
+#include "DetoursHook.h"
 
-
+typedef bool(__thiscall *tSendPacket)(DWORD classPointer, int size, void* buffer);
+typedef bool(__thiscall* tSendSequencePacket)(DWORD classPointer);
 enum {
 	CHAR_STATE_FUNC_STOP = 0,
 	CHAR_STATE_FUNC_WALK = 1,
@@ -45,6 +47,7 @@ namespace PacketHeaders {
 
 
 		//TO SERVER
+		HEADER_CG_SEND_SEQUENCE = 0,
 		HEADER_CG_SEND_CHAT = 3,
 		HEADER_CG_CHARACTER_MOVE = 11,//19, 
 		HEADER_CG_FISHING = 14,
@@ -208,9 +211,11 @@ std::set<BYTE>* getPacketFilter(PACKET_TYPE t);
 
 //Hook Functions
 bool __stdcall __RecvPacket(DWORD returnFunction, bool return_value, int size, void* buffer);
-void __SendPacket(void* retAddress,int size, void*buffer);
+bool __stdcall __SendPacket(DWORD classPointer,DetoursHook<tSendPacket>* hook, void* retAddress,int size, void*buffer);
+bool __fastcall __SendSequencePacket(DWORD classPointer);
 
 
+//SendPacket Functions
 void SendBattlePacket(DWORD vid, BYTE type);
 void SendStatePacket(fPoint & pos, float rot, BYTE eFunc, BYTE uArg);
 bool SendPacket(int size, void*buffer);
@@ -224,6 +229,8 @@ void LocalToGlobalPosition(LONG& rLocalX, LONG& rLocalY);
 int getCurrentPhase();
 DWORD getMainCharacterVID();
 
+
+//Setters
 void SetNetClassPointer(void* stackPointer);
 void SetSendFunctionPointer(void* p);
 void SetSendBattlePacket(void* func);
@@ -231,6 +238,8 @@ void SetSendStatePacket(void* func);
 void SetGlobalToLocalFunction(void* func);
 void SetSendSequenceFunction(void* func);
 void SetLocalToGlobalFunction(void* func);
+
+void SetFishingPacketsBlock(bool val); //1 block packets, 0 do not block packets
 
 
 

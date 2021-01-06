@@ -90,7 +90,7 @@ bool executePythonFile(char* file) {
 	}
 
 error_code:
-	int message = MessageBoxA(NULL, "Fail To Inject Script!\nEither script failed or does not exist.\nDo you want to try again?", "Error", MB_ICONWARNING | MB_YESNO);
+	/*int message = MessageBoxA(NULL, "Fail To Inject Script!\nEither script failed or does not exist.\nDo you want to try again?", "Error", MB_ICONWARNING | MB_YESNO);
 	switch (message)
 	{
 	case IDYES:
@@ -101,7 +101,8 @@ error_code:
 		break;
 	default:
 		return 0;
-	}
+	}*/
+	return 0;
 }
 
 
@@ -214,24 +215,16 @@ EterFile* CGetEter(const char* name) {
 
 void changeInstancePosition(CharacterStatePacket& packet_move)
 {
-	/*DEBUG_INFO_LEVEL_1("MAIN Character X:%d Y:%d", packet_move.lX, packet_move.lY);
-	if (instances.find(packet_move.dwVID) == instances.end()) {
-		DEBUG_INFO_LEVEL_1("Error on changing instance position no vid found");
-		return;
-	}
-	auto& instance = instances[packet_move.dwVID];
-	instance.x = packet_move.lX;
-	instance.y = packet_move.lY;
-	//DEBUG_INFO("VID %d-> X:%d Y:%d", packet_move.dwVID, packet_move.lX, packet_move.lY);*/
+
 }
 
 void changeInstancePosition(CharacterMovePacket& packet_move)
 {
-	DEBUG_INFO_LEVEL_1("VID %d-> X:%d Y:%d", packet_move.dwVID, packet_move.lX, packet_move.lY);
 	if (instances.find(packet_move.dwVID) == instances.end()) {
-		DEBUG_INFO_LEVEL_1("Error on changing instance position no vid found");
+		DEBUG_INFO_LEVEL_3("Error on changing instance position no vid %d found",packet_move.dwVID);
 		return;
 	}
+	DEBUG_INFO_LEVEL_4("VID %d-> X:%d Y:%d", packet_move.dwVID, packet_move.lX, packet_move.lY);
 	auto& instance = instances[packet_move.dwVID];
 	instance.x = packet_move.lX;
 	instance.y = packet_move.lY;
@@ -241,10 +234,11 @@ void changeInstancePosition(CharacterMovePacket& packet_move)
 void appendNewInstance(PlayerCreatePacket & player)
 {
 	if (instances.find(player.dwVID) != instances.end()){
-		DEBUG_INFO_LEVEL_4("On adding instance with vid=%d, already exists, ignoring packet!\n", player.dwVID);
+		DEBUG_INFO_LEVEL_3("On adding instance with vid=%d, already exists, ignoring packet", player.dwVID);
 		return;
 	}
-	DEBUG_INFO_LEVEL_4("Success Adding instance vid=%d!\n", player.dwVID);
+	DEBUG_INFO_LEVEL_4("Success Adding instance vid=%d", player.dwVID);
+
 	Instance i = { 0 };
 	i.vid = player.dwVID;
 	i.angle = player.angle;
@@ -265,7 +259,7 @@ void appendNewInstance(PlayerCreatePacket & player)
 void deleteInstance(DWORD vid)
 {
 	if (instances.find(vid) == instances.end()) {
-	DEBUG_INFO_LEVEL_3("On deleting instance with vid=%d doesn't exists, ignoring packet!\n", vid);
+		DEBUG_INFO_LEVEL_3("On deleting instance with vid=%d doesn't exists, ignoring packet!", vid);
 		return;
 	}
 	PyObject* pVid = PyLong_FromLong(vid);
@@ -282,7 +276,7 @@ void changeInstanceIsDead(DWORD vid, BYTE isDead)
 
 void clearInstances()
 {
-	DEBUG_INFO_LEVEL_2("Instances Cleared\n");
+	DEBUG_INFO_LEVEL_2("Instances Cleared");
 	instances.clear();
 	PyDict_Clear(pyVIDList);
 }
@@ -683,6 +677,18 @@ PyObject* pySendShoot(PyObject* poSelf, PyObject* poArgs) {
 
 }
 
+PyObject* pyBlockFishingPackets(PyObject* poSelf, PyObject* poArgs)
+{
+	SetFishingPacketsBlock(1);
+	return Py_BuildNone();
+}
+
+PyObject* pyUnblockFishingPackets(PyObject* poSelf, PyObject* poArgs)
+{
+	SetFishingPacketsBlock(0);
+	return Py_BuildNone();
+}
+
 
 
 
@@ -712,9 +718,12 @@ static PyMethodDef s_methods[] =
 	{ "SetInFilterMode",		setInFilterMode,	METH_VARARGS },
 	{ "SendAddFlyTarget",		pySendAddFlyTarget,	METH_VARARGS },
 	{ "SendShoot",				pySendShoot,		METH_VARARGS },
+
 #ifdef METIN_GF
 	{ "SendStartFishing",		pySendStartFishing,	METH_VARARGS },
 	{ "SendStopFishing",		pySendStopFishing,	METH_VARARGS },
+	{ "BlockFishingPackets",	pyBlockFishingPackets,	METH_VARARGS },
+	{ "UnblockFishingPackets",	pyUnblockFishingPackets,METH_VARARGS },
 
 	{ "GetPixelPosition",		GetPixelPosition,	METH_VARARGS },
 	{ "MoveToDestPosition",     moveToDestPosition, METH_VARARGS},

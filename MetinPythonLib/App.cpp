@@ -7,9 +7,12 @@
 #include "PythonModule.h"
 #include "Network.h"
 #include "MapCollision.h"
+#include "DetoursHook.h"
 
 
-JMPStartFuncHook* sendHook = 0;
+
+DetoursHook<tSendPacket>* sendHook = 0;
+DetoursHook<tSendSequencePacket>* sendSequenceHook = 0;
 Hook* recvHook = 0;
 Hook* getEtherPacketHook = 0;
 HMODULE hDll = 0;
@@ -90,9 +93,16 @@ void __declspec(naked) __RecvPacketJMP(int size, void* buffer) {
 	}
 }
 
-void  __SendPacketJMP(int size, void* buffer) {
-	__SendPacket(sendHook->getReturnAddress(), size, buffer);
+
+bool __declspec(naked) __SendPacketJMP(int size,void* buffer) {
+	__asm {
+		PUSH sendHook
+		PUSH ECX		//this_call
+		PUSH [ESP+8] //Return address
+		JMP __SendPacket
+	}
 }
+
 
 
 void init() {
@@ -140,11 +150,15 @@ void init() {
 	//Hooks
 	getEtherPacketHook = new ReturnHook(getEtherPackAddr, GetEter, 7, 3);
 	recvHook = new ReturnHook(recvAddr, __RecvPacketJMP, 5, 2);
-	sendHook = new JMPStartFuncHook(sendAddr, __SendPacketJMP, 6, THIS_CALL);
-
+	sendHook = new DetoursHook<tSendPacket>((tSendPacket)sendAddr, __SendPacketJMP);//new JMPStartFuncHook(sendAddr, __SendPacketJMP, 6, THIS_CALL);
+	sendSequenceHook = new DetoursHook<tSendSequencePacket>((tSendSequencePacket)sendSequenceAddr, __SendSequencePacket);
 	recvHook->HookFunction();
 	getEtherPacketHook->HookFunction();
 	sendHook->HookFunction();
+	sendSequenceHook->HookFunction();
+	SetSendFunctionPointer(sendHook->originalFunction);
+	SetSendSequenceFunction(sendSequenceHook->originalFunction);
+
 
 	initModule();
 	delete patternFinder;
@@ -161,6 +175,7 @@ void exit() {
 	delete sendHook;
 	delete recvHook;
 	delete getEtherPacketHook;
+	delete sendSequenceHook;
 
 	freeCurrentMap();
 

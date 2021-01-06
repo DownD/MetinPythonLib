@@ -82,6 +82,8 @@ PyObject* pySendStartFishing(PyObject* poSelf, PyObject* poArgs);
 PyObject* pySendStopFishing(PyObject* poSelf, PyObject* poArgs);
 PyObject* pySendAddFlyTarget(PyObject* poSelf, PyObject* poArgs);
 PyObject* pySendShoot(PyObject* poSelf, PyObject* poArgs);
+PyObject* pyBlockFishingPackets(PyObject* poSelf, PyObject* poArgs);
+PyObject* pyUnblockFishingPackets(PyObject* poSelf, PyObject* poArgs);
 
 //PACKET FILTER
 PyObject* launchPacketFilter(PyObject* poSelf, PyObject* poArgs);

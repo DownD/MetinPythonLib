@@ -98,5 +98,8 @@
     <ClInclude Include="JPS.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="DetoursHook.h">
+      <Filter>HookLib</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
