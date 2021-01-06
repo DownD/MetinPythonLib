@@ -75,6 +75,12 @@ Adds some functions to the python API, and try to inject a script.py from the cu
 
   - \<string\>PATH<br>
     Path of the location where the library was injected<br>
+  
+  - BlockFishingPackets()<br>
+    Blocks client from sending fishing packets (this module will still be able to send)
+    
+  - UnblockFishingPackets()<br>
+    Unblocks client from sending fishing packets.
     
 
 ### Simulation of old functions
