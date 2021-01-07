@@ -28,6 +28,7 @@ Adds some functions to the python API, and try to inject a script.py from the cu
     
   - FindPath(\<int\>x_start,\<int\>y_start,\<int\>x_end,\<int\>y_end) returns \<tuple\>(x,y)<br>
     Finds a path between 2 points using A* Jump Point Search(https://github.com/fgenesis/tinypile) solves any path tested in less then 200ms.<br>
+    The path will not contain the current point.<br>
     
   - SendPacket(\<int\>size,\<bytearray\>buffer) return None<br>
     Sends a packet to the server bypassing any encryption set.<br>
