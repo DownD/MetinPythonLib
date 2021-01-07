@@ -72,15 +72,22 @@ Adds some functions to the python API, and try to inject a script.py from the cu
     Sends an attack packet to the current selected enemy (should be used after SendAddFlyTarget).<br>
     uSkill can be:<br>
     - COMBO_SKILL_ARCH -> Normal attack.
-
+    
+  - BlockFishingPackets()<br>
+    Blocks client from sending fishing packets (this module will still be able to send)<br>
+    
+  - UnblockFishingPackets()<br>
+    Unblocks client from sending fishing packets.<br>
+    
+  - DisableCollisions()<br>
+    Disable client colisions with objects and the terrain (Wallhack).<br>
+    
+  - EnableCollisions()<br>
+    Enable client colisions.<br>
+    
   - \<string\>PATH<br>
     Path of the location where the library was injected<br>
   
-  - BlockFishingPackets()<br>
-    Blocks client from sending fishing packets (this module will still be able to send)
-    
-  - UnblockFishingPackets()<br>
-    Unblocks client from sending fishing packets.
     
 
 ### Simulation of old functions
