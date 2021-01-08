@@ -87,7 +87,8 @@ Adds some functions to the python API, and try to inject a script.py from the cu
     Enable client colisions.<br>
     
   - RegisterNewShopCallback(\<callable_function\>callback)<br>
-    Sets a callback function, that will be called whenever a new private shop is created arround. 
+    Sets a callback function, that will be called whenever a new private shop is created arround.<br>
+    That callback will be called with the shop vid as the first argument.<br>
     
   - \<string\>PATH<br>
     Path of the location where the library was injected<br>
@@ -149,4 +150,4 @@ By default every packet will be shown.
 
 ## Compiler Notes
 
-Python 2.7 (32 biits) needs to be installed in the system (C:/Python27) by default.
+Python 2.7 (32 bits) needs to be installed in the system (C:/Python27) by default.
