@@ -86,6 +86,9 @@ Adds some functions to the python API, and try to inject a script.py from the cu
   - EnableCollisions()<br>
     Enable client colisions.<br>
     
+  - RegisterNewShopCallback(\<callable_function\>callback)<br>
+    Sets a callback function, that will be called whenever a new private shop is created arround. 
+    
   - \<string\>PATH<br>
     Path of the location where the library was injected<br>
   
