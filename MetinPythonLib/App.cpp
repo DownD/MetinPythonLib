@@ -10,15 +10,22 @@
 #include "DetoursHook.h"
 
 
-
-DetoursHook<tSendPacket>* sendHook = 0;
+DetoursHook<tBackground_CheckAdvancing>* background_CheckAdvHook = 0;
+DetoursHook<tInstanceBase_CheckAdvancing>* instanceBase_CheckAdvHook = 0;
 DetoursHook<tSendSequencePacket>* sendSequenceHook = 0;
+DetoursHook<tSendPacket>* sendHook = 0;
 Hook* recvHook = 0;
 Hook* getEtherPacketHook = 0;
 HMODULE hDll = 0;
 
 
 namespace memory_patterns {
+
+	//From CPythonBackground::CheckAdvancing
+	Pattern Background_CheckAdvancingFunc= Pattern("BackGround::CheckAdvancing", 0, "\x55\x8b\xec\x6a\x00\x68\x00\x00\x00\x00\x64\xa1\x00\x00\x00\x00\x50\x83\xec\x00\xa1\x00\x00\x00\x00\x33\xc5\x50\x8d\x45\x00\x64\xa3\x00\x00\x00\x00\x89\x4d\x00\x8b\x4d\x00\xe8\x00\x00\x00\x00\x0f\xb6\x00\x85\xc0\x75\x00\xb0", "xxxx?x????xx????xxx?x????xxxxx?xx????xx?xx?x????xx?xxx?x");
+
+	//From CInstanceBase::CheckAdvancing
+	Pattern Instance_CheckAdvancingFunc = Pattern("Instance::CheckAdvancing", 0, "\x55\x8b\xec\x81\xec\x00\x00\x00\x00\x89\x8d\x00\x00\x00\x00\x8b\x8d\x00\x00\x00\x00\xe8\x00\x00\x00\x00\x0f\xb6\x00\x85\xc0\x0f\x85", "xxxxx????xx????xx????x????xx?xxxx");
 
 	//From CPythonCharacterManager::Instance()
 	//https://gyazo.com/7fee4a91c3432b3ba859627612e21dce
@@ -129,6 +136,8 @@ void init() {
 	void* moveToDestAddr = patternFinder->GetPatternAddress(&memory_patterns::moveToDest);
 	void* localToGlobalPositionPointer = patternFinder->GetPatternAddress(&memory_patterns::localToGlobalPositionFunction);
 	void* globalToLocalPositionPointer = patternFinder->GetPatternAddress(&memory_patterns::globalToLocalPositionFunction);
+	void* Background_CheckAdvancingFuncPointer = patternFinder->GetPatternAddress(&memory_patterns::Background_CheckAdvancingFunc);
+	void* Instance_CheckAdvancingFuncPointer = patternFinder->GetPatternAddress(&memory_patterns::Instance_CheckAdvancingFunc);
 	globalToLocalPositionPointer = getRelativeCallAddress(globalToLocalPositionPointer);
 
 
@@ -152,10 +161,20 @@ void init() {
 	recvHook = new ReturnHook(recvAddr, __RecvPacketJMP, 5, 2);
 	sendHook = new DetoursHook<tSendPacket>((tSendPacket)sendAddr, __SendPacketJMP);//new JMPStartFuncHook(sendAddr, __SendPacketJMP, 6, THIS_CALL);
 	sendSequenceHook = new DetoursHook<tSendSequencePacket>((tSendSequencePacket)sendSequenceAddr, __SendSequencePacket);
+	background_CheckAdvHook = new DetoursHook<tBackground_CheckAdvancing>((tBackground_CheckAdvancing)Background_CheckAdvancingFuncPointer, __BackgroundCheckAdvanced);
+	instanceBase_CheckAdvHook = new DetoursHook<tInstanceBase_CheckAdvancing>((tInstanceBase_CheckAdvancing)Instance_CheckAdvancingFuncPointer, __InstanceBaseCheckAdvanced);
+
+
 	recvHook->HookFunction();
 	getEtherPacketHook->HookFunction();
 	sendHook->HookFunction();
 	sendSequenceHook->HookFunction();
+
+	//This hooks are initialize in the respective function
+	SetBCheckAdvanceFunction(background_CheckAdvHook);
+	SetICheckAdvanceFunction(instanceBase_CheckAdvHook);
+
+	//THIS MAY CRASH
 	SetSendFunctionPointer(sendHook->originalFunction);
 	SetSendSequenceFunction(sendSequenceHook->originalFunction);
 
@@ -172,6 +191,8 @@ void exit() {
 	if (recvHook)
 		recvHook->UnHookFunction();
 
+	delete background_CheckAdvHook;
+	delete instanceBase_CheckAdvHook;
 	delete sendHook;
 	delete recvHook;
 	delete getEtherPacketHook;

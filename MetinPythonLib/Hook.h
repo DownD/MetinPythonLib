@@ -11,6 +11,7 @@ public:
 	virtual bool HookFunction() = 0;
 	virtual bool UnHookFunction() = 0;
 
+
 	virtual ~Hook() {};
 
 

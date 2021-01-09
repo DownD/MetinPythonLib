@@ -14,10 +14,15 @@
 #include "Network.h"
 
 
+//Deprecated
 #define OFFSET_CLIENT_ALIVE_MAP 0x38
 #define OFFSET_CLIENT_INSTANCE_PTR_1 0x4
 #define OFFSET_CLIENT_INSTANCE_PTR_2 0x8
 #define OFFSET_CLIENT_CHARACTER_POS 0x7BC
+
+//Private Shops Race | possible update pass this check python
+#define MIN_RACE_SHOP 30000
+#define MAX_RACE_SHOP 30008
 
 
 /*SELECT THE METHOD USED TO INJECT THE PYTHON FILE, UNCOMMENT ONLY ONE*/
@@ -84,6 +89,10 @@ PyObject* pySendAddFlyTarget(PyObject* poSelf, PyObject* poArgs);
 PyObject* pySendShoot(PyObject* poSelf, PyObject* poArgs);
 PyObject* pyBlockFishingPackets(PyObject* poSelf, PyObject* poArgs);
 PyObject* pyUnblockFishingPackets(PyObject* poSelf, PyObject* poArgs);
+PyObject* pyDisableCollisions(PyObject* poSelf, PyObject* poArgs);
+PyObject* pyEnableCollisions(PyObject* poSelf, PyObject* poArgs);
+PyObject* pyRegisterNewShopCallback(PyObject* poSelf, PyObject* poArgs);
+
 
 //PACKET FILTER
 PyObject* launchPacketFilter(PyObject* poSelf, PyObject* poArgs);
@@ -117,6 +126,7 @@ EterFile* CGetEter(const char* name);
 void changeInstancePosition(CharacterStatePacket& packet_move);
 void changeInstancePosition(CharacterMovePacket & packet_move);
 void appendNewInstance(PlayerCreatePacket & player);
+void registerNewInstanceShop(DWORD player);
 void deleteInstance(DWORD vid);
 void changeInstanceIsDead(DWORD vid, BYTE isDead);
 void clearInstances();

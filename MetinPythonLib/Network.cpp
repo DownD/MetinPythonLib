@@ -29,7 +29,21 @@ tSendAttackPacket fSendAttackPacket;
 tSendPacket fSendPacket;
 tSendSequencePacket fSendSequencePacket;
 tGlobalToLocalPosition fGlobalToLocalPosition;
+
 DWORD *networkclassPointer;
+
+//For wallhack
+/*
+WALLHACK
+Note: it is possible to hook 1 more function and have wllhack divided for terrain, monsters and buildings by using
+__TestObjectCollision,TestActorCollision, for buildings and monsters
+,
+*/
+DetoursHook<tBackground_CheckAdvancing>* backGroundCheckAdvanceHook = 0;
+DetoursHook<tInstanceBase_CheckAdvancing>* instanceBaseCheckAdvanceHook = 0;
+
+bool wallHackBuildings = 0;
+bool wallHackTerrainMonsters = 0;
 
 //If true, fishing packets will be blocked
 bool blockFishingPackets = 0;
@@ -131,6 +145,8 @@ void __stdcall executeScript() {
 	executePythonFile((char*)"script.py");
 }
 
+
+
 bool __stdcall __RecvPacket(DWORD return_function,bool return_value,int size, void* buffer) {
 	executeTimerFunctions();
 #ifdef USE_INJECTION_RECV_HOOK
@@ -153,6 +169,26 @@ bool __stdcall __RecvPacket(DWORD return_function,bool return_value,int size, vo
 		}
 
 		switch (packet.header) {
+
+		/*case HEADER_GC_SHOP_SIGN: {
+			if (packet.data_size < 4) {
+				break;
+			}
+			RegisterShopPacket instance;
+			fillPacket(&packet, &instance);
+			registerNewInstanceShop(instance.dwVID);
+			return return_function;
+			break;
+		}*/
+		case HEADER_GC_FISHING: {
+			if (blockFishingPackets) {
+				if (packet.data_size >= 1 && (packet.data[0] == 0x0 || packet.data[0] == 0x4)) { //This is for refresh the inventory window
+					return false;
+				}
+				return return_function;
+			}
+			break;
+		}
 		case HEADER_GC_CHARACTER_ADD: {
 			if (packet.data_size == 0) {
 				break;
@@ -355,6 +391,24 @@ bool __fastcall __SendSequencePacket(DWORD classPointer)
 	return fSendSequencePacket(classPointer);
 }
 
+//return 0 to ignore collisions
+bool __fastcall __BackgroundCheckAdvanced(DWORD classPointer, DWORD EDX, void* instanceBase)
+{
+	if (wallHackBuildings)
+		return false;
+	else
+		return backGroundCheckAdvanceHook->originalFunction(classPointer,instanceBase);
+}
+
+//return 0 to ignore collisions
+bool __fastcall __InstanceBaseCheckAdvanced(DWORD classPointer)
+{
+	if (wallHackTerrainMonsters)
+		return false;
+	else
+		return instanceBaseCheckAdvanceHook->originalFunction(classPointer);
+}
+
 int getCurrentPhase()
 {
 	return gamePhase;
@@ -401,9 +455,31 @@ void SetLocalToGlobalFunction(void* func)
 	fLocalToGlobalPosition = (tLocalToGlobalPosition)func;
 }
 
+void SetBCheckAdvanceFunction(DetoursHook<tBackground_CheckAdvancing>* hook)
+{
+	backGroundCheckAdvanceHook = hook;
+	backGroundCheckAdvanceHook->HookFunction();
+}
+
+void SetICheckAdvanceFunction(DetoursHook<tInstanceBase_CheckAdvancing>* hook)
+{
+	instanceBaseCheckAdvanceHook = hook;
+	instanceBaseCheckAdvanceHook->HookFunction();
+}
+
 void SetFishingPacketsBlock(bool val)
 {
 	blockFishingPackets = val;
+}
+
+void SetBuildingWallHack(bool val)
+{
+	wallHackBuildings = val;
+}
+
+void SetMonsterTerrainWallHack(bool val)
+{
+	wallHackTerrainMonsters = val;
 }
 
 Packet::Packet(int size, void * buffer)

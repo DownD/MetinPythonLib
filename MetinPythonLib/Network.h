@@ -7,6 +7,10 @@
 
 typedef bool(__thiscall *tSendPacket)(DWORD classPointer, int size, void* buffer);
 typedef bool(__thiscall* tSendSequencePacket)(DWORD classPointer);
+typedef bool(__thiscall* tBackground_CheckAdvancing)(DWORD classPointer, void* instanceBase);
+typedef bool(__thiscall* tInstanceBase_CheckAdvancing)(DWORD classPointer);
+
+
 enum {
 	CHAR_STATE_FUNC_STOP = 0,
 	CHAR_STATE_FUNC_WALK = 1,
@@ -35,15 +39,25 @@ enum {
 	PHASE_GAME = 5
 };
 
+
+
+
 namespace PacketHeaders {
 	enum {
 		//FROM SERVER
 		HEADER_GC_CHARACTER_ADD = 125,
+		//HEADER_GC_MAIN_CHARACTER_MOVE = 11,
 		HEADER_GC_CHARACTER_DEL = 84,
+		//HEADER_GC_ITEM_USE = 86, Mostelikely chat
 		HEADER_GC_DEAD = 124,
 		HEADER_GC_PHASE = 255,
 		HEADER_GC_CHARACTER_MOVE = 85,
 		HEADER_GC_MAIN_CHARACTER = 75,
+		HEADER_GC_CHAT = 121,
+		HEADER_GC_FISHING = 42,
+		HEADER_GC_SHOP_SIGN = 26,
+		//91 SEND CHAT INFO
+		//130 Something related to invetory counter
 
 
 		//TO SERVER
@@ -90,6 +104,11 @@ struct CharacterStatePacket
 	LONG		lX;
 	LONG		lY;
 	DWORD		dwTime;
+};
+
+struct RegisterShopPacket
+{
+	DWORD		dwVID;
 };
 
 struct AddFlyTargetingPacket
@@ -160,12 +179,12 @@ struct PlayerCreatePacket {
 
 	//DEFAULT
 	DWORD	dwVID;
-	//DWORD	dwLevel;
-	//DWORD	dwAIFlag;
 	float	angle;
 	long	x;
 	long	y;
 	long	z;
+	DWORD	dwLevel;
+	WORD	uknown;
 	BYTE	bType;
 	WORD	wRaceNum;
 	BYTE	bMovingSpeed;
@@ -213,6 +232,8 @@ std::set<BYTE>* getPacketFilter(PACKET_TYPE t);
 bool __stdcall __RecvPacket(DWORD returnFunction, bool return_value, int size, void* buffer);
 bool __stdcall __SendPacket(DWORD classPointer,DetoursHook<tSendPacket>* hook, void* retAddress,int size, void*buffer);
 bool __fastcall __SendSequencePacket(DWORD classPointer);
+bool __fastcall __BackgroundCheckAdvanced(DWORD classPointer, DWORD EDX, void* instanceBase); //waithack buildings
+bool __fastcall __InstanceBaseCheckAdvanced(DWORD classPointer);//waithack envoirnment_monsters 
 
 
 //SendPacket Functions
@@ -224,10 +245,11 @@ bool SendAddFlyTargetingPacket(DWORD dwTargetVID, float x, float y);
 bool SendShootPacket(BYTE uSkill);
 bool SendStartFishing(WORD direction);
 bool SendStopFishing(BYTE type, float timeLeft);
-void GlobalToLocalPosition(long& lx, long& ly);
-void LocalToGlobalPosition(LONG& rLocalX, LONG& rLocalY);
+
 int getCurrentPhase();
 DWORD getMainCharacterVID();
+void GlobalToLocalPosition(long& lx, long& ly);
+void LocalToGlobalPosition(LONG& rLocalX, LONG& rLocalY);
 
 
 //Setters
@@ -238,9 +260,15 @@ void SetSendStatePacket(void* func);
 void SetGlobalToLocalFunction(void* func);
 void SetSendSequenceFunction(void* func);
 void SetLocalToGlobalFunction(void* func);
+void SetBCheckAdvanceFunction(DetoursHook<tBackground_CheckAdvancing>* hook);
+void SetICheckAdvanceFunction(DetoursHook<tInstanceBase_CheckAdvancing>* hook);
 
+//Blocks client from send fishing packets
 void SetFishingPacketsBlock(bool val); //1 block packets, 0 do not block packets
 
+//WallHack
+void SetBuildingWallHack(bool val); //1 turn on wallhack
+void SetMonsterTerrainWallHack(bool val); //1 turn on wallhack
 
 
 

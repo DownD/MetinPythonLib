@@ -14,7 +14,6 @@ public:
 	bool HookFunction(){
 		DetourTransactionBegin();
 		DetourUpdateThread(GetCurrentThread());
-		printf("Addr1: %#x", &originalFunction);
 		DetourAttach(&(PVOID&)originalFunction, redirection);
 
 		LONG lError = DetourTransactionCommit();

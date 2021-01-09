@@ -22,6 +22,8 @@ std::map<DWORD, void*>* clientInstanceMap; //Not working
 DWORD* characterManagerClassPointer;
 DWORD characterManagerSubClass;
 
+//CallBacks Functions
+PyObject* shopRegisterCallback = 0;
 
 //SYNCRONIZATION
 static bool executeFile = false;
@@ -248,12 +250,45 @@ void appendNewInstance(PlayerCreatePacket & player)
 	i.bMovingSpeed = player.bMovingSpeed;
 	i.wRaceNum = player.wRaceNum;
 	i.bStateFlag = player.bStateFlag;
+	DEBUG_INFO_LEVEL_3("Success Adding instance race=%d, state=%d", player.wRaceNum, player.bStateFlag);
+
+	if (i.wRaceNum >= MIN_RACE_SHOP && i.wRaceNum <= MAX_RACE_SHOP) {
+		registerNewInstanceShop(player.dwVID);
+	}
 
 	instances[player.dwVID] = i;
 
 	PyObject* pVid = PyLong_FromLong(player.dwVID);
 	PyDict_SetItem(pyVIDList, pVid, pVid);
 
+}
+
+void registerNewInstanceShop(DWORD player)
+{
+	//call python callback
+	DEBUG_INFO_LEVEL_3("Checking Callback VID->",player);
+	if (shopRegisterCallback && PyCallable_Check(shopRegisterCallback)) {
+		DEBUG_INFO_LEVEL_3("Calling python RegisterShopCallback");
+		PyObject* val = Py_BuildValue("(i)", player);
+		PyObject_CallObject(shopRegisterCallback, val);
+		Py_XDECREF(val);
+	}
+
+	/* Appears that there is always an character append packet after shop creation
+	* So append to instances is not needed
+	if (instances.find(player) != instances.end()) {
+		DEBUG_INFO_LEVEL_3("On adding instance shop with vid=%d, already exists, ignoring packet", player);
+		return;
+	}
+	DEBUG_INFO_LEVEL_3("Success Adding instance shop vid=%d", player);
+
+	Instance i = { 0 };
+	i.vid = player;
+
+	instances[player] = i;
+
+	PyObject* pVid = PyLong_FromLong(player);
+	PyDict_SetItem(pyVIDList, pVid, pVid);*/
 }
 
 void deleteInstance(DWORD vid)
@@ -689,6 +724,40 @@ PyObject* pyUnblockFishingPackets(PyObject* poSelf, PyObject* poArgs)
 	return Py_BuildNone();
 }
 
+PyObject* pyDisableCollisions(PyObject* poSelf, PyObject* poArgs)
+{
+	SetBuildingWallHack(1);
+	SetMonsterTerrainWallHack(1);
+	return Py_BuildNone();
+}
+
+PyObject* pyEnableCollisions(PyObject* poSelf, PyObject* poArgs)
+{
+	SetBuildingWallHack(0);
+	SetMonsterTerrainWallHack(0);
+	return Py_BuildNone();
+}
+
+PyObject* pyRegisterNewShopCallback(PyObject* poSelf, PyObject* poArgs)
+{
+	if (!PyTuple_GetObject(poArgs, 0, &shopRegisterCallback)) {
+		shopRegisterCallback = 0;
+		return Py_BuildException();
+	}
+
+	if (!PyCallable_Check(shopRegisterCallback)) {
+		DEBUG_INFO_LEVEL_1("RegisterNewShopCallback argument is not a function");
+		Py_DECREF(shopRegisterCallback);
+		shopRegisterCallback = 0;
+		return Py_BuildException();
+	}
+
+	DEBUG_INFO_LEVEL_2("RegisterNewShopCallback function set sucessfully");
+
+	return Py_BuildNone();
+	
+}
+
 
 
 
@@ -703,6 +772,7 @@ static PyMethodDef s_methods[] =
 	{ "SendAttackPacket",		pySendAttackPacket,	METH_VARARGS },
 	{ "SendStatePacket",		pySendStatePacket,	METH_VARARGS },
 	{ "IsDead",					pyIsDead,			METH_VARARGS },
+
 	{ "LaunchPacketFilter",		launchPacketFilter,	METH_VARARGS },
 	{ "ClosePacketFilter",		closePacketFilter,	METH_VARARGS },
 	{ "StartPacketFilter",		startPacketFilter,	METH_VARARGS },
@@ -716,8 +786,13 @@ static PyMethodDef s_methods[] =
 	{ "ClearOutFilter",			clearOutFilter,		METH_VARARGS },
 	{ "SetOutFilterMode",		setOutFilterMode,	METH_VARARGS },
 	{ "SetInFilterMode",		setInFilterMode,	METH_VARARGS },
+
 	{ "SendAddFlyTarget",		pySendAddFlyTarget,	METH_VARARGS },
 	{ "SendShoot",				pySendShoot,		METH_VARARGS },
+	{ "EnableCollisions",		pyEnableCollisions,	METH_VARARGS },
+	{ "DisableCollisions",		pyDisableCollisions,METH_VARARGS },
+
+	{ "RegisterNewShopCallback",pyRegisterNewShopCallback,METH_VARARGS },
 
 #ifdef METIN_GF
 	{ "SendStartFishing",		pySendStartFishing,	METH_VARARGS },

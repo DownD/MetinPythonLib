@@ -148,7 +148,7 @@
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>Shlwapi.lib;python27.lib;%(AdditionalDependencies);detours.lib</AdditionalDependencies>
+      <AdditionalDependencies>Shlwapi.lib;python27.lib;%(AdditionalDependencies);detours.lib;AAPathPlaning.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>C:\Python27\libs;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
