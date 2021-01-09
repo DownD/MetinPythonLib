@@ -28,6 +28,7 @@ Adds some functions to the python API, and try to inject a script.py from the cu
     
   - FindPath(\<int\>x_start,\<int\>y_start,\<int\>x_end,\<int\>y_end) returns \<tuple\>(x,y)<br>
     Finds a path between 2 points using A* Jump Point Search(https://github.com/fgenesis/tinypile) solves any path tested in less then 200ms.<br>
+    The path will not contain the current point.<br>
     
   - SendPacket(\<int\>size,\<bytearray\>buffer) return None<br>
     Sends a packet to the server bypassing any encryption set.<br>
@@ -72,15 +73,26 @@ Adds some functions to the python API, and try to inject a script.py from the cu
     Sends an attack packet to the current selected enemy (should be used after SendAddFlyTarget).<br>
     uSkill can be:<br>
     - COMBO_SKILL_ARCH -> Normal attack.
-
+    
+  - BlockFishingPackets()<br>
+    Blocks client from sending fishing packets (this module will still be able to send)<br>
+    
+  - UnblockFishingPackets()<br>
+    Unblocks client from sending fishing packets.<br>
+    
+  - DisableCollisions()<br>
+    Disable client colisions with objects and the terrain (Wallhack).<br>
+    
+  - EnableCollisions()<br>
+    Enable client colisions.<br>
+    
+  - RegisterNewShopCallback(\<callable_function\>callback)<br>
+    Sets a callback function, that will be called whenever a new private shop is created arround.<br>
+    That callback will be called with the shop vid as the first argument.<br>
+    
   - \<string\>PATH<br>
     Path of the location where the library was injected<br>
   
-  - BlockFishingPackets()<br>
-    Blocks client from sending fishing packets (this module will still be able to send)
-    
-  - UnblockFishingPackets()<br>
-    Unblocks client from sending fishing packets.
     
 
 ### Simulation of old functions
@@ -138,4 +150,4 @@ By default every packet will be shown.
 
 ## Compiler Notes
 
-Python 2.7 (32 biits) needs to be installed in the system (C:/Python27) by default.
+Python 2.7 (32 bits) needs to be installed in the system (C:/Python27) by default.
