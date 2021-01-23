@@ -95,6 +95,12 @@ Adds some functions to the python API, and try to inject a script.py from the cu
 ### Simulation of old functions
 These simulates the functions that were removed from the modules by Gameforge.
 
+  - SetKeyState(\<int\>key,\<int\>pressed)<br>
+    Set's a key state from [this list](https://docs.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes), if pressed is 1 is set as pressed otherwise will set has released.
+
+  - SetAttackKeyState(\<int\>pressed)<br>
+    Set's attack key as pressed if pressed is 1, otherwise will stop attacking.
+
   - GetPixelPosition(\<int\>vid) returns a tupple (x,y,z)<br>
     Returns the position of the player by vid
 
