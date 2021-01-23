@@ -23,9 +23,6 @@ Adds some functions to the python API, and try to inject a script.py from the cu
     Note: For better pathfinding, unblocked points that are close(1 unit) to a blocked point, are considered blocked too.<br>
     There is a bug with objects, since i can't figure out how to load the objects.
     
-  - GetCurrentPhase() returns \<int\><br>
-    Allows to get the current phase in integer format.<br>
-    
   - FindPath(\<int\>x_start,\<int\>y_start,\<int\>x_end,\<int\>y_end) returns \<tuple\>(x,y)<br>
     Finds a path between 2 points using A* Jump Point Search(https://github.com/fgenesis/tinypile) solves any path tested in less then 200ms.<br>
     The path will not contain the current point.<br>
