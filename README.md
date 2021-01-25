@@ -93,6 +93,7 @@ Adds some functions to the python API, and try to inject a script.py from the cu
   - GetCloseItemGround(\<int\>x,\<int\>y) returns a tupple (\<int\>vid,\<int\>x,\<int\>y)<br>
     Returns the closest pickable item in the ground relative to the position given.<br>
     The items will be fitler acording to the pickup filter (see below).<br>
+    Also, it will ignore items owned by other player.
 
   - SendPickupItem(\<int\>itemVID)<br>
     Sends a packet to pickup an item from the ground<br>
