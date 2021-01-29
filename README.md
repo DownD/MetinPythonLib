@@ -23,9 +23,6 @@ Adds some functions to the python API, and try to inject a script.py from the cu
     Note: For better pathfinding, unblocked points that are close(1 unit) to a blocked point, are considered blocked too.<br>
     There is a bug with objects, since i can't figure out how to load the objects.
     
-  - GetCurrentPhase() returns \<int\><br>
-    Allows to get the current phase in integer format.<br>
-    
   - FindPath(\<int\>x_start,\<int\>y_start,\<int\>x_end,\<int\>y_end) returns \<tuple\>(x,y)<br>
     Finds a path between 2 points using A* Jump Point Search(https://github.com/fgenesis/tinypile) solves any path tested in less then 200ms.<br>
     The path will not contain the current point.<br>
@@ -92,6 +89,33 @@ Adds some functions to the python API, and try to inject a script.py from the cu
     
   - \<string\>PATH<br>
     Path of the location where the library was injected<br>
+
+  - GetCloseItemGround(\<int\>x,\<int\>y) returns a tupple (\<int\>vid,\<int\>x,\<int\>y)<br>
+    Returns the closest pickable item in the ground relative to the position given.<br>
+    The items will be fitler acording to the pickup filter (see below).<br>
+    Also, it will ignore items owned by other player.
+
+  - SendPickupItem(\<int\>itemVID)<br>
+    Sends a packet to pickup an item from the ground<br>
+    
+### Pickup Filter
+A filter o be applied when calling GetCloseItemGround, by default the filter is set to pick items not present in filter.
+
+  - ItemGrndDelFilter(\<int\> index)<br>
+    Delets an item id from the filter.
+
+  - ItemGrndAddFilter(\<int\> index)<br>
+    Adds an item id to the filter.
+
+  - ItemGrndOnFilter()<br>
+    Changes the filter mode, to only return items in the filter.
+
+  - ItemGrndNotOnFilter()<br>
+    Changes the filter mode, to ignore all items present in the filter.
+
+  - ItemGrndFilterClear()<br>
+    Deletes every item in the filter.
+   
   
     
 
