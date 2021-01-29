@@ -8,8 +8,12 @@
 #endif
 #include <windows.h>
 #include <string>
+#include <iostream>
+#include <set>
 #define SET_EXCEPTION(x) PyErr_SetString(PyExc_RuntimeError, #x)
 
+
+bool PyTuple_GetIntSet(PyObject* poArgs, int pos, std::set<DWORD>* arr);
 bool PyTuple_GetByteArray(PyObject* poArgs, int pos, BYTE** arr); //CALLER IS RESPONSIBLE FOR FREEING MEMORY
 bool PyTuple_GetString(PyObject* poArgs, int pos, char** ret);
 bool PyTuple_GetInteger(PyObject* poArgs, int pos, unsigned char* ret);

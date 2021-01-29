@@ -162,6 +162,7 @@ bool PyTuple_GetUnsignedInteger(PyObject* poArgs, int pos, unsigned int* ret)
 	return true;
 }
 
+
 bool PyTuple_GetByteArray(PyObject * poArgs, int pos, BYTE ** arr)
 {
 	if (pos >= PyTuple_Size(poArgs))

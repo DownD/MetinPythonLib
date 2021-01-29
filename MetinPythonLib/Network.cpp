@@ -14,7 +14,7 @@ std::set<BYTE> inbound_header_filter;
 std::set<BYTE> outbound_header_filter;
 
 using namespace PacketHeaders;
-static int gamePhase = 0;
+int gamePhase = 0;
 DWORD mainCharacterVID = 0;
 
 typedef bool(__thiscall* tGlobalToLocalPosition)(DWORD classPointer, long& lx, long& ly);
@@ -169,17 +169,6 @@ bool __stdcall __RecvPacket(DWORD return_function,bool return_value,int size, vo
 		}
 
 		switch (packet.header) {
-
-		/*case HEADER_GC_SHOP_SIGN: {
-			if (packet.data_size < 4) {
-				break;
-			}
-			RegisterShopPacket instance;
-			fillPacket(&packet, &instance);
-			registerNewInstanceShop(instance.dwVID);
-			return return_function;
-			break;
-		}*/
 		case HEADER_GC_FISHING: {
 			if (blockFishingPackets) {
 				if (packet.data_size >= 1 && (packet.data[0] == 0x0 || packet.data[0] == 0x4)) { //This is for refresh the inventory window
@@ -187,6 +176,19 @@ bool __stdcall __RecvPacket(DWORD return_function,bool return_value,int size, vo
 				}
 				return return_function;
 			}
+			break;
+		}
+		case HEADER_GC_ITEM_GROUND_ADD: {
+			GroundItemAddPacket instance;
+			fillPacket(&packet, &instance);
+			GlobalToLocalPosition(instance.x, instance.y);
+			addItemGround(instance);
+			break;
+		}
+		case HEADER_GC_ITEM_GROUND_DEL: {
+			GroundItemDeletePacket instance;
+			fillPacket(&packet, &instance);
+			delItemGround(instance);
 			break;
 		}
 		case HEADER_GC_CHARACTER_ADD: {
@@ -221,8 +223,11 @@ bool __stdcall __RecvPacket(DWORD return_function,bool return_value,int size, vo
 		case HEADER_GC_PHASE: {
 			ChangePhasePacket phase;
 			fillPacket(&packet, &phase);
+			if (size != 2 || phase.phase == 1 || phase.phase == 10 || phase.phase == 2) //The server sends strange 2 packets values(1,10), that disrupt the fase check
+				break;
 			//printf("Phase Change %d\n",phase.phase);
 			gamePhase = phase.phase;
+			DEBUG_INFO_LEVEL_2("Phased changed to: %d", gamePhase);
 			if (phase.phase == PHASE_LOADING) {
 				clearInstances();
 				freeCurrentMap();
@@ -332,6 +337,16 @@ bool SendStopFishing(BYTE type, float timeLeft)
 	packet.type = type;
 	packet.timeLeft = timeLeft;
 	if (SendPacket(sizeof(StopFishing), &packet))
+		return SendSequencePacket();
+
+	return false;
+}
+
+bool SendPickupItemPacket(DWORD vid)
+{
+	PickupPacket packet;
+	packet.vid = vid;
+	if (SendPacket(sizeof(PickupPacket), &packet))
 		return SendSequencePacket();
 
 	return false;

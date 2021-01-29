@@ -8,10 +8,12 @@ public:
 	DetoursHook(hookedFunc funcToHook, void* redirection) {
 		originalFunction = funcToHook;
 		this->redirection = redirection;
-		isHooked = 1;
+		isHooked = 0;
 	}
 
 	bool HookFunction(){
+		if (isHooked)
+			return true;
 		DetourTransactionBegin();
 		DetourUpdateThread(GetCurrentThread());
 		DetourAttach(&(PVOID&)originalFunction, redirection);
@@ -26,6 +28,8 @@ public:
 	}
 
 	bool UnHookFunction(){
+		if (!isHooked)
+			return true;
 		DetourTransactionBegin();
 		DetourUpdateThread(GetCurrentThread());
 		DetourDetach(&(PVOID&)originalFunction, redirection);

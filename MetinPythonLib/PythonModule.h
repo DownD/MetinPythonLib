@@ -15,12 +15,12 @@
 
 
 //Deprecated
-#define OFFSET_CLIENT_ALIVE_MAP 0x38
+//#define OFFSET_CLIENT_ALIVE_MAP 0x38
 #define OFFSET_CLIENT_INSTANCE_PTR_1 0x4
 #define OFFSET_CLIENT_INSTANCE_PTR_2 0x8
 #define OFFSET_CLIENT_CHARACTER_POS 0x7BC
 
-//Private Shops Race | possible update pass this check python
+//Private Shops Race 
 #define MIN_RACE_SHOP 30000
 #define MAX_RACE_SHOP 30008
 
@@ -77,7 +77,7 @@ PyObject* moveToDestPosition(PyObject* poSelf, PyObject* poArgs);
 
 PyObject* GetEterPacket(PyObject * poSelf, PyObject * poArgs);
 PyObject* IsPositionBlocked(PyObject * poSelf, PyObject * poArgs);
-PyObject* GetCurrentPhase(PyObject * poSelf, PyObject * poArgs);
+//PyObject* GetCurrentPhase(PyObject * poSelf, PyObject * poArgs);
 PyObject* GetAttrByte(PyObject * poSelf, PyObject * poArgs); //Debug purposes
 PyObject* pySendAttackPacket(PyObject * poSelf, PyObject * poArgs);
 PyObject* pySendStatePacket(PyObject * poSelf, PyObject * poArgs);
@@ -92,6 +92,16 @@ PyObject* pyUnblockFishingPackets(PyObject* poSelf, PyObject* poArgs);
 PyObject* pyDisableCollisions(PyObject* poSelf, PyObject* poArgs);
 PyObject* pyEnableCollisions(PyObject* poSelf, PyObject* poArgs);
 PyObject* pyRegisterNewShopCallback(PyObject* poSelf, PyObject* poArgs);
+
+PyObject* pyItemGrndFilterClear(PyObject* poSelf, PyObject* poArgs);
+PyObject* pyItemGrndNotOnFilter(PyObject* poSelf, PyObject* poArgs);
+PyObject* pyItemGrndOnFilter(PyObject* poSelf, PyObject* poArgs);
+PyObject* pyItemGrndAddFilter(PyObject* poSelf, PyObject* poArgs);
+PyObject* pyItemGrndDelFilter(PyObject* poSelf, PyObject* poArgs);
+PyObject* pyGetCloseItemGround(PyObject* poSelf, PyObject* poArgs);
+PyObject* pySendPickupItem(PyObject* poSelf, PyObject* poArgs);
+
+//PyObject* pySetKeyState(PyObject* poSelf, PyObject* poArgs); //There is a similar function, OnKeyUp or OnKeyDown
 
 
 //PACKET FILTER
@@ -123,12 +133,13 @@ void _RecvRoutine();
 EterFile* CGetEter(const char* name);
 
 //Instances
-void changeInstancePosition(CharacterStatePacket& packet_move);
 void changeInstancePosition(CharacterMovePacket & packet_move);
 void appendNewInstance(PlayerCreatePacket & player);
-void registerNewInstanceShop(DWORD player);
+//void registerNewInstanceShop(DWORD player);
 void deleteInstance(DWORD vid);
 void changeInstanceIsDead(DWORD vid, BYTE isDead);
+void addItemGround(GroundItemAddPacket& item);
+void delItemGround(GroundItemDeletePacket& item);
 void clearInstances();
 
 bool getCharacterPosition(DWORD vid, fPoint3D* pos);

@@ -148,6 +148,23 @@ By default every packet will be shown.
     Changes filter mode for incoming packets, if set to 1, it will shows all packets that  correspond to the filter, if set to 0 it will show all packets that are not within the filter
 
 
+## Login GF Analisys
+
+Login is composed by two parts:
+- The more complex one is made first, after the handshake has been sucessfully done, the server sends a change phase packet
+at which the server responds with a specific AuthTicket, this ticket will be get by diferent APIs depending if it is steam or GF.
+https://gyazo.com/a309e4169927ad41009e07cab33b240e
+All this is done in the function "__AuthState_RecvPhase"
+To diferentiate both, there is a global static variable that is evaluated, if this variable is 1 it uses steam, if it is 2 uses GF.
+- - On Steam, it will query SteamAPI dll for a SessionID https://gyazo.com/5ad23d77a38d870338c98f112df2741a
+- - On GF this gets more complex, it will first create an user from psw_tnt.dll and then will call a function from the same dll, which will enventually call
+    "gfc_queryAuthorizationCode" from gameforge_api https://gyazo.com/f341f42ac6fa9ab242ba9c3aaea6f204.
+
+After this it will encrypt the packet with specific keys stored in memory, and will send it.
+
+- The second part, will simply login with the id of the account and some keys stored on memory, using function SendLoginPacket https://gyazo.com/a6cab4d1ef05feec184f4a70c56b4ece
+
+
 ## Compiler Notes
 
 Python 2.7 (32 bits) needs to be installed in the system (C:/Python27) by default.

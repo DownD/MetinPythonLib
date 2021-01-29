@@ -5,7 +5,8 @@
 #include <string>
 #include <sstream> 
 #include <chrono>
-#include <ctime>    
+#include <ctime>
+#include <math.h>
 
 bool isDebugEnable();
 void setDebugOn();
@@ -128,8 +129,12 @@ private:
 
 };
 
+inline float distance(float x1, float y1, float x2, float y2) {
+	return sqrt((x2 - x1) * (x2 - x1)) + ((y2 - y1) * (y2 - y1));
+}
+
 struct Point {
-	Point(int x, int y) : x(x), y(y){}
+	Point(int x=0, int y=0) : x(x), y(y){}
 	int x, y;
 };
 

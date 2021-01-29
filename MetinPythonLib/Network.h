@@ -4,6 +4,7 @@
 #include "utils.h"
 #include <set>
 #include "DetoursHook.h"
+#include <algorithm>
 
 typedef bool(__thiscall *tSendPacket)(DWORD classPointer, int size, void* buffer);
 typedef bool(__thiscall* tSendSequencePacket)(DWORD classPointer);
@@ -36,7 +37,7 @@ enum {
 enum {
 	PHASE_LOADING = 4,
 	PHASE_CHARACTER_CHOSE = 2,
-	PHASE_GAME = 5
+	PHASE_GAME = 5 //This might be 2
 };
 
 
@@ -55,12 +56,16 @@ namespace PacketHeaders {
 		HEADER_GC_MAIN_CHARACTER = 75,
 		HEADER_GC_CHAT = 121,
 		HEADER_GC_FISHING = 42,
+		HEADER_GC_ITEM_GROUND_ADD = 117,
+		HEADER_GC_ITEM_GROUND_DEL = 129,
 		HEADER_GC_SHOP_SIGN = 26,
 		//91 SEND CHAT INFO
 		//130 Something related to invetory counter
 
 
 		//TO SERVER
+		HEADER_CG_ITEM_PICKUP = 20,
+		HEADER_CG_SEND_LOGIN = 68,
 		HEADER_CG_SEND_SEQUENCE = 0,
 		HEADER_CG_SEND_CHAT = 3,
 		HEADER_CG_CHARACTER_MOVE = 11,//19, 
@@ -87,13 +92,32 @@ struct Packet {
 template<class T>
 void fillPacket(Packet*p, T* _struct) {
 	ZeroMemory(_struct, sizeof(T));
-	int size = min(p->data_size, sizeof(T));
+	int size = std::min<int>(p->data_size, sizeof(T));
 	memcpy(_struct, p->data, size);
 }
 
 struct DeadPacket
 {
 	DWORD	vid;
+};
+
+struct GroundItemAddPacket {
+	long x;
+	long y;
+	long z;
+
+	DWORD VID;
+	DWORD itemIndex;
+	DWORD playerVID;
+};
+
+struct GroundItemDeletePacket {
+	DWORD vid;
+};
+
+struct PickupPacket {
+	BYTE header = PacketHeaders::HEADER_CG_ITEM_PICKUP;
+	DWORD vid;
 };
 
 struct CharacterStatePacket
@@ -245,6 +269,7 @@ bool SendAddFlyTargetingPacket(DWORD dwTargetVID, float x, float y);
 bool SendShootPacket(BYTE uSkill);
 bool SendStartFishing(WORD direction);
 bool SendStopFishing(BYTE type, float timeLeft);
+bool SendPickupItemPacket(DWORD vid);
 
 int getCurrentPhase();
 DWORD getMainCharacterVID();

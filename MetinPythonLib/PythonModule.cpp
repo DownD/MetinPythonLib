@@ -4,6 +4,7 @@
 #include "MapCollision.h"
 #include <unordered_map>
 #include <map>
+#include <set>
 
 static std::string fileName;
 
@@ -48,6 +49,18 @@ struct Instance {
 	BYTE	bStateFlag;
 };
 
+struct GroundItem {
+	long x, y;
+	DWORD index;
+	DWORD vid;
+	DWORD ownerVID;
+
+};
+
+bool pickOnFilter = false;
+
+std::set<DWORD> pickupFilter;
+std::map<DWORD, GroundItem> groundItems;
 std::unordered_map<DWORD, Instance> instances;
 
 
@@ -215,10 +228,6 @@ EterFile* CGetEter(const char* name) {
 	return &eterFile;
 }
 
-void changeInstancePosition(CharacterStatePacket& packet_move)
-{
-
-}
 
 void changeInstancePosition(CharacterMovePacket& packet_move)
 {
@@ -231,6 +240,34 @@ void changeInstancePosition(CharacterMovePacket& packet_move)
 	instance.x = packet_move.lX;
 	instance.y = packet_move.lY;
 	//DEBUG_INFO("VID %d-> X:%d Y:%d", packet_move.dwVID, packet_move.lX, packet_move.lY);
+}
+
+void registerNewInstanceShop(DWORD player)
+{
+	//call python callback
+	DEBUG_INFO_LEVEL_3("Checking Callback VID->", player);
+	if (shopRegisterCallback && PyCallable_Check(shopRegisterCallback)) {
+		DEBUG_INFO_LEVEL_3("Calling python RegisterShopCallback");
+		PyObject* val = Py_BuildValue("(i)", player);
+		PyObject_CallObject(shopRegisterCallback, val);
+		Py_XDECREF(val);
+	}
+
+	/* Appears that there is always an character append packet after shop creation
+	* So append to instances is not needed
+	if (instances.find(player) != instances.end()) {
+		DEBUG_INFO_LEVEL_3("On adding instance shop with vid=%d, already exists, ignoring packet", player);
+		return;
+	}
+	DEBUG_INFO_LEVEL_3("Success Adding instance shop vid=%d", player);
+
+	Instance i = { 0 };
+	i.vid = player;
+
+	instances[player] = i;
+
+	PyObject* pVid = PyLong_FromLong(player);
+	PyDict_SetItem(pyVIDList, pVid, pVid);*/
 }
 
 void appendNewInstance(PlayerCreatePacket & player)
@@ -263,33 +300,6 @@ void appendNewInstance(PlayerCreatePacket & player)
 
 }
 
-void registerNewInstanceShop(DWORD player)
-{
-	//call python callback
-	DEBUG_INFO_LEVEL_3("Checking Callback VID->",player);
-	if (shopRegisterCallback && PyCallable_Check(shopRegisterCallback)) {
-		DEBUG_INFO_LEVEL_3("Calling python RegisterShopCallback");
-		PyObject* val = Py_BuildValue("(i)", player);
-		PyObject_CallObject(shopRegisterCallback, val);
-		Py_XDECREF(val);
-	}
-
-	/* Appears that there is always an character append packet after shop creation
-	* So append to instances is not needed
-	if (instances.find(player) != instances.end()) {
-		DEBUG_INFO_LEVEL_3("On adding instance shop with vid=%d, already exists, ignoring packet", player);
-		return;
-	}
-	DEBUG_INFO_LEVEL_3("Success Adding instance shop vid=%d", player);
-
-	Instance i = { 0 };
-	i.vid = player;
-
-	instances[player] = i;
-
-	PyObject* pVid = PyLong_FromLong(player);
-	PyDict_SetItem(pyVIDList, pVid, pVid);*/
-}
 
 void deleteInstance(DWORD vid)
 {
@@ -309,10 +319,36 @@ void changeInstanceIsDead(DWORD vid, BYTE isDead)
 	}
 }
 
+void addItemGround(GroundItemAddPacket& itemPacket)
+{
+	GroundItem item;
+	item.index = itemPacket.itemIndex;
+	item.ownerVID = itemPacket.playerVID;
+	item.x = itemPacket.x;
+	item.y = itemPacket.y;
+	item.vid = itemPacket.VID;
+
+	DEBUG_INFO_LEVEL_3("Adding item ground with vid=%d at position x=%d,y=%d", item.vid, item.x, item.y);
+
+
+	groundItems[item.vid] = item;
+}
+
+void delItemGround(GroundItemDeletePacket& item)
+{
+	if (groundItems.find(item.vid) == groundItems.end()) {
+		DEBUG_INFO_LEVEL_3("On deleting item with vid=%d doesn't exists, ignoring packet!", item.vid);
+		return;
+	}
+	DEBUG_INFO_LEVEL_4("Deleting item ground with vid=%d",item.vid);
+	groundItems.erase(item.vid);
+}
+
 void clearInstances()
 {
 	DEBUG_INFO_LEVEL_2("Instances Cleared");
 	instances.clear();
+	groundItems.clear();
 	PyDict_Clear(pyVIDList);
 }
 
@@ -371,6 +407,46 @@ PyObject * IsPositionBlocked(PyObject * poSelf, PyObject * poArgs)
 	y /= 100;
 
 	return Py_BuildValue("i", isBlockedPosition(x, y));
+}
+
+//Get closest unblocked cell
+bool getClosestUnblocked(int x_start, int y_start, Point* buffer) {
+	Point closestPoints[8];
+
+	//Initalize all coords
+	for (int i = 0; i < 8; i++) {
+		closestPoints[i] = { x_start,y_start };
+	}
+
+	while (true){
+		closestPoints[0].x++;
+
+		closestPoints[1].x++;
+		closestPoints[1].y++;
+
+		closestPoints[2].x++;
+		closestPoints[2].y--;
+
+		closestPoints[3].x--;
+		closestPoints[3].y++;
+
+		closestPoints[4].x--;
+
+		closestPoints[5].x--;
+		closestPoints[5].y--;
+
+		closestPoints[6].y++;
+
+		closestPoints[7].y--;
+
+		for (int i = 0; i < 8; i++) {
+			if (!isBlockedPosition(closestPoints[i].x, closestPoints[i].y)) {
+				*buffer = closestPoints[i];
+				return true;
+			}
+		}
+	}
+	return false;
 }
 
 bool getUnblockedAdjacentBlock(int x_start, int y_start , Point* adjPoint) {
@@ -441,19 +517,22 @@ PyObject * FindPath(PyObject * poSelf, PyObject * poArgs)
 
 	if (isBlockedPosition(x_start, y_start)) {
 		Point a = { 0,0 };
-		if (getUnblockedAdjacentBlock(x_start, y_start,&a)) {
+		if (getClosestUnblocked(x_start, y_start,&a)) {
 			x_start_unblocked = a.x;
 			y_start_unblocked = a.y;
+			DEBUG_INFO_LEVEL_3("[PATH-FIDING] Start Position blocked, new position X:%d  Y:%d", x_start_unblocked, y_start_unblocked);
 		}
 	}
 
 	if (isBlockedPosition(x_end, y_end)) {
 		Point a = { 0,0 };
-		if (getUnblockedAdjacentBlock(x_end, y_end, &a)) {
+		if (getClosestUnblocked(x_end, y_end, &a)) {
 			x_end = a.x;
 			y_end = a.y;
+			DEBUG_INFO_LEVEL_3("[PATH-FIDING] End Position blocked, new position X:%d  Y:%d", x_end, y_end);
 		}
 	}
+
 
 
 	std::vector<Point> path;
@@ -463,6 +542,8 @@ PyObject * FindPath(PyObject * poSelf, PyObject * poArgs)
 		val = findPath(x_start_unblocked, y_start_unblocked, x_end, y_end, path);
 		if (val)
 			PyList_Append(pList, Py_BuildValue("ii", x_start_unblocked * 100, y_start_unblocked * 100));
+		else
+			return pList;
 	}
 	else {
 		val = findPath(x_start, y_start, x_end, y_end, path);
@@ -482,12 +563,61 @@ PyObject * FindPath(PyObject * poSelf, PyObject * poArgs)
 
 
 }
+/*
+PyObject* pySetKeyState(PyObject* poSelf, PyObject* poArgs) {
+	int key, state;
+	int numArgs = PyTuple_Size(poArgs);
 
-PyObject * GetCurrentPhase(PyObject * poSelf, PyObject * poArgs)
+	KEYBDINPUT keyboardI = { 0 };
+	keyboardI.wVk = VK_SPACE;
+	keyboardI.wScan = 0;
+	keyboardI.time = NULL;
+	keyboardI.dwFlags = NULL;
+	keyboardI.dwExtraInfo = GetMessageExtraInfo();
+
+	INPUT input = { 0 };
+	input.type = INPUT_KEYBOARD;
+	input.ki = keyboardI;
+
+	switch(PyTuple_Size(poArgs)) {
+	case 1:
+		if (!PyTuple_GetInteger(poArgs, 0, &state)) {
+			if (state) {
+				input.ki.dwFlags = KEYEVENTF_KEYUP;
+			}
+			else {
+				input.ki.dwFlags = 0;
+			}
+		}
+		break;
+	case 2:
+		if (!PyTuple_GetInteger(poArgs, 0, &key)) {
+			input.ki.wVk = key;
+		}
+		if (!PyTuple_GetInteger(poArgs, 1, &state)) {
+			if (state) {
+				input.ki.dwFlags = KEYEVENTF_KEYUP;
+			}
+			else {
+				input.ki.dwFlags = 0;
+			}
+		}
+		break;
+
+	default:
+		return Py_BuildException();
+		break;
+	}
+
+	SendInput(1, &input, sizeof(input));
+	return Py_BuildNone();
+}*/
+
+/*PyObject * GetCurrentPhase(PyObject * poSelf, PyObject * poArgs)
 {
 	int phase = getCurrentPhase();
 	return Py_BuildValue("i", phase);
-}
+}*/
 
 PyObject * GetAttrByte(PyObject * poSelf, PyObject * poArgs)
 {
@@ -760,13 +890,109 @@ PyObject* pyRegisterNewShopCallback(PyObject* poSelf, PyObject* poArgs)
 
 
 
+PyObject* pyItemGrndFilterClear(PyObject* poSelf, PyObject* poArgs)
+{
+	pickupFilter.clear();
+	return nullptr;
+}
+
+//PICKUP STUFF
+PyObject* pyItemGrndNotOnFilter(PyObject* poSelf, PyObject* poArgs)
+{
+	pickOnFilter = false;
+	return Py_BuildNone();
+}
+
+PyObject* pyItemGrndOnFilter(PyObject* poSelf, PyObject* poArgs)
+{
+	pickOnFilter = true;
+	return Py_BuildNone();
+}
+
+PyObject* pyItemGrndAddFilter(PyObject* poSelf, PyObject* poArgs)
+{
+	int index = 0;
+	if (!PyTuple_GetInteger(poArgs, 0, &index))
+		return Py_BuildException();
+
+	pickupFilter.insert(index);
+	return Py_BuildNone();
+}
+
+PyObject* pyItemGrndDelFilter(PyObject* poSelf, PyObject* poArgs)
+{
+	int index = 0;
+	if (!PyTuple_GetInteger(poArgs, 0, &index))
+		return Py_BuildException();
+
+	pickupFilter.erase(index);
+	return Py_BuildNone();
+}
+
+PyObject* pyGetCloseItemGround(PyObject* poSelf, PyObject* poArgs)
+{
+	int x,y;
+	if (!PyTuple_GetInteger(poArgs, 0, &x))
+		return Py_BuildException();
+	if (!PyTuple_GetInteger(poArgs, 1, &y))
+		return Py_BuildException();
+
+	DEBUG_INFO_LEVEL_3("Number of items in filter %d", pickupFilter.size())
+
+	float minDist = std::numeric_limits<float>::max();
+	DWORD selVID = 0;
+	for (auto iter = groundItems.begin(); iter != groundItems.end();iter++) {
+		DWORD vid = iter->first;
+		GroundItem item = iter->second;
+
+		if (item.ownerVID != getMainCharacterVID() && item.ownerVID != 0) {
+			continue;
+		}
+
+		bool is_in = pickupFilter.find(item.index) != pickupFilter.end();
+		if (pickOnFilter && is_in) {
+			float dist = distance(x, y, item.x, item.y);
+			if (dist<minDist) {
+				minDist = dist;
+				selVID = vid;
+			}
+		}
+		if (!pickOnFilter && !is_in) {
+			float dist = distance(x, y, item.x, item.y);
+			if (dist < minDist) {
+				minDist = dist;
+				selVID = vid;
+			}
+		}
+	}
+	if (selVID != 0) {
+		return Py_BuildValue("(iii)", selVID, groundItems[selVID].x, groundItems[selVID].y);
+	}
+	else {
+		return Py_BuildValue("(iii)", 0, 0, 0);
+	}
+}
+
+PyObject* pySendPickupItem(PyObject* poSelf, PyObject* poArgs)
+{
+	int vid = 0;
+	if (!PyTuple_GetInteger(poArgs, 0, &vid))
+		return Py_BuildException();
+	if (vid == 0)
+		return Py_BuildNone();
+	SendPickupItemPacket(vid);
+	return Py_BuildNone();
+}
+
+
+
 
 static PyMethodDef s_methods[] =
 {
 	{ "Get",					GetEterPacket,		METH_VARARGS },
 	{ "IsPositionBlocked",		IsPositionBlocked,	METH_VARARGS },
 	{ "GetAttrByte",			GetAttrByte,		METH_VARARGS },
-	{ "GetCurrentPhase",		GetCurrentPhase,	METH_VARARGS },
+	//{ "GetCurrentPhase",		GetCurrentPhase,	METH_VARARGS },
 	{ "FindPath",				FindPath,			METH_VARARGS },
 	{ "SendPacket",				pySendPacket,		METH_VARARGS },
 	{ "SendAttackPacket",		pySendAttackPacket,	METH_VARARGS },
@@ -791,8 +1017,17 @@ static PyMethodDef s_methods[] =
 	{ "SendShoot",				pySendShoot,		METH_VARARGS },
 	{ "EnableCollisions",		pyEnableCollisions,	METH_VARARGS },
 	{ "DisableCollisions",		pyDisableCollisions,METH_VARARGS },
-
 	{ "RegisterNewShopCallback",pyRegisterNewShopCallback,METH_VARARGS },
+
+	//PICKUP
+	{ "ItemGrndFilterClear",	pyItemGrndFilterClear,	METH_VARARGS },
+	{ "ItemGrndNotOnFilter",	pyItemGrndNotOnFilter,	METH_VARARGS },
+	{ "ItemGrndOnFilter",		pyItemGrndOnFilter,		METH_VARARGS },
+	{ "ItemGrndAddFilter",		pyItemGrndAddFilter,	METH_VARARGS },
+	{ "ItemGrndDelFilter",		pyItemGrndDelFilter,	METH_VARARGS },
+	{ "GetCloseItemGround",		pyGetCloseItemGround,	METH_VARARGS },
+	{ "SendPickupItem",			pySendPickupItem,		METH_VARARGS },
+
 
 #ifdef METIN_GF
 	{ "SendStartFishing",		pySendStartFishing,	METH_VARARGS },
@@ -800,6 +1035,8 @@ static PyMethodDef s_methods[] =
 	{ "BlockFishingPackets",	pyBlockFishingPackets,	METH_VARARGS },
 	{ "UnblockFishingPackets",	pyUnblockFishingPackets,METH_VARARGS },
 
+	//{ "SetKeyState",			pySetKeyState,		METH_VARARGS },
+	//{ "SetAttackKeyState",		pySetKeyState,		METH_VARARGS },
 	{ "GetPixelPosition",		GetPixelPosition,	METH_VARARGS },
 	{ "MoveToDestPosition",     moveToDestPosition, METH_VARARGS},
 #endif
@@ -888,7 +1125,7 @@ void SetMoveToDistPositionFunc(void* func)
 bool moveToDestPosition(DWORD vid,fPoint& pos) {
 	void* p = getInstancePtr(vid);
 	if (p) {
-		DEBUG_INFO_LEVEL_3("Moving VID %d to posititon X:%d y:%d!",vid,pos.x,pos.y);
+		DEBUG_INFO_LEVEL_3("Moving VID %d to posititon X:%f y:%f!",vid,pos.x,pos.y);
 		return fMoveToDestPosition(p, pos);
 	}
 	else {

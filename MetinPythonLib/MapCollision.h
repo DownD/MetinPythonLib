@@ -1,6 +1,11 @@
 #pragma once
 #include "PythonModule.h"
 #include "JPS.h"
+#include <ANYA.h>
+
+
+//#define USE_JPS_PATHPLANNING
+#define USE_ANYA_PATHPLANNING
 
 class AreaData {
 
@@ -24,7 +29,7 @@ public:
 
 
 	inline bool isBlocked(int x, int y);
-	inline BYTE getByte(int x, int y);
+	inline BYTE getByte(int x, int y); //Deprecated, is equal to isBlocked function
 
 	const char* getMapName() { return mapName.c_str(); }
 	bool findPath(int x_start, int y_start, int x_end, int y_end, std::vector<Point>& path);
@@ -76,8 +81,14 @@ private:
 	std::string mapName;
 	int maxX;
 	int maxY;
+
+
 	BYTE* map;
+	std::vector<bool>* anyAngleMap;
+
 	std::vector<AreaData::Object> objects;
+
+	AnyAngleAlgorithm* aPathPlaning;
 	JPS::Searcher<MapCollision>* pathFinding;
 };
 

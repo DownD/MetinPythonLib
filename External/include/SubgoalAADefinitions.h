@@ -21,7 +21,12 @@ Bibtex:
 
 
 typedef uint32_t subgoalId;
+#ifdef _WIN32
+#include <float.h>
+#define NON_SUBGOAL UINT_MAX
+#else
 #define NON_SUBGOAL (subgoalId)std::numeric_limits<subgoalId>::max()
+#endif
 
 typedef uint32_t mapLoc;
 typedef uint32_t direction;

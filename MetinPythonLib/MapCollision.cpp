@@ -32,15 +32,15 @@ MapCollision::MapCollision(const char* map_name){
 		}
 
 	}
-#ifdef _DEBUG
 	if(val)
 		DEBUG_INFO_LEVEL_1("Current map %s loaded with success! Max-X: %d  Max-Y: %d\n",map_name,maxX,maxY);
-#endif
 	if (!val) {
 		DEBUG_INFO_LEVEL_1("Error constructing map! Functions that need map information  will not work");
 		return;
 	}
 
+	anyAngleMap = new std::vector<bool>(map, map + (maxY * maxX));
+	aPathPlaning = new ANYA(*anyAngleMap, maxX, maxY); //Using ANYA because all the others run into error on debug mode
 	pathFinding = new JPS::Searcher<MapCollision>(*this);
 }
 
@@ -48,6 +48,8 @@ MapCollision::MapCollision(const char* map_name){
 MapCollision::~MapCollision()
 {
 	free(map);
+	delete aPathPlaning;
+	delete anyAngleMap;
 	delete pathFinding;
 }
 
@@ -55,7 +57,8 @@ inline bool MapCollision::isBlocked(int x, int y){
 	if (x < 0 || y < 0 || x >= maxX || y >= maxY) {
 		return true;
 	}
-	return map[y*maxX + x] & 0x1;
+	return !(bool)map[y * maxX + x];
+	//return map[y*maxX + x] & 0x0;
 }
 
 inline BYTE MapCollision::getByte(int x, int y)
@@ -66,17 +69,29 @@ inline BYTE MapCollision::getByte(int x, int y)
 bool MapCollision::findPath(int x_start, int y_start, int x_end, int y_end, std::vector<Point>& path)
 {
 	JPS::PathVector pathBuf;
+	std::vector<xyLoc> finalPath;
+
+
+	//This is much faster so it is used to check if a destination is even possible
 	bool found = pathFinding->findPath(pathBuf, JPS::Pos(x_start, y_start), JPS::Pos(x_end, y_end), 0);
 
-#ifdef _DEBUG
+
+	if  (found) {
+		auto length = aPathPlaning->FindXYLocPath({ (uint16_t)x_start,(uint16_t)y_start }, { (uint16_t)x_end,(uint16_t)y_end }, finalPath);
+		DEBUG_INFO_LEVEL_3("Path found from (%d,%d) to (%d,%d) with %d points!", x_start, y_start, x_end, y_end, finalPath.size());
+	}
+	else {
+		DEBUG_INFO_LEVEL_2("No Path from (%d,%d) to (%d,%d)!!!", x_start, y_start, x_end, y_end);
+	}
+
 	if (found) {
-		DEBUG_INFO_LEVEL_3("Path found from (%d,%d) to (%d,%d) with %d points!\n", x_start, y_start, x_end, y_end, pathBuf.size());
-	}else
-		DEBUG_INFO_LEVEL_2("No Path from (%d,%d) to (%d,%d)!!!\n", x_start, y_start, x_end, y_end, pathBuf.size());
-#endif
-	if (found) {
+
+		for (auto point : finalPath) {
+			path.push_back(Point(point.x, point.y));
+		}
+		/*
 		for (JPS::PathVector::iterator it = pathBuf.begin(); it != pathBuf.end(); ++it)
-			path.push_back(Point(it->x, it->y));
+			path.push_back(Point(it->x, it->y));*/
 	}
 	return found;
 
@@ -87,7 +102,7 @@ inline unsigned MapCollision::operator()(unsigned x, unsigned y) const
 	if (x < 0 || y < 0 || x >= maxX || y >= maxY) {
 		return true;
 	}
-	return !(map[y*maxX + x] & 0x1);
+	return map[y*maxX + x];
 }
 
 
@@ -169,7 +184,7 @@ bool MapCollision::constructMapFromClient()
 
 	int allocSpace = maxX *maxY;
 	map = (BYTE*)malloc(allocSpace);
-	memset(map, 1, allocSpace);
+	memset(map, 0, allocSpace);
 
 	for (auto mapPiece : buffer) {
 		if (!addMapPiece(mapPiece)) {
@@ -182,7 +197,14 @@ bool MapCollision::constructMapFromClient()
 
 		delete mapPiece;
 	}
-	addObjectsCollisions();
+
+	for (int i = 0; i< allocSpace; i++) {
+		if (map[i] & 0x1) {
+			map[i] = 0;
+		}else{ map[i] = 1; }
+	}
+
+	//addObjectsCollisions(); //Need to know if it is bypassable
 	increaseBlockedArea();
 	return true;
 
@@ -222,7 +244,7 @@ void MapCollision::printToFile(const char* name)
 void MapCollision::addObjectsCollisions()
 {
 	for (auto obj : objects) {
-		setByte(1,obj.x / 100, abs(obj.y / 100));
+		setByte(0,obj.x / 100, abs(obj.y / 100));
 	}
 }
 
@@ -274,7 +296,7 @@ void MapCollision::increaseBlockedArea()
 	}
 	 
 	for (Point &a : bufferPoints) {
-		setByte(1, a.x, a.y);
+		setByte(0, a.x, a.y);
 	}
 
 
@@ -347,7 +369,7 @@ void MapCollision::saveMap()
 	for (int y = 0; y < maxY; y++) {
 		int x = 0;
 		for (x = 0; x < maxX; x++) {
-			line[x] = 48 + isBlocked(x, y);
+			line[x] = 48 + !isBlocked(x, y);
 		}
 		line[x] = '\n';
 		myfile << line;
