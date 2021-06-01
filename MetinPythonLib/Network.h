@@ -37,7 +37,7 @@ enum {
 enum {
 	PHASE_LOADING = 4,
 	PHASE_CHARACTER_CHOSE = 2,
-	PHASE_GAME = 5 //This might be 2
+	PHASE_GAME = 5
 };
 
 
@@ -59,6 +59,7 @@ namespace PacketHeaders {
 		HEADER_GC_ITEM_GROUND_ADD = 117,
 		HEADER_GC_ITEM_GROUND_DEL = 129,
 		HEADER_GC_SHOP_SIGN = 26,
+		HEADER_CG_DIG_MOTION = 7,
 		//91 SEND CHAT INFO
 		//130 Something related to invetory counter
 
@@ -118,6 +119,13 @@ struct GroundItemDeletePacket {
 struct PickupPacket {
 	BYTE header = PacketHeaders::HEADER_CG_ITEM_PICKUP;
 	DWORD vid;
+};
+
+struct PacketDigMotion
+{
+	DWORD vid;
+	DWORD target_vid;
+	BYTE count;
 };
 
 struct CharacterStatePacket

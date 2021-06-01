@@ -25,6 +25,7 @@ DWORD characterManagerSubClass;
 
 //CallBacks Functions
 PyObject* shopRegisterCallback = 0;
+PyObject* recvDigMotionCallback = 0;
 
 //SYNCRONIZATION
 static bool executeFile = false;
@@ -232,7 +233,12 @@ EterFile* CGetEter(const char* name) {
 void changeInstancePosition(CharacterMovePacket& packet_move)
 {
 	if (instances.find(packet_move.dwVID) == instances.end()) {
-		DEBUG_INFO_LEVEL_3("Error on changing instance position no vid %d found",packet_move.dwVID);
+		DEBUG_INFO_LEVEL_3("No instance vid %d found, creating new one",packet_move.dwVID);
+		PlayerCreatePacket player = { 0 };
+		player.dwVID = packet_move.dwVID;
+		player.x = packet_move.lX;
+		player.y = packet_move.lY;
+		appendNewInstance(player);
 		return;
 	}
 	DEBUG_INFO_LEVEL_4("VID %d-> X:%d Y:%d", packet_move.dwVID, packet_move.lX, packet_move.lY);
@@ -269,6 +275,20 @@ void registerNewInstanceShop(DWORD player)
 	PyObject* pVid = PyLong_FromLong(player);
 	PyDict_SetItem(pyVIDList, pVid, pVid);*/
 }
+
+void callDigMotionCallback(DWORD target_player,DWORD target_vein,DWORD n)
+{
+	//call python callback
+	DEBUG_INFO_LEVEL_3("Mining packet recived");
+	if (recvDigMotionCallback && PyCallable_Check(recvDigMotionCallback)) {
+		DEBUG_INFO_LEVEL_3("Calling python DigMotionCallback");
+		PyObject* val = Py_BuildValue("(iii)", target_player, target_vein, n);
+		PyObject_CallObject(recvDigMotionCallback, val);
+		Py_XDECREF(val);
+	}
+
+}
+
 
 void appendNewInstance(PlayerCreatePacket & player)
 {
@@ -613,11 +633,11 @@ PyObject* pySetKeyState(PyObject* poSelf, PyObject* poArgs) {
 	return Py_BuildNone();
 }*/
 
-/*PyObject * GetCurrentPhase(PyObject * poSelf, PyObject * poArgs)
+PyObject * pyGetCurrentPhase(PyObject * poSelf, PyObject * poArgs)
 {
 	int phase = getCurrentPhase();
 	return Py_BuildValue("i", phase);
-}*/
+}
 
 PyObject * GetAttrByte(PyObject * poSelf, PyObject * poArgs)
 {
@@ -888,6 +908,25 @@ PyObject* pyRegisterNewShopCallback(PyObject* poSelf, PyObject* poArgs)
 	
 }
 
+PyObject* pyRecvDigMotionCallback(PyObject* poSelf, PyObject* poArgs)
+{
+	if (!PyTuple_GetObject(poArgs, 0, &recvDigMotionCallback)) {
+		recvDigMotionCallback = 0;
+		return Py_BuildException();
+	}
+
+	if (!PyCallable_Check(recvDigMotionCallback)) {
+		DEBUG_INFO_LEVEL_1("RegisterNewDigMotionCallback argument is not a function");
+		Py_DECREF(recvDigMotionCallback);
+		recvDigMotionCallback = 0;
+		return Py_BuildException();
+	}
+
+	DEBUG_INFO_LEVEL_2("RecvDigMotionCallback function set sucessfully");
+
+	return Py_BuildNone();
+}
+
 
 
 PyObject* pyItemGrndFilterClear(PyObject* poSelf, PyObject* poArgs)
@@ -992,7 +1031,7 @@ static PyMethodDef s_methods[] =
 	{ "Get",					GetEterPacket,		METH_VARARGS },
 	{ "IsPositionBlocked",		IsPositionBlocked,	METH_VARARGS },
 	{ "GetAttrByte",			GetAttrByte,		METH_VARARGS },
-	//{ "GetCurrentPhase",		GetCurrentPhase,	METH_VARARGS },
+	{ "GetCurrentPhase",		pyGetCurrentPhase,	METH_VARARGS },
 	{ "FindPath",				FindPath,			METH_VARARGS },
 	{ "SendPacket",				pySendPacket,		METH_VARARGS },
 	{ "SendAttackPacket",		pySendAttackPacket,	METH_VARARGS },
@@ -1028,6 +1067,8 @@ static PyMethodDef s_methods[] =
 	{ "GetCloseItemGround",		pyGetCloseItemGround,	METH_VARARGS },
 	{ "SendPickupItem",			pySendPickupItem,		METH_VARARGS },
 
+	{ "RegisterDigMotionCallback",	pyRecvDigMotionCallback,METH_VARARGS },
+
 
 #ifdef METIN_GF
 	{ "SendStartFishing",		pySendStartFishing,	METH_VARARGS },
@@ -1044,25 +1085,6 @@ static PyMethodDef s_methods[] =
 };
 
 void initModule() {
-
-	//char dllPath[MAX_PATH] = { 0 };
-	//getCurrentPath(hDll, dllPath, MAX_PATH);
-	//printf("%#x\n", hDll);
-
-#ifdef METIN_GF
-	/*playerModule =  PyImport_ImportModule("playerm2g2");
-	if (!playerModule) {
-		MessageBox(NULL, "Error Importing playerm2g2 module", "ERROR IMPOTRING MODULE", MB_OK);
-		exit();
-	}
-
-	getMainPlayerPosition = PyObject_GetAttrString(playerModule, "GetMainCharacterPosition");
-	if (!getMainPlayerPosition) {
-		MessageBox(NULL, "Error GetMainPlayerPosition", "ERROR IMPORTING FUNCTION", MB_OK);
-		exit();
-	}*/
-#endif
-
 	packet_mod = Py_InitModule("net_packet", s_methods);
 	pyVIDList = PyDict_New();
 

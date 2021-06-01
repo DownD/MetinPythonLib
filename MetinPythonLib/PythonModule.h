@@ -18,7 +18,7 @@
 //#define OFFSET_CLIENT_ALIVE_MAP 0x38
 #define OFFSET_CLIENT_INSTANCE_PTR_1 0x4
 #define OFFSET_CLIENT_INSTANCE_PTR_2 0x8
-#define OFFSET_CLIENT_CHARACTER_POS 0x7BC
+#define OFFSET_CLIENT_CHARACTER_POS 0x7C0
 
 //Private Shops Race 
 #define MIN_RACE_SHOP 30000
@@ -92,6 +92,7 @@ PyObject* pyUnblockFishingPackets(PyObject* poSelf, PyObject* poArgs);
 PyObject* pyDisableCollisions(PyObject* poSelf, PyObject* poArgs);
 PyObject* pyEnableCollisions(PyObject* poSelf, PyObject* poArgs);
 PyObject* pyRegisterNewShopCallback(PyObject* poSelf, PyObject* poArgs);
+PyObject* pyRecvDigMotionCallback(PyObject* poSelf, PyObject* poArgs);
 
 PyObject* pyItemGrndFilterClear(PyObject* poSelf, PyObject* poArgs);
 PyObject* pyItemGrndNotOnFilter(PyObject* poSelf, PyObject* poArgs);
@@ -141,6 +142,7 @@ void changeInstanceIsDead(DWORD vid, BYTE isDead);
 void addItemGround(GroundItemAddPacket& item);
 void delItemGround(GroundItemDeletePacket& item);
 void clearInstances();
+void callDigMotionCallback(DWORD target_player, DWORD target_vein, DWORD n);
 
 bool getCharacterPosition(DWORD vid, fPoint3D* pos);
 

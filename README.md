@@ -86,7 +86,11 @@ Adds some functions to the python API, and try to inject a script.py from the cu
   - RegisterNewShopCallback(\<callable_function\>callback)<br>
     Sets a callback function, that will be called whenever a new private shop is created arround.<br>
     That callback will be called with the shop vid as the first argument.<br>
-    
+	
+  - RegisterDigMotionCallback(\<callable_function\>callback)<br>
+    Sets a callback function, that will be called whenever a dig motion(mining packet) is called.<br>
+	The callback function will be called with the following arguments (player_vid,ore_vid,count)<br>
+	
   - \<string\>PATH<br>
     Path of the location where the library was injected<br>
 

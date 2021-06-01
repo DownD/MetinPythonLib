@@ -32,6 +32,8 @@ tGlobalToLocalPosition fGlobalToLocalPosition;
 
 DWORD *networkclassPointer;
 
+void setPhase(ChangePhasePacket& phase);
+
 //For wallhack
 /*
 WALLHACK
@@ -146,6 +148,129 @@ void __stdcall executeScript() {
 }
 
 
+bool RecvGamePhase(Packet & packet, int size) {
+	switch (packet.header) {
+	case HEADER_GC_FISHING: {
+		if (blockFishingPackets) {
+			if (packet.data_size >= 1 && (packet.data[0] == 0x0 || packet.data[0] == 0x4)) { //This is for refresh the inventory window
+				return false;
+			}
+		}
+		break;
+	}
+	case HEADER_GC_ITEM_GROUND_ADD: {
+		GroundItemAddPacket instance;
+		fillPacket(&packet, &instance);
+		GlobalToLocalPosition(instance.x, instance.y);
+		addItemGround(instance);
+		break;
+	}
+	case HEADER_GC_ITEM_GROUND_DEL: {
+		GroundItemDeletePacket instance;
+		fillPacket(&packet, &instance);
+		delItemGround(instance);
+		break;
+	}
+	case HEADER_GC_CHARACTER_ADD: {
+		if (packet.data_size == 0) {
+			break;
+		}
+		PlayerCreatePacket instance;
+		fillPacket(&packet, &instance);
+		GlobalToLocalPosition(instance.x, instance.y);
+		appendNewInstance(instance);
+		break;
+	}
+	case HEADER_GC_CHARACTER_MOVE: {
+		if (packet.data_size == 0) {
+			break;
+		}
+		CharacterMovePacket instance;
+		fillPacket(&packet, &instance);
+		GlobalToLocalPosition(instance.lX, instance.lY);
+		changeInstancePosition(instance);
+		break;
+	}
+	case HEADER_GC_CHARACTER_DEL: {
+		if (packet.data_size == 0) {
+			break;
+		}
+		DeletePlayerPacket instance_;
+		fillPacket(&packet, &instance_);
+		deleteInstance(instance_.dwVID);
+		break;
+	}
+	case HEADER_GC_PHASE: {
+		ChangePhasePacket phase;
+		fillPacket(&packet, &phase);
+		if(phase.phase != 1 && phase.phase != 2)
+			setPhase(phase);
+		break;
+	}
+
+	case HEADER_GC_MAIN_CHARACTER: {
+		if (PHASE_LOADING == gamePhase) {
+			MainCharacterPacket m;
+			fillPacket(&packet, &m);
+			DEBUG_INFO_LEVEL_2("MAIN VID: %d", m.dwVID);
+			mainCharacterVID = m.dwVID;
+		}
+		break;
+	}
+	case HEADER_CG_DIG_MOTION: {
+		if (packet.data_size == 0) {
+			break;
+		}
+		PacketDigMotion instance_;
+		printf("\nSize: %d\n", packet.data_size);
+		fillPacket(&packet, &instance_);
+		callDigMotionCallback(instance_.vid, instance_.target_vid, instance_.count);
+		break;
+	}
+
+	case HEADER_GC_DEAD: {
+		DeadPacket dead;
+		fillPacket(&packet, &dead);
+		changeInstanceIsDead(dead.vid, 1);
+		break;
+	}
+	}
+
+	return true;
+}
+
+void setPhase(ChangePhasePacket& phase) {
+	if (phase.phase > 5)
+		return;
+	//printf("Phase Packet %d\n",phase.phase);
+	//if (phase.phase == 1 || phase.phase == 10 || phase.phase == 2) //The server sends 2 strange packets values(1,10), that disrupt the fase check
+	//	return;
+	gamePhase = phase.phase;
+	DEBUG_INFO_LEVEL_2("Phased changed to: %d", gamePhase);
+	if (phase.phase == PHASE_LOADING) {
+		clearInstances();
+		freeCurrentMap();
+	}
+	else if (phase.phase == PHASE_GAME) {
+		setCurrentCollisionMap();
+		static bool hasPassed = 0;
+		if (!hasPassed) {
+			//setTimerFunction(executeScript, 2);
+			executeScript();
+			hasPassed = true;
+			/*static auto start = std::chrono::system_clock::now();
+			auto end = std::chrono::system_clock::now();
+			auto elapsed_seconds = end - start;
+
+			if (elapsed_seconds.count() > 4) {
+				executePythonFile((char*)"script.py");
+				hasPassed = true;
+			}*/
+		}
+	}
+}
+
+
 
 bool __stdcall __RecvPacket(DWORD return_function,bool return_value,int size, void* buffer) {
 	executeTimerFunctions();
@@ -159,7 +284,7 @@ bool __stdcall __RecvPacket(DWORD return_function,bool return_value,int size, vo
 		//PacketFilter
 		if (printToConsole) {
 			if (inbound_header_filter.find(packet.header) == inbound_header_filter.end()) {
-				if(!filterInboundOnlyIncluded)
+				if (!filterInboundOnlyIncluded)
 					printPacket(return_function, &packet, INBOUND);
 			}
 			else {
@@ -168,109 +293,25 @@ bool __stdcall __RecvPacket(DWORD return_function,bool return_value,int size, vo
 			}
 		}
 
-		switch (packet.header) {
-		case HEADER_GC_FISHING: {
-			if (blockFishingPackets) {
-				if (packet.data_size >= 1 && (packet.data[0] == 0x0 || packet.data[0] == 0x4)) { //This is for refresh the inventory window
-					return false;
-				}
-				return return_function;
-			}
-			break;
-		}
-		case HEADER_GC_ITEM_GROUND_ADD: {
-			GroundItemAddPacket instance;
-			fillPacket(&packet, &instance);
-			GlobalToLocalPosition(instance.x, instance.y);
-			addItemGround(instance);
-			break;
-		}
-		case HEADER_GC_ITEM_GROUND_DEL: {
-			GroundItemDeletePacket instance;
-			fillPacket(&packet, &instance);
-			delItemGround(instance);
-			break;
-		}
-		case HEADER_GC_CHARACTER_ADD: {
-			if (packet.data_size == 0) {
-				break;
-			}
-			PlayerCreatePacket instance;
-			fillPacket(&packet, &instance);
-			GlobalToLocalPosition(instance.x, instance.y);
-			appendNewInstance(instance);
-			break;
-		}
-		case HEADER_GC_CHARACTER_MOVE: {
-			if (packet.data_size == 0) {
-				break;
-			}
-			CharacterMovePacket instance;
-			fillPacket(&packet, &instance);
-			GlobalToLocalPosition(instance.lX, instance.lY);
-			changeInstancePosition(instance);
-			break;
-		}
-		case HEADER_GC_CHARACTER_DEL: {
-			if (packet.data_size == 0) {
-				break;
-			}
-			DeletePlayerPacket instance_;
-			fillPacket(&packet, &instance_);
-			deleteInstance(instance_.dwVID);
-			break;
-		}
-		case HEADER_GC_PHASE: {
-			ChangePhasePacket phase;
-			fillPacket(&packet, &phase);
-			if (size != 2 || phase.phase == 1 || phase.phase == 10 || phase.phase == 2) //The server sends strange 2 packets values(1,10), that disrupt the fase check
-				break;
-			//printf("Phase Change %d\n",phase.phase);
-			gamePhase = phase.phase;
-			DEBUG_INFO_LEVEL_2("Phased changed to: %d", gamePhase);
-			if (phase.phase == PHASE_LOADING) {
-				clearInstances();
-				freeCurrentMap();
-			}
-			else if (phase.phase == PHASE_GAME) {
-				setCurrentCollisionMap();
-				static bool hasPassed = 0;
-				if (!hasPassed) {
-					//setTimerFunction(executeScript, 2);
-					executeScript();
-					hasPassed = true;
-					/*static auto start = std::chrono::system_clock::now();
-					auto end = std::chrono::system_clock::now();
-					auto elapsed_seconds = end - start;
 
-					if (elapsed_seconds.count() > 4) {
-						executePythonFile((char*)"script.py");
-						hasPassed = true;
-					}*/
-				}
-			}
+		switch (gamePhase) {
+		case PHASE_GAME:
+			return_value = RecvGamePhase(packet, size);
 			break;
+		default: {
+			switch (packet.header) {
+			case HEADER_GC_PHASE: {
+				ChangePhasePacket phase;
+				fillPacket(&packet, &phase);
+				setPhase(phase);
+				break;
+			}
+			}
 		}
 
-		case HEADER_GC_MAIN_CHARACTER:{
-			if (PHASE_LOADING == gamePhase) {
-				MainCharacterPacket m;
-				fillPacket(&packet, &m);
-				DEBUG_INFO_LEVEL_2("MAIN VID: %d", m.dwVID);
-				mainCharacterVID = m.dwVID;
-			}
-			break;
-		}
-
-		case HEADER_GC_DEAD: {
-			DeadPacket dead;
-			fillPacket(&packet, &dead);
-			changeInstanceIsDead(dead.vid, 1);
-			break;
-		}
 		}
 	}
-
+		
 
 
 	return return_value;
