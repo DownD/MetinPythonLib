@@ -29,6 +29,10 @@ DWORD Hook::getJMPOffset(void * jmpInstruction, void * function)
 bool Hook::patchMemory(void * target, void * src, int src_size, int patchSize)
 {
 	BYTE* buf = (BYTE*)malloc(patchSize);
+	if (!buf) {
+		MessageBox(NULL, "Critical error alocating memory for Return Hook", "CRITICAL ERROR", MB_OK);
+		return 0;
+	}
 	memcpy(buf, src, patchSize);
 	for (int i = src_size; i < patchSize; i++) {
 		buf[i] = 0xCC;

@@ -296,7 +296,7 @@ void appendNewInstance(PlayerCreatePacket & player)
 		DEBUG_INFO_LEVEL_3("On adding instance with vid=%d, already exists, ignoring packet", player.dwVID);
 		return;
 	}
-	DEBUG_INFO_LEVEL_4("Success Adding instance vid=%d", player.dwVID);
+	DEBUG_INFO_LEVEL_3("Success Adding instance vid=%d", player.dwVID);
 
 	Instance i = { 0 };
 	i.vid = player.dwVID;
@@ -307,7 +307,6 @@ void appendNewInstance(PlayerCreatePacket & player)
 	i.bMovingSpeed = player.bMovingSpeed;
 	i.wRaceNum = player.wRaceNum;
 	i.bStateFlag = player.bStateFlag;
-	DEBUG_INFO_LEVEL_3("Success Adding instance race=%d, state=%d", player.wRaceNum, player.bStateFlag);
 
 	if (i.wRaceNum >= MIN_RACE_SHOP && i.wRaceNum <= MAX_RACE_SHOP) {
 		registerNewInstanceShop(player.dwVID);
@@ -1038,6 +1037,7 @@ static PyMethodDef s_methods[] =
 	{ "SendStatePacket",		pySendStatePacket,	METH_VARARGS },
 	{ "IsDead",					pyIsDead,			METH_VARARGS },
 
+#ifdef _DEBUG
 	{ "LaunchPacketFilter",		launchPacketFilter,	METH_VARARGS },
 	{ "ClosePacketFilter",		closePacketFilter,	METH_VARARGS },
 	{ "StartPacketFilter",		startPacketFilter,	METH_VARARGS },
@@ -1051,7 +1051,7 @@ static PyMethodDef s_methods[] =
 	{ "ClearOutFilter",			clearOutFilter,		METH_VARARGS },
 	{ "SetOutFilterMode",		setOutFilterMode,	METH_VARARGS },
 	{ "SetInFilterMode",		setInFilterMode,	METH_VARARGS },
-
+#endif
 	{ "SendAddFlyTarget",		pySendAddFlyTarget,	METH_VARARGS },
 	{ "SendShoot",				pySendShoot,		METH_VARARGS },
 	{ "EnableCollisions",		pyEnableCollisions,	METH_VARARGS },
@@ -1067,7 +1067,9 @@ static PyMethodDef s_methods[] =
 	{ "GetCloseItemGround",		pyGetCloseItemGround,	METH_VARARGS },
 	{ "SendPickupItem",			pySendPickupItem,		METH_VARARGS },
 
+#ifdef _DEBUG
 	{ "RegisterDigMotionCallback",	pyRecvDigMotionCallback,METH_VARARGS },
+#endif
 
 
 #ifdef METIN_GF
@@ -1090,6 +1092,11 @@ void initModule() {
 
 	PyModule_AddObject(packet_mod, "InstancesList", pyVIDList);
 	PyModule_AddStringConstant(packet_mod, "PATH", getDllPath());
+#ifdef _DEBUG
+	PyModule_AddIntConstant(packet_mod, "IS_DEBUG", 1);
+#else
+	PyModule_AddIntConstant(packet_mod, "IS_DEBUG", 0);
+#endif
 
 	PyModule_AddIntConstant(packet_mod, "CHAR_STATE_ATTACK", CHAR_STATE_FUNC_ATTACK);
 	PyModule_AddIntConstant(packet_mod, "CHAR_STATE_STOP", CHAR_STATE_FUNC_STOP);
@@ -1109,7 +1116,7 @@ void initModule() {
 
 	PyModule_AddIntConstant(packet_mod, "COMBO_SKILL_ARCH", COMBO_SKILL_ARCH);
 
-	//PHISHING
+	//FISHING
 	PyModule_AddIntConstant(packet_mod, "SUCCESS_FISHING", SUCESS_ON_FISHING);
 	PyModule_AddIntConstant(packet_mod, "UNSUCCESS_FISHING", UNSUCESS_ON_FISHING);
 

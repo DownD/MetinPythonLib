@@ -147,6 +147,36 @@ void __stdcall executeScript() {
 	executePythonFile((char*)"script.py");
 }
 
+bool RecvLoadingPhase(Packet& packet, int size) {
+	switch (packet.header) {
+	case HEADER_GC_CHARACTER_ADD: {
+		if (packet.data_size == 0) {
+			break;
+		}
+		PlayerCreatePacket instance;
+		fillPacket(&packet, &instance);
+		GlobalToLocalPosition(instance.x, instance.y);
+		appendNewInstance(instance);
+		break;
+	}
+	case HEADER_GC_MAIN_CHARACTER: {
+		MainCharacterPacket m;
+		fillPacket(&packet, &m);
+		DEBUG_INFO_LEVEL_2("MAIN VID: %d", m.dwVID);
+		mainCharacterVID = m.dwVID;
+		break;
+	}
+	case HEADER_GC_PHASE: {
+		ChangePhasePacket phase;
+		fillPacket(&packet, &phase);
+		if (phase.phase != 1 && phase.phase != 2)
+			setPhase(phase);
+		break;
+	}
+	}
+
+	return true;
+}
 
 bool RecvGamePhase(Packet & packet, int size) {
 	switch (packet.header) {
@@ -205,16 +235,6 @@ bool RecvGamePhase(Packet & packet, int size) {
 		fillPacket(&packet, &phase);
 		if(phase.phase != 1 && phase.phase != 2)
 			setPhase(phase);
-		break;
-	}
-
-	case HEADER_GC_MAIN_CHARACTER: {
-		if (PHASE_LOADING == gamePhase) {
-			MainCharacterPacket m;
-			fillPacket(&packet, &m);
-			DEBUG_INFO_LEVEL_2("MAIN VID: %d", m.dwVID);
-			mainCharacterVID = m.dwVID;
-		}
 		break;
 	}
 	case HEADER_CG_DIG_MOTION: {
@@ -297,6 +317,10 @@ bool __stdcall __RecvPacket(DWORD return_function,bool return_value,int size, vo
 		switch (gamePhase) {
 		case PHASE_GAME:
 			return_value = RecvGamePhase(packet, size);
+			break;
+
+		case PHASE_LOADING:
+			return_value = RecvLoadingPhase(packet, size);
 			break;
 		default: {
 			switch (packet.header) {

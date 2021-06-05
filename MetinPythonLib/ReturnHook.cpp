@@ -32,6 +32,10 @@ ReturnHook::ReturnHook(void * addressToHook, void * redirection, BYTE size, int 
 {
 	stackReplaceFunction = generateStackReplaceFunction();
 	oldCode = malloc(size);
+	if (!oldCode) {
+		MessageBox(NULL, "Critical error alocating memory for Return Hook", "CRITICAL ERROR", MB_OK);
+		throw new std::exception("Error");
+	}
 	oldCode = memcpy(oldCode, addressToHook, sizeHook);
 }
 

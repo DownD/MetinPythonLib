@@ -174,7 +174,7 @@ void init() {
 	SetBCheckAdvanceFunction(background_CheckAdvHook);
 	SetICheckAdvanceFunction(instanceBase_CheckAdvHook);
 
-	//THIS MAY CRASH
+
 	SetSendFunctionPointer(sendHook->originalFunction);
 	SetSendSequenceFunction(sendSequenceHook->originalFunction);
 
