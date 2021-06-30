@@ -128,9 +128,13 @@ bool MapCollision::fileExists(const char * file)
 	PyObject * poArgs = Py_BuildValue("(s)",file);
 	long ret = 0;
 
-	if(PyCallClassMemberFunc(mod, "IsExistFile", poArgs,&ret))
+	if (PyCallClassMemberFunc(mod, "IsExistFile", poArgs, &ret)) {
+		Py_DECREF(mod);
+		Py_DECREF(poArgs);
 		return ret;
+	}
 	Py_DECREF(mod);
+	Py_DECREF(poArgs);
 	return false;
 }
 
@@ -141,7 +145,7 @@ bool MapCollision::constructMapFromClient()
 	baseFolder += "\\";
 	int counter = 0;
 	int xPieces = 0;
-	int largestYPiece = 0;
+	int largestYPiece = 1;
 	for (int x = 0; ; x++, xPieces++) {
 		std::ostringstream x_folder;
 		x_folder << std::setw(3) << std::setfill('0') << x;
@@ -351,8 +355,8 @@ void MapCollision::saveMap()
 		return;
 	}*/
 
-	std::string consoleS("mkdir ");
-	consoleS += dic;
+	std::string consoleS("mkdir \"");
+	consoleS += dic + "\"";
 	system(consoleS.c_str());
 
 	dic += mapName + std::string(".dat");
@@ -401,6 +405,8 @@ MapCollision::MapPiece::MapPiece(EterFile * file,int x,int y,std::string path)
 
 }
 
+
+
 MapCollision::MapPiece::~MapPiece()
 {
 	free(entireMap);
@@ -424,6 +430,7 @@ void MapCollision::MapPiece::printToFile(const char * name)
 		myfile << line;
 		myfile << "\n";
 	}
+	free(line);
 	myfile << "X_Start: " << std::to_string(xStart) << "Y_Start: " << std::to_string(yStart);
 	myfile.close();
 }

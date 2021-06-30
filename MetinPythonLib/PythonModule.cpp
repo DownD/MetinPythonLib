@@ -12,11 +12,20 @@ static std::string fileName;
 PyObject* getMainPlayerPosition;*/
 
 //Client Functions
-typedef bool(__thiscall* tMoveToDestPosition)(void* classPointer, fPoint& pos);
 typedef void*(__thiscall* tGetInstancePointer)(DWORD classPointer, DWORD vid);
 
-tMoveToDestPosition fMoveToDestPosition;
 tGetInstancePointer fGetInstancePointer;
+
+//Hooks
+DetoursHook<tMoveToDestPosition>* moveToDestPositionHook = 0;
+DetoursHook<tMoveToDirection>* moveToDirectionHook = 0;
+
+//If sets this variable according to the last type of movement
+BYTE lastMovement = MOVE_WALK;
+fPoint lastDestPos = { 0,0 };
+
+//Movement speed stuff
+float speedMultiplier = 1;
 
 //Client characterManager stuff
 std::map<DWORD, void*>* clientInstanceMap; //Not working
@@ -33,6 +42,10 @@ static bool executeFile = false;
 Hook* hook;
 PyObject* packet_mod;
 PyObject* pyVIDList;
+
+//Python Modules
+PyObject* chr_mod;
+PyObject* player_mod;
 
 //File Related
 bool getTrigger = false;
@@ -196,6 +209,52 @@ PyObject* moveToDestPosition(PyObject* poSelf, PyObject* poArgs)
 	return Py_BuildNone();
 }
 
+long getCurrentSpeed() {
+	PyObject* poArgs = Py_BuildValue("(i)", STATUS_MOVEMENT_SPEED);
+	long ret = 0;
+
+	if (PyCallClassMemberFunc(player_mod, "GetStatus", poArgs, &ret)) {
+		Py_DECREF(poArgs);
+		return ret / 100;
+	}
+	Py_DECREF(poArgs);
+	return ret;
+}
+
+void setPixelPosition(fPoint fPos)
+{
+
+	PyObject* poArgs = Py_BuildValue("(ii)",(int)fPos.x, (int)fPos.y);
+	long ret = 0;
+	DEBUG_INFO_LEVEL_3("SetPixelPosition x->%d, y->%d", (int)fPos.x, (int)fPos.y);
+	if (PyCallClassMemberFunc(chr_mod, "SetPixelPosition", poArgs, &ret)) {
+		Py_DECREF(poArgs);
+		return;
+	}
+
+	Py_DECREF(poArgs);
+}
+
+BYTE getLastMovementType()
+{
+	return lastMovement;
+}
+
+fPoint getLastDestPosition()
+{
+	return lastDestPos;
+}
+
+PyObject* pySetMoveSpeed(PyObject* poSelf, PyObject* poArgs)
+{
+	float speed;
+	if (!PyTuple_GetFloat(poArgs, 0, &speed))
+		return Py_BuildException();
+
+	SetSpeedMultiplier(speed);
+	return Py_BuildNone();
+}
+
 DWORD __stdcall _GetEter(DWORD return_value, CMappedFile* file, const char* fileName, void** buffer) {
 
 
@@ -219,6 +278,21 @@ void _RecvRoutine(){
 		executePythonFile((char*)fileName.c_str());
 		executeFile = 0;
 	}
+}
+
+bool __fastcall __MoveToDestPosition(void* classPointer, DWORD EDX, fPoint& pos)
+{
+	lastMovement = MOVE_POSITION;
+	lastDestPos = pos;
+	//DEBUG_INFO_LEVEL_4("__MoveToDestPosition Called");
+	return moveToDestPositionHook->originalFunction(classPointer, pos);
+}
+
+bool __fastcall __MoveToDirection(void* classPointer, DWORD EDX, float rot)
+{
+	lastMovement = MOVE_WALK;
+	//DEBUG_INFO_LEVEL_4("__MoveToDirection Called");
+	return moveToDirectionHook->originalFunction(classPointer, rot);
 }
 
 //C Wrapper
@@ -293,10 +367,10 @@ void callDigMotionCallback(DWORD target_player,DWORD target_vein,DWORD n)
 void appendNewInstance(PlayerCreatePacket & player)
 {
 	if (instances.find(player.dwVID) != instances.end()){
-		DEBUG_INFO_LEVEL_3("On adding instance with vid=%d, already exists, ignoring packet", player.dwVID);
+		DEBUG_INFO_LEVEL_4("On adding instance with vid=%d, already exists, ignoring packet", player.dwVID);
 		return;
 	}
-	DEBUG_INFO_LEVEL_3("Success Adding instance vid=%d", player.dwVID);
+	DEBUG_INFO_LEVEL_4("Success Adding instance vid=%d", player.dwVID);
 
 	Instance i = { 0 };
 	i.vid = player.dwVID;
@@ -404,6 +478,7 @@ PyObject* GetEterPacket(PyObject * poSelf, PyObject * poArgs) {
 	PyCallClassMemberFunc(mod, "OpenTextFile", poArgs);
 	getTrigger = false;
 
+	Py_DECREF(poArgs);
 	Py_DECREF(mod);
 
 	//PyObject * obj = PyString_FromStringAndSize((const char*)eterFile.data, eterFile.size);
@@ -975,7 +1050,7 @@ PyObject* pyGetCloseItemGround(PyObject* poSelf, PyObject* poArgs)
 	if (!PyTuple_GetInteger(poArgs, 1, &y))
 		return Py_BuildException();
 
-	DEBUG_INFO_LEVEL_3("Number of items in filter %d", pickupFilter.size())
+	DEBUG_INFO_LEVEL_4("Number of items in filter %d", pickupFilter.size())
 
 	float minDist = std::numeric_limits<float>::max();
 	DWORD selVID = 0;
@@ -1022,6 +1097,19 @@ PyObject* pySendPickupItem(PyObject* poSelf, PyObject* poArgs)
 	return Py_BuildNone();
 }
 
+PyObject* pySendUseSkillPacket(PyObject* poSelf, PyObject* poArgs) {
+	int vid = 0;
+	int dwSkillIndex = 0;
+	if (!PyTuple_GetInteger(poArgs, 0, &dwSkillIndex))
+		return Py_BuildException();
+	if (!PyTuple_GetInteger(poArgs, 1, &vid))
+		return Py_BuildException();
+
+	SendUseSkillPacket(dwSkillIndex, vid);
+	return Py_BuildNone();
+
+}
+
 
 
 
@@ -1057,6 +1145,7 @@ static PyMethodDef s_methods[] =
 	{ "EnableCollisions",		pyEnableCollisions,	METH_VARARGS },
 	{ "DisableCollisions",		pyDisableCollisions,METH_VARARGS },
 	{ "RegisterNewShopCallback",pyRegisterNewShopCallback,METH_VARARGS },
+	{ "SendUseSkillPacket",		pySendUseSkillPacket,METH_VARARGS },
 
 	//PICKUP
 	{ "ItemGrndFilterClear",	pyItemGrndFilterClear,	METH_VARARGS },
@@ -1080,14 +1169,15 @@ static PyMethodDef s_methods[] =
 
 	//{ "SetKeyState",			pySetKeyState,		METH_VARARGS },
 	//{ "SetAttackKeyState",		pySetKeyState,		METH_VARARGS },
-	{ "GetPixelPosition",		GetPixelPosition,	METH_VARARGS },
+	{ "GetPixelPosition",		GetPixelPosition,	METH_VARARGS},
 	{ "MoveToDestPosition",     moveToDestPosition, METH_VARARGS},
+	{ "SetMoveSpeedMultiplier",	pySetMoveSpeed,		METH_VARARGS},
 #endif
 	{ NULL, NULL }
 };
 
 void initModule() {
-	packet_mod = Py_InitModule("net_packet", s_methods);
+	packet_mod = Py_InitModule("eXLib", s_methods);
 	pyVIDList = PyDict_New();
 
 	PyModule_AddObject(packet_mod, "InstancesList", pyVIDList);
@@ -1124,8 +1214,11 @@ void initModule() {
 		DEBUG_INFO_LEVEL_1("Error adding current path to intepreter!");
 		MessageBox(NULL, "Error adding current path to intepreter!", "Error", MB_OK);
 		exit();
+		return;
 	}
 	executeScriptFromMainThread("init.py");
+	chr_mod = PyImport_ImportModule("chr");
+	player_mod = PyImport_ImportModule("player");
 }
 
 void SetChrMngrAndInstanceMap(void* classPointer)
@@ -1146,16 +1239,24 @@ void SetChrMngrAndInstanceMap(void* classPointer)
 	DEBUG_INFO_LEVEL_1("GetInstancePointer %#x", fGetInstancePointer);
 }
 
-void SetMoveToDistPositionFunc(void* func)
+void SetMoveToDistPositionFunc(DetoursHook<tMoveToDestPosition>* hook)
 {
-	fMoveToDestPosition = (tMoveToDestPosition)func;
+	moveToDestPositionHook = hook;
+	moveToDestPositionHook->HookFunction();
+}
+
+
+void SetMoveToToDirectionFunc(DetoursHook<tMoveToDirection>* hook)
+{
+	moveToDirectionHook = hook;
+	moveToDirectionHook->HookFunction();
 }
 
 bool moveToDestPosition(DWORD vid,fPoint& pos) {
 	void* p = getInstancePtr(vid);
 	if (p) {
 		DEBUG_INFO_LEVEL_3("Moving VID %d to posititon X:%f y:%f!",vid,pos.x,pos.y);
-		return fMoveToDestPosition(p, pos);
+		return moveToDestPositionHook->originalFunction(p, pos);
 	}
 	else {
 		return 0;

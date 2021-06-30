@@ -8,6 +8,7 @@
 
 typedef bool(__thiscall *tSendPacket)(DWORD classPointer, int size, void* buffer);
 typedef bool(__thiscall* tSendSequencePacket)(DWORD classPointer);
+typedef bool(__thiscall* tSendStatePacket)(DWORD classPointer, fPoint& pos, float rot, BYTE eFunc, BYTE uArg);
 typedef bool(__thiscall* tBackground_CheckAdvancing)(DWORD classPointer, void* instanceBase);
 typedef bool(__thiscall* tInstanceBase_CheckAdvancing)(DWORD classPointer);
 
@@ -72,6 +73,7 @@ namespace PacketHeaders {
 		HEADER_CG_CHARACTER_MOVE = 11,//19, 
 		HEADER_CG_FISHING = 14,
 		HEADER_CG_SHOOT = 4,
+		HEADER_CG_USE_SKILL = 76,
 		HEADER_CG_SELECT_TARGET = 82,
 		HEADER_CG_BATTLE_ATTACK = 85,
 		HEADER_CG_ADD_FLY_TARGETING = 77
@@ -155,6 +157,12 @@ struct ShootPacket
 {
 	BYTE		header = PacketHeaders::HEADER_CG_SHOOT;
 	BYTE		type;
+};
+
+struct SkillPacket {
+	BYTE		header= PacketHeaders::HEADER_CG_USE_SKILL;
+	DWORD		dwSkillIndex;
+	DWORD		vid;
 };
 
 struct MainCharacterPacket
@@ -264,8 +272,12 @@ std::set<BYTE>* getPacketFilter(PACKET_TYPE t);
 bool __stdcall __RecvPacket(DWORD returnFunction, bool return_value, int size, void* buffer);
 bool __stdcall __SendPacket(DWORD classPointer,DetoursHook<tSendPacket>* hook, void* retAddress,int size, void*buffer);
 bool __fastcall __SendSequencePacket(DWORD classPointer);
-bool __fastcall __BackgroundCheckAdvanced(DWORD classPointer, DWORD EDX, void* instanceBase); //waithack buildings
-bool __fastcall __InstanceBaseCheckAdvanced(DWORD classPointer);//waithack envoirnment_monsters 
+bool __fastcall __BackgroundCheckAdvanced(DWORD classPointer, DWORD EDX, void* instanceBase); //wallhack buildings
+bool __fastcall __InstanceBaseCheckAdvanced(DWORD classPointer);//wallhack envoirnment_monsters 
+
+//Notes, eFunc = 0 speedhack not detected
+//Sending 2 or more packets with diferent positions as eFunc=1 reload the mobs
+bool __fastcall __SendStatePacket(DWORD classPointer, DWORD EDX,fPoint& pos, float rot, BYTE eFunc, BYTE uArg);
 
 
 //SendPacket Functions
@@ -278,23 +290,27 @@ bool SendShootPacket(BYTE uSkill);
 bool SendStartFishing(WORD direction);
 bool SendStopFishing(BYTE type, float timeLeft);
 bool SendPickupItemPacket(DWORD vid);
+bool SendUseSkillPacket(DWORD dwSkillIndex, DWORD dwTargetVID);
 
+void SetStatePacketFixer(bool val); //If true will set replace all eFunc of state packet with FUNC_WAIT
 int getCurrentPhase();
 DWORD getMainCharacterVID();
 void GlobalToLocalPosition(long& lx, long& ly);
 void LocalToGlobalPosition(LONG& rLocalX, LONG& rLocalY);
+void SetSpeedMultiplier(float val);
 
 
 //Setters
 void SetNetClassPointer(void* stackPointer);
 void SetSendFunctionPointer(void* p);
 void SetSendBattlePacket(void* func);
-void SetSendStatePacket(void* func);
+void SetSendStatePacket(DetoursHook<tSendStatePacket>* hook);
 void SetGlobalToLocalFunction(void* func);
 void SetSendSequenceFunction(void* func);
 void SetLocalToGlobalFunction(void* func);
 void SetBCheckAdvanceFunction(DetoursHook<tBackground_CheckAdvancing>* hook);
 void SetICheckAdvanceFunction(DetoursHook<tInstanceBase_CheckAdvancing>* hook);
+void LoadPythonNetModule();
 
 //Blocks client from send fishing packets
 void SetFishingPacketsBlock(bool val); //1 block packets, 0 do not block packets

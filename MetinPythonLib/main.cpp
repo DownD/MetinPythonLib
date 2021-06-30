@@ -29,6 +29,7 @@ DWORD WINAPI ThreadProc(LPVOID lpParameter)
 {
 #ifdef _DEBUG
 	SetupConsole();
+	setDebugStreamFiles();
 	DEBUG_INFO_LEVEL_1("Dll Loaded From %s", getDllPath());
 #endif
 	init();

@@ -7,6 +7,7 @@
 #include <chrono>
 #include <ctime>
 #include <math.h>
+#include <stdarg.h>
 
 bool isDebugEnable();
 void setDebugOn();
@@ -23,11 +24,20 @@ void setDebugOff();
 typedef void (__stdcall *tTimerFunction)();
 typedef std::chrono::time_point<std::chrono::system_clock> tTimePoint;
 
+struct TPixelPosition {
+	float x, y, z;
+};
+
 bool getCurrentPathFromModule(HMODULE hMod, char* dllPath, int size);
 void stripFileFromPath(char* dllPath, int size);
 const char* getDllPath();
 const char* getMapsPath();
+
 void setDllPath(char* file);
+void setDebugStreamFiles();
+void cleanDebugStreamFiles();
+
+void Tracef(bool val, const char* c_szFormat, ...);
 
 
 //There are bugs here that migh crash the process
@@ -130,8 +140,9 @@ private:
 };
 
 inline float distance(float x1, float y1, float x2, float y2) {
-	return sqrt((x2 - x1) * (x2 - x1)) + ((y2 - y1) * (y2 - y1));
+	return sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
 }
+
 
 struct Point {
 	Point(int x=0, int y=0) : x(x), y(y){}
@@ -147,3 +158,27 @@ struct fPoint3D {
 	float x, y, z;
 };
 
+inline fPoint getPointAtDistanceTimes(float x1, float y1, float x2, float y2, float multiplier) {
+	fPoint vector(x2 - x1, y2 - y1);
+	fPoint result(x1 + vector.x * multiplier, y1 + vector.y * multiplier);
+	return result;
+}
+
+
+inline bool checkPointBetween(float xStart, float yStart, float xCheckPoint, float yCheckPoint, float xEnd, float yEnd ) {
+	fPoint vector(xEnd - xStart, yEnd - yStart);
+	float kx = 0;
+	float ky = 0;
+	if (vector.x != 0){
+		kx = (xCheckPoint - xStart) / vector.x;
+	}
+	if (vector.y != 0) {
+		ky = (yCheckPoint - yStart) / vector.y;
+	}
+
+	if (abs(kx - ky) < 2 && kx<1) {
+		return true;
+	}
+
+	return false;
+}

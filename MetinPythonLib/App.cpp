@@ -10,13 +10,23 @@
 #include "DetoursHook.h"
 
 
+typedef void(__cdecl* tTracef)(const char* c_szFormat, ...);
+
 DetoursHook<tBackground_CheckAdvancing>* background_CheckAdvHook = 0;
 DetoursHook<tInstanceBase_CheckAdvancing>* instanceBase_CheckAdvHook = 0;
 DetoursHook<tSendSequencePacket>* sendSequenceHook = 0;
 DetoursHook<tSendPacket>* sendHook = 0;
+DetoursHook<tSendStatePacket>* sendState_Hook = 0;
+DetoursHook<tMoveToDestPosition>* setMoveToDestPosition_Hook = 0;
+DetoursHook<tMoveToDirection>* setMoveToDirection_Hook = 0;
+
+DetoursHook<tTracef>* traceF_Hook = 0;
+DetoursHook<tTracef>* tracenF_Hook = 0;
+
 Hook* recvHook = 0;
 Hook* getEtherPacketHook = 0;
 HMODULE hDll = 0;
+
 
 
 namespace memory_patterns {
@@ -32,8 +42,23 @@ namespace memory_patterns {
 	Pattern characterManagerClassPointer = Pattern("ChracterManager Pointer", 4, "\x89\x55\x00\xa1\x00\x00\x00\x00\x89\x45\x00\x8b\x4d\x00\xe8\x00\x00\x00\x00\x89\x45\x00\x83\x7d", "xx?x????xx?xx?x????xx?xx");
 
 	//Search for string CPythonPlayer::__OnPressItem, go to caller of that function and find the __OnPressGround function, and a reference will be inside
-	//https://gyazo.com/46f70061fc47d132496d61e92af78bc5	
+	//https://gyazo.com/46f70061fc47d132496d61e92af78bc5
+	//From CInstanceBase
 	Pattern moveToDest = Pattern("MoveToDest Pointer", 0, "\x55\x8b\xec\x83\xec\x00\x89\x4d\x00\x8d\x45\x00\x50\x8b\x4d\x00\xe8\x00\x00\x00\x00\x8b\x4d", "xxxxx?xx?xx?xxx?x????xx");
+
+	//CPythonEventHandler::OnMove
+	//Pattern onMoveFunc = Pattern("OnMove Pointer", 0, "\x55\x8b\xec\x83\xec\x00\x89\x4d\x00\xe8\x00\x00\x00\x00\x89\x45\x00\x8b\x45\x00\x8b\x48\x00\x3b\x4d\x00\x76\x00\xeb", "xxxxx?xx?x????xx?xx?xx?xx?x?x");
+	
+	//From CPythonPlayer
+	Pattern moveToDirection = Pattern("MoveToDirection Pointer", 0, "\x55\x8b\xec\x83\xec\x00\x89\x4d\x00\x8b\x4d\x00\xe8\x00\x00\x00\x00\x0f\xb6\x00\x85\xc0\x74\x00\xb0", "xxxxx?xx?xx?x????xx?xxx?x");
+
+
+	//Tracenf function
+	Pattern tracenfFunc = Pattern("Tracenf Pointer", 0, "\x81\xec\x00\x00\x00\x00\xa1\x00\x00\x00\x00\x33\xc4\x89\x84\x24\x00\x00\x00\x00\x8b\x8c\x24\x00\x00\x00\x00\x8d\x84\x24\x00\x00\x00\x00\x50\x51\x8d\x54\x24\x00\x68\x00\x00\x00\x00\x52\xe8\x00\x00\x00\x00\x83\xc4\x00\x85\xc0", "xx????x????xxxxx????xxx????xxx????xxxxx?x????xx????xx?xx");
+	Pattern tracefFunc = Pattern("Tracenf Pointer", 0, "\x81\xec\x00\x00\x00\x00\xa1\x00\x00\x00\x00\x33\xc4\x89\x84\x24\x00\x00\x00\x00\x8b\x8c\x24\x00\x00\x00\x00\x8d\x84\x24\x00\x00\x00\x00\x50\x51\x8d\x54\x24\x00\x68\x00\x00\x00\x00\x52\xe8\x00\x00\x00\x00\x83\xc4\x00\x83\x3d", "xx????x????xxxxx????xxx????xxx????xxxxx?x????xx????xx?xx");
+	
+	//CActorInstance::SetMoveSpeed on GraphicInstance
+	//Pattern setMoveSpeedFunc = Pattern("SetMoveSpeedFunc Pointer", 0, "\x56\x8b\xf1\x57\x8d\xbe\x00\x00\x00\x00\x8b\xcf\xe8\x00\x00\x00\x00\xd9\x44\x24", "xxxxxx????xxx????xxx");
 
 	//https://gyazo.com/6696a0db5abb62a59203d7282bc4f90a //From RecvCharMovePacket
 	//\xe8\x00\x00\x00\x00\x8d\x4d\x00\xe8\x00\x00\x00\x00\x0f\xb6\x4d x????xx?x????xxx
@@ -111,6 +136,24 @@ bool __declspec(naked) __SendPacketJMP(int size,void* buffer) {
 }
 
 
+void __Tracef(const char* c_szFormat, ...) {
+	va_list args;
+	va_start(args, c_szFormat);
+	Tracef(1,c_szFormat,args);
+	traceF_Hook->originalFunction(c_szFormat, args);
+	va_end(args);
+}
+
+void __Tracenf(const char* c_szFormat, ...) {
+	va_list args;
+	va_start(args, c_szFormat);
+	Tracef(0, c_szFormat, args);
+	traceF_Hook->originalFunction(c_szFormat, args);
+	va_end(args);
+}
+
+
+
 
 void init() {
 	auto send = memory_patterns::sendFunction;
@@ -138,6 +181,10 @@ void init() {
 	void* globalToLocalPositionPointer = patternFinder->GetPatternAddress(&memory_patterns::globalToLocalPositionFunction);
 	void* Background_CheckAdvancingFuncPointer = patternFinder->GetPatternAddress(&memory_patterns::Background_CheckAdvancingFunc);
 	void* Instance_CheckAdvancingFuncPointer = patternFinder->GetPatternAddress(&memory_patterns::Instance_CheckAdvancingFunc);
+	void* traceFFuncAddr = patternFinder->GetPatternAddress(&memory_patterns::tracefFunc);
+	void* tracenFFuncAddr = patternFinder->GetPatternAddress(&memory_patterns::tracenfFunc);
+	void* moveToDirectionAddr = patternFinder->GetPatternAddress(&memory_patterns::moveToDirection);
+
 	globalToLocalPositionPointer = getRelativeCallAddress(globalToLocalPositionPointer);
 
 
@@ -148,10 +195,8 @@ void init() {
 	SetNetClassPointer(*netClassPointer);
 	SetSendFunctionPointer(sendAddr);
 	SetSendBattlePacket(attackPacketAddr);
-	SetSendStatePacket(statePacketAddr);
 	SetGlobalToLocalFunction(globalToLocalPositionPointer);
 	SetChrMngrAndInstanceMap(*chrMgrClassPointer);
-	SetMoveToDistPositionFunc(moveToDestAddr);
 	SetSendSequenceFunction(sendSequenceAddr);
 	SetLocalToGlobalFunction(localToGlobalPositionPointer);
 
@@ -163,16 +208,31 @@ void init() {
 	sendSequenceHook = new DetoursHook<tSendSequencePacket>((tSendSequencePacket)sendSequenceAddr, __SendSequencePacket);
 	background_CheckAdvHook = new DetoursHook<tBackground_CheckAdvancing>((tBackground_CheckAdvancing)Background_CheckAdvancingFuncPointer, __BackgroundCheckAdvanced);
 	instanceBase_CheckAdvHook = new DetoursHook<tInstanceBase_CheckAdvancing>((tInstanceBase_CheckAdvancing)Instance_CheckAdvancingFuncPointer, __InstanceBaseCheckAdvanced);
+	sendState_Hook = new DetoursHook<tSendStatePacket>((tSendStatePacket)statePacketAddr, __SendStatePacket);
+	setMoveToDestPosition_Hook = new DetoursHook<tMoveToDestPosition>((tMoveToDestPosition)moveToDestAddr, __MoveToDestPosition);
+	setMoveToDirection_Hook = new DetoursHook<tMoveToDirection>((tMoveToDirection)moveToDirectionAddr, __MoveToDirection);
 
+#ifdef _DEBUG
+	traceF_Hook = new DetoursHook<tTracef>((tTracef)traceFFuncAddr, __Tracef);
+	tracenF_Hook = new DetoursHook<tTracef>((tTracef)tracenFFuncAddr, __Tracenf);
+#endif // DEBUG
 
 	recvHook->HookFunction();
 	getEtherPacketHook->HookFunction();
 	sendHook->HookFunction();
 	sendSequenceHook->HookFunction();
 
+#ifdef _DEBUG
+	traceF_Hook->HookFunction();
+	tracenF_Hook->HookFunction();
+#endif // DEBUG
+
 	//This hooks are initialize in the respective function
 	SetBCheckAdvanceFunction(background_CheckAdvHook);
 	SetICheckAdvanceFunction(instanceBase_CheckAdvHook);
+	SetSendStatePacket(sendState_Hook);
+	SetMoveToDistPositionFunc(setMoveToDestPosition_Hook);
+	SetMoveToToDirectionFunc(setMoveToDirection_Hook);
 
 
 	SetSendFunctionPointer(sendHook->originalFunction);
@@ -180,6 +240,7 @@ void init() {
 
 
 	initModule();
+	LoadPythonNetModule();
 	delete patternFinder;
 }
 
@@ -191,12 +252,25 @@ void exit() {
 	if (recvHook)
 		recvHook->UnHookFunction();
 
+	if (sendState_Hook)
+		sendState_Hook->UnHookFunction();
+
+#ifdef _DEBUG
+	cleanDebugStreamFiles();
+	delete traceF_Hook;
+	delete tracenF_Hook;
+#endif // _DEBUG
+
+
 	delete background_CheckAdvHook;
 	delete instanceBase_CheckAdvHook;
 	delete sendHook;
 	delete recvHook;
 	delete getEtherPacketHook;
 	delete sendSequenceHook;
+	delete sendState_Hook;
+	delete setMoveToDestPosition_Hook;
+	delete setMoveToDirection_Hook;
 
 	freeCurrentMap();
 

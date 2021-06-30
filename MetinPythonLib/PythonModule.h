@@ -14,21 +14,29 @@
 #include "Network.h"
 
 
+#define OFFSET_GRAPHIC_INSTANCE 0x234
+
 //Deprecated
 //#define OFFSET_CLIENT_ALIVE_MAP 0x38
 #define OFFSET_CLIENT_INSTANCE_PTR_1 0x4
 #define OFFSET_CLIENT_INSTANCE_PTR_2 0x8
 #define OFFSET_CLIENT_CHARACTER_POS 0x7C0
+#define OFFSET_CLIENT_CHARACTER_DST 0x08B8
+
+//MOVEMENT SPEED
+#define STATUS_MOVEMENT_SPEED 19
 
 //Private Shops Race 
 #define MIN_RACE_SHOP 30000
 #define MAX_RACE_SHOP 30008
 
+#define MOVE_WALK 1
+#define MOVE_POSITION 0
+
 
 /*SELECT THE METHOD USED TO INJECT THE PYTHON FILE, UNCOMMENT ONLY ONE*/
 //#define USE_INJECTION_SLEEP_HOOK
 #define USE_INJECTION_RECV_HOOK
-
 
 
 extern PyObject* packet_mod;
@@ -39,6 +47,12 @@ struct EterFile {
 	void* data;
 	int size;
 	std::string name;
+};
+
+struct SState
+{
+	TPixelPosition kPPosSelf;
+	FLOAT fAdvRotSelf;
 };
 
 #pragma pack(push, 1)
@@ -67,12 +81,18 @@ struct CMappedFile {
 };
 #pragma pack(pop)
 
+
+typedef bool	(__thiscall* tMoveToDirection)(void* classPointer, float rot);
+typedef bool	(__thiscall* tMoveToDestPosition)(void* classPointer, fPoint& pos);
+
+
 bool executePythonFile(char* fileName);
 
 
 //SET OLD FUNCTION
 PyObject* GetPixelPosition(PyObject* poSelf, PyObject* poArgs);
 PyObject* moveToDestPosition(PyObject* poSelf, PyObject* poArgs);
+PyObject* pySetMoveSpeed(PyObject* poSelf, PyObject* poArgs);
 
 
 PyObject* GetEterPacket(PyObject * poSelf, PyObject * poArgs);
@@ -101,6 +121,7 @@ PyObject* pyItemGrndAddFilter(PyObject* poSelf, PyObject* poArgs);
 PyObject* pyItemGrndDelFilter(PyObject* poSelf, PyObject* poArgs);
 PyObject* pyGetCloseItemGround(PyObject* poSelf, PyObject* poArgs);
 PyObject* pySendPickupItem(PyObject* poSelf, PyObject* poArgs);
+PyObject* pySendUseSkillPacket(PyObject* poSelf, PyObject* poArgs);
 
 //PyObject* pySetKeyState(PyObject* poSelf, PyObject* poArgs); //There is a similar function, OnKeyUp or OnKeyDown
 
@@ -125,10 +146,12 @@ void* getInstancePtr(DWORD vid);
 bool  moveToDestPosition(DWORD vid,fPoint& pos);
 
 
+void _RecvRoutine();
 
 //Hooked function
 DWORD __stdcall _GetEter(DWORD return_value, CMappedFile* file, const char* fileName, void** buffer);
-void _RecvRoutine();
+bool __fastcall __MoveToDestPosition(void* classPointer, DWORD EDX ,fPoint& pos);
+bool __fastcall __MoveToDirection(void* classPointer, DWORD EDX, float rot);
 
 //Decrypt files
 EterFile* CGetEter(const char* name);
@@ -136,17 +159,23 @@ EterFile* CGetEter(const char* name);
 //Instances
 void changeInstancePosition(CharacterMovePacket & packet_move);
 void appendNewInstance(PlayerCreatePacket & player);
-//void registerNewInstanceShop(DWORD player);
 void deleteInstance(DWORD vid);
 void changeInstanceIsDead(DWORD vid, BYTE isDead);
 void addItemGround(GroundItemAddPacket& item);
 void delItemGround(GroundItemDeletePacket& item);
 void clearInstances();
 void callDigMotionCallback(DWORD target_player, DWORD target_vein, DWORD n);
+long getCurrentSpeed();
+void setPixelPosition(fPoint fPos);
+BYTE getLastMovementType();
+fPoint getLastDestPosition();
 
 bool getCharacterPosition(DWORD vid, fPoint3D* pos);
 
-//Intialize stuf
+
+
+//Intialize stuff
 void initModule();
 void SetChrMngrAndInstanceMap(void* classPointer);
-void SetMoveToDistPositionFunc(void* func);
+void SetMoveToDistPositionFunc(DetoursHook<tMoveToDestPosition>* hook);
+void SetMoveToToDirectionFunc(DetoursHook<tMoveToDirection>* hook);

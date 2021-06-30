@@ -26,6 +26,7 @@ Adds some functions to the python API, and try to inject a script.py from the cu
   - FindPath(\<int\>x_start,\<int\>y_start,\<int\>x_end,\<int\>y_end) returns \<tuple\>(x,y)<br>
     Finds a path between 2 points. <br>
     The path will not contain the current point.<br>
+    It's possible to edit the maps, by changing the files in Resources/Maps, 0 represents a blocked location and the 1 represents a walkable position. The module will generate a new map if the same does not exist.<br>
     
   - SendPacket(\<int\>size,\<bytearray\>buffer) return None<br>
     Sends a packet to the server bypassing any encryption set.<br>
@@ -101,6 +102,12 @@ Adds some functions to the python API, and try to inject a script.py from the cu
 
   - SendPickupItem(\<int\>itemVID)<br>
     Sends a packet to pickup an item from the ground<br>
+
+  - SetMoveSpeedMultiplier(\<float\> speed)<br>
+    Set the character movement boosting movement speed. 
+
+  - SendUseSkillPacket(\<int\> skillIndex, \<int\> vid)<br>
+    Uses a skill with a target vid.
     
 ### Pickup Filter
 A filter o be applied when calling GetCloseItemGround, by default the filter is set to pick items not present in filter.
@@ -131,6 +138,13 @@ These simulates the functions that were removed from the modules by Gameforge.
 
   - MoveToDestPosition(\<float\> x,\<float\> y)<br>
     Moves to a destination.
+	
+  - SetMoveSpeed(\<float\> speed)<br>
+    Set the character movement speed. The client might change the speed again need to be called constantly for now.
+    If speed bigger then 2.0, the client will disconnect.
+
+  - SendUseSkillPacket(\<int\> skillIndex, \<int\> vid)<br>
+    Uses a skill with a target vid.
 
 
 ### This are relative to a Packet Filter for debug purposes

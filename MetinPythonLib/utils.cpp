@@ -6,6 +6,10 @@ static std::map<tTimePoint, tTimerFunction> timer_functions;
 char DLLPATH[256] = { 0 };
 char MAP_PATH[256] = { 0 };
 bool debug_print = 1;
+
+FILE* traceFile;
+FILE* tracenFile;
+
 int split(char * str, char c, std::vector<std::string>* vec)
 {
 	std::istringstream f(str);
@@ -136,6 +140,33 @@ void setDllPath(char* file)
 	stripFileFromPath(DLLPATH,256);
 	strcpy(MAP_PATH, DLLPATH);
 	strcat(MAP_PATH, SUBPATH_MAPS);
+}
+
+void setDebugStreamFiles()
+{
+	std::string path(getDllPath());
+	auto traceFileName = path + "Tracef.txt";
+	auto tracenFileName = path + "Tracenf.txt";
+	traceFile = fopen(traceFileName.c_str(), "w");
+	tracenFile = fopen(tracenFileName.c_str(), "w");
+}
+
+void cleanDebugStreamFiles()
+{
+	fclose(traceFile);
+	fclose(tracenFile);
+}
+
+void Tracef(bool val,const char* c_szFormat, ...)
+{
+	va_list args;
+	va_start(args, c_szFormat);
+	if(val)
+		vfprintf(traceFile, c_szFormat, args);
+	else
+		vfprintf(tracenFile, c_szFormat, args);
+	
+	va_end(args);
 }
 
 

@@ -4,6 +4,7 @@
 #include <chrono>
 #include <ctime>
 
+#define MAX_TELEPORT_DIST 2400
 
 
 //PacketFilter
@@ -20,16 +21,25 @@ DWORD mainCharacterVID = 0;
 typedef bool(__thiscall* tGlobalToLocalPosition)(DWORD classPointer, long& lx, long& ly);
 typedef bool(__thiscall* tLocalToGlobalPosition)(DWORD classPointer, LONG& rLocalX, LONG& rLocalY);
 typedef bool(__thiscall *tSendAttackPacket)(DWORD classPointer, BYTE type, DWORD vid);
-typedef bool(__thiscall *tSendStatePacket)(DWORD classPointer, fPoint& pos, float rot, BYTE eFunc, BYTE uArg);
 typedef bool(__thiscall* tSendSequencePacket)(DWORD classPointer);
 
 tLocalToGlobalPosition fLocalToGlobalPosition;
-tSendStatePacket fSendStatePacket;
 tSendAttackPacket fSendAttackPacket;
 tSendPacket fSendPacket;
 tSendSequencePacket fSendSequencePacket;
 tGlobalToLocalPosition fGlobalToLocalPosition;
 
+//enables packet fixer for speedHack to work
+bool fixStatePackets = false;
+#define PACKET_NUM_TO_SEND_WALK 5 //Number of walk packets recived to send a real one
+int currNumWalkPackets = 0;
+
+//For boosting
+fPoint lastPoint = { 0,0 };
+bool lastPointIsStored = false;
+float speed_Multiplier = 1.0;
+
+PyObject* netMod;//Leaks
 DWORD *networkclassPointer;
 
 void setPhase(ChangePhasePacket& phase);
@@ -43,6 +53,7 @@ __TestObjectCollision,TestActorCollision, for buildings and monsters
 */
 DetoursHook<tBackground_CheckAdvancing>* backGroundCheckAdvanceHook = 0;
 DetoursHook<tInstanceBase_CheckAdvancing>* instanceBaseCheckAdvanceHook = 0;
+DetoursHook<tSendStatePacket>* sendStatePacketHook = 0;
 
 bool wallHackBuildings = 0;
 bool wallHackTerrainMonsters = 0;
@@ -349,13 +360,21 @@ void SendBattlePacket(DWORD vid, BYTE type)
 
 void SendStatePacket(fPoint & pos, float rot, BYTE eFunc, BYTE uArg)
 {
-	fSendStatePacket(*networkclassPointer, pos, rot, eFunc, uArg);
+	sendStatePacketHook->originalFunction(*networkclassPointer,pos,rot,eFunc,uArg);
 }
 
 bool SendPacket(int size, void*buffer) {
-	return fSendPacket(*networkclassPointer, size, buffer);
 	//Packet packet(size, (BYTE*)buffer);
+	bool val = fSendPacket(*networkclassPointer, size, buffer);
+	//printPacket((DWORD)val, &packet, OUTBOUND);
+	return val;
 	//logPacket(&packet);
+}
+
+void SetStatePacketFixer(bool val)
+{
+	fixStatePackets = val;
+	currNumWalkPackets = 0;
 }
 
 bool SendSequencePacket()
@@ -417,6 +436,18 @@ bool SendPickupItemPacket(DWORD vid)
 	return false;
 }
 
+bool SendUseSkillPacket(DWORD dwSkillIndex, DWORD dwTargetVID)
+{
+	SkillPacket packet;
+	packet.vid = dwTargetVID;
+	packet.dwSkillIndex = dwSkillIndex;
+	DEBUG_INFO_LEVEL_3("Sending Skill Packet index=%d, vid =%d", dwSkillIndex, dwTargetVID);
+	if (SendPacket(sizeof(SkillPacket), &packet))
+		return SendSequencePacket();
+
+	return false;
+}
+
 void GlobalToLocalPosition(long& lx, long& ly)
 {
 	fGlobalToLocalPosition(*networkclassPointer, lx,ly);
@@ -425,6 +456,11 @@ void GlobalToLocalPosition(long& lx, long& ly)
 void LocalToGlobalPosition(LONG& rLocalX, LONG& rLocalY)
 {
 	fLocalToGlobalPosition(*networkclassPointer, rLocalX, rLocalY);
+}
+
+void SetSpeedMultiplier(float val)
+{
+	speed_Multiplier = val;
 }
 
 
@@ -489,6 +525,90 @@ bool __fastcall __InstanceBaseCheckAdvanced(DWORD classPointer)
 		return instanceBaseCheckAdvanceHook->originalFunction(classPointer);
 }
 
+bool __fastcall __SendStatePacket(DWORD classPointer, DWORD EDX, fPoint& pos, float rot, BYTE eFunc, BYTE uArg)
+{
+	if (pos.x < 0 || pos.y < 0) {
+		return sendStatePacketHook->originalFunction(classPointer, pos, rot, eFunc, uArg);
+	}
+	if (fixStatePackets) {
+		if (eFunc == CHAR_STATE_FUNC_WALK) {
+			currNumWalkPackets += 1;
+		}
+		else {
+			currNumWalkPackets = 0;
+		}
+
+		if (currNumWalkPackets < PACKET_NUM_TO_SEND_WALK && eFunc == CHAR_STATE_FUNC_WALK) {
+			//DEBUG_INFO_LEVEL_3("CharStateFixed X->%f, Y->%f, eFunc %d, rot %f, uArg %d", pos.x, pos.y, 0, rot, uArg);
+			return sendStatePacketHook->originalFunction(classPointer, pos, rot, CHAR_STATE_FUNC_STOP, 0);
+		}
+	}
+
+	if (eFunc == CHAR_STATE_FUNC_WALK && speed_Multiplier>1) {
+		if (!lastPointIsStored) {
+			lastPoint = pos;
+			lastPointIsStored = true;
+		}
+		else {
+			fPoint currPosition = { 0,0 };
+			if(getLastMovementType() == MOVE_POSITION)
+				currPosition = getPointAtDistanceTimes(lastPoint.x, lastPoint.y, pos.x, pos.y, speed_Multiplier/2);
+			else
+				currPosition = getPointAtDistanceTimes(lastPoint.x, lastPoint.y, pos.x, pos.y, speed_Multiplier);
+
+
+			//Check if it is destination position and if it is in between the points
+			if (getLastMovementType() == MOVE_POSITION) {
+
+				fPoint destPos = getLastDestPosition();
+				if (checkPointBetween(lastPoint.x, lastPoint.y, destPos.x, destPos.y, currPosition.x, currPosition.y)) {
+					//DEBUG_INFO_LEVEL_3("CharacterState Point is in between");
+					currPosition.x = destPos.x;
+					currPosition.y = destPos.y;
+				}
+			}
+			float dist = distance(lastPoint.x, lastPoint.y, currPosition.x, currPosition.y);
+			int steps = dist / MAX_TELEPORT_DIST;
+
+			//DEBUG_INFO_LEVEL_3("StartPos X->%f, Y->%f, EndPos X->%f, Y->%f, dist %f", lastPoint.x, lastPoint.y, currPosition.x, currPosition.y, dist);
+
+			//Fix large movement speed
+			for (int step = 0; step < steps; step++) {
+				fPoint this_pos = getPointAtDistanceTimes(lastPoint.x, lastPoint.y, currPosition.x, currPosition.y, (float)(step+1)/ (float)(steps+1));
+				pos.x = this_pos.x;
+				pos.y = this_pos.y;
+
+				//DEBUG_INFO_LEVEL_3("CharStateBoostedSteps X->%f, Y->%f, eFunc %d, rot %f, uArg %d, step %d, dist %f steps %f", pos.x, pos.y, 0, rot, uArg,step, distance(lastPoint.x, lastPoint.y, pos.x, pos.y), (float)(step + 1) / (float)(steps + 1));
+				sendStatePacketHook->originalFunction(classPointer, pos, rot, CHAR_STATE_FUNC_STOP, 0);
+			}
+
+
+			pos.x = currPosition.x;
+			pos.y = currPosition.y;
+			lastPoint = pos;
+			//DEBUG_INFO_LEVEL_3("CharStateBoosted X->%f, Y->%f, eFunc %d, rot %f, uArg %d, dist %f", pos.x, pos.y, 0, rot, uArg, distance(lastPoint.x, lastPoint.y, pos.x, pos.y));
+			sendStatePacketHook->originalFunction(classPointer, pos, rot, CHAR_STATE_FUNC_STOP, 0);
+			setPixelPosition(pos);
+
+			//Reload Mobs
+			pos.x += 200;
+			pos.y -= 200;
+			sendStatePacketHook->originalFunction(classPointer, pos, rot, eFunc, uArg);
+
+			pos.x = currPosition.x;
+			pos.y = currPosition.y;
+		}
+
+
+	}
+	else {
+		lastPointIsStored = false;
+	}
+	currNumWalkPackets = 0;
+	DEBUG_INFO_LEVEL_3("CharStateNormal X->%f, Y->%f, eFunc %d, rot %f, uArg %d", pos.x, pos.y, eFunc, rot, uArg);
+	return sendStatePacketHook->originalFunction(classPointer, pos, rot, eFunc, uArg);
+}
+
 int getCurrentPhase()
 {
 	return gamePhase;
@@ -496,7 +616,17 @@ int getCurrentPhase()
 
 DWORD getMainCharacterVID()
 {
-	return mainCharacterVID;
+	//return mainCharacterVID;
+	PyObject* poArgs = Py_BuildValue("()");
+	long ret = 0;
+
+	if (PyCallClassMemberFunc(netMod, "GetMainActorVID", poArgs, &ret)) {
+		Py_DECREF(poArgs);
+		return ret;
+	}
+
+	Py_DECREF(poArgs);
+	return ret;
 }
 
 void SetNetClassPointer(void * stackPointer)
@@ -514,9 +644,10 @@ void SetSendBattlePacket(void * func)
 	fSendAttackPacket = (tSendAttackPacket)func;
 }
 
-void SetSendStatePacket(void * func)
+void SetSendStatePacket(DetoursHook<tSendStatePacket>* hook)
 {
-	fSendStatePacket = (tSendStatePacket)func;
+	sendStatePacketHook = hook;
+	sendStatePacketHook->HookFunction();
 }
 
 void SetGlobalToLocalFunction(void* func)
@@ -547,6 +678,8 @@ void SetICheckAdvanceFunction(DetoursHook<tInstanceBase_CheckAdvancing>* hook)
 	instanceBaseCheckAdvanceHook->HookFunction();
 }
 
+
+
 void SetFishingPacketsBlock(bool val)
 {
 	blockFishingPackets = val;
@@ -573,5 +706,17 @@ Packet::Packet(int size, void * buffer)
 		header = 0;
 		data_size = 0;
 		data = 0;
+	}
+}
+
+void LoadPythonNetModule()
+{
+	netMod = PyImport_ImportModule("net");
+
+	if(!netMod){
+		DEBUG_INFO_LEVEL_1("Could not import net module! Maybe init.py was not executed");
+	}
+	if (netMod) {
+		DEBUG_INFO_LEVEL_1("Module loaded");
 	}
 }
