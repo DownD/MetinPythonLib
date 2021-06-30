@@ -210,3 +210,11 @@ After this it will encrypt the packet with specific keys stored in memory, and w
 ## Compiler Notes
 
 Python 2.7 (32 bits) needs to be installed in the system (C:/Python27) by default.
+
+
+# Updates
+v1.1:
+- Added SetMoveSpeedMultiplier
+- Added SendUseSkillPacket
+- Fixed some memory leaks
+- Fixed a bug where the pickup was picking wrong items
