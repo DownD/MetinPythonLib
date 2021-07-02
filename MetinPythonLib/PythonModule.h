@@ -112,6 +112,7 @@ PyObject* pyUnblockFishingPackets(PyObject* poSelf, PyObject* poArgs);
 PyObject* pyDisableCollisions(PyObject* poSelf, PyObject* poArgs);
 PyObject* pyEnableCollisions(PyObject* poSelf, PyObject* poArgs);
 PyObject* pyRegisterNewShopCallback(PyObject* poSelf, PyObject* poArgs);
+PyObject* pySendUseSkillPacket(PyObject* poSelf, PyObject* poArgs);
 PyObject* pyRecvDigMotionCallback(PyObject* poSelf, PyObject* poArgs);
 
 PyObject* pyItemGrndFilterClear(PyObject* poSelf, PyObject* poArgs);
@@ -121,7 +122,7 @@ PyObject* pyItemGrndAddFilter(PyObject* poSelf, PyObject* poArgs);
 PyObject* pyItemGrndDelFilter(PyObject* poSelf, PyObject* poArgs);
 PyObject* pyGetCloseItemGround(PyObject* poSelf, PyObject* poArgs);
 PyObject* pySendPickupItem(PyObject* poSelf, PyObject* poArgs);
-PyObject* pySendUseSkillPacket(PyObject* poSelf, PyObject* poArgs);
+PyObject* pyGetItemGrndID(PyObject* poSelf, PyObject* poArgs);
 
 //PyObject* pySetKeyState(PyObject* poSelf, PyObject* poArgs); //There is a similar function, OnKeyUp or OnKeyDown
 

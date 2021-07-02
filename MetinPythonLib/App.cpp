@@ -187,9 +187,10 @@ void init() {
 
 	globalToLocalPositionPointer = getRelativeCallAddress(globalToLocalPositionPointer);
 
-
 #ifdef _DEBUG
 	system("pause");
+#else
+	Sleep(1000);
 #endif
 
 	SetNetClassPointer(*netClassPointer);
@@ -199,7 +200,6 @@ void init() {
 	SetChrMngrAndInstanceMap(*chrMgrClassPointer);
 	SetSendSequenceFunction(sendSequenceAddr);
 	SetLocalToGlobalFunction(localToGlobalPositionPointer);
-
 
 	//Hooks
 	getEtherPacketHook = new ReturnHook(getEtherPackAddr, GetEter, 7, 3);
@@ -234,11 +234,8 @@ void init() {
 	SetMoveToDistPositionFunc(setMoveToDestPosition_Hook);
 	SetMoveToToDirectionFunc(setMoveToDirection_Hook);
 
-
 	SetSendFunctionPointer(sendHook->originalFunction);
 	SetSendSequenceFunction(sendSequenceHook->originalFunction);
-
-
 	initModule();
 	LoadPythonNetModule();
 	delete patternFinder;

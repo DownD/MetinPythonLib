@@ -148,7 +148,7 @@ void executeScriptFromMainThread(const char* name) {
 #ifdef USE_INJECTION_RECV_HOOK
 	executeFile = true;
 #endif
-	Sleep(50);
+	Sleep(100);
 	while (executeFile) {
 		
 	}
@@ -1097,6 +1097,20 @@ PyObject* pySendPickupItem(PyObject* poSelf, PyObject* poArgs)
 	return Py_BuildNone();
 }
 
+PyObject* pyGetItemGrndID(PyObject* poSelf, PyObject* poArgs)
+{
+	int vnum;
+	if (!PyTuple_GetInteger(poArgs, 0, &vnum))
+		return Py_BuildException();
+
+	if(groundItems.find(vnum) == groundItems.end())
+		return Py_BuildValue("i", 0);
+
+	int id = groundItems[vnum].index;
+
+	return Py_BuildValue("i", id);
+}
+
 PyObject* pySendUseSkillPacket(PyObject* poSelf, PyObject* poArgs) {
 	int vid = 0;
 	int dwSkillIndex = 0;
@@ -1155,6 +1169,7 @@ static PyMethodDef s_methods[] =
 	{ "ItemGrndDelFilter",		pyItemGrndDelFilter,	METH_VARARGS },
 	{ "GetCloseItemGround",		pyGetCloseItemGround,	METH_VARARGS },
 	{ "SendPickupItem",			pySendPickupItem,		METH_VARARGS },
+	{ "GetItemGrndID",			pyGetItemGrndID,		METH_VARARGS },
 
 #ifdef _DEBUG
 	{ "RegisterDigMotionCallback",	pyRecvDigMotionCallback,METH_VARARGS },
@@ -1209,7 +1224,6 @@ void initModule() {
 	//FISHING
 	PyModule_AddIntConstant(packet_mod, "SUCCESS_FISHING", SUCESS_ON_FISHING);
 	PyModule_AddIntConstant(packet_mod, "UNSUCCESS_FISHING", UNSUCESS_ON_FISHING);
-
 	if (!addPathToInterpreter(getDllPath())) {
 		DEBUG_INFO_LEVEL_1("Error adding current path to intepreter!");
 		MessageBox(NULL, "Error adding current path to intepreter!", "Error", MB_OK);
@@ -1217,6 +1231,7 @@ void initModule() {
 		return;
 	}
 	executeScriptFromMainThread("init.py");
+	Sleep(1000); //Solve crash on slow CPUs
 	chr_mod = PyImport_ImportModule("chr");
 	player_mod = PyImport_ImportModule("player");
 }
