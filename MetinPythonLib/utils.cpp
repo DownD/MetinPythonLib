@@ -88,9 +88,11 @@ bool isDebugEnable()
 {
 #ifdef _DEBUG
 	return debug_print;
-#else
-	return false;
 #endif
+#ifdef _DEBUG_FILE
+	return debug_print;
+#endif
+	return false;
 }
 
 void setDebugOn()

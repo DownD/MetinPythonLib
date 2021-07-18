@@ -84,6 +84,7 @@ struct CMappedFile {
 
 typedef bool	(__thiscall* tMoveToDirection)(void* classPointer, float rot);
 typedef bool	(__thiscall* tMoveToDestPosition)(void* classPointer, fPoint& pos);
+typedef void	(__thiscall* tSendUseSkill)(DWORD classPointer, DWORD dwSkillSlotIndex, DWORD dwTargetVID);
 
 
 bool executePythonFile(char* fileName);
@@ -113,6 +114,7 @@ PyObject* pyDisableCollisions(PyObject* poSelf, PyObject* poArgs);
 PyObject* pyEnableCollisions(PyObject* poSelf, PyObject* poArgs);
 PyObject* pyRegisterNewShopCallback(PyObject* poSelf, PyObject* poArgs);
 PyObject* pySendUseSkillPacket(PyObject* poSelf, PyObject* poArgs);
+PyObject* pySendUseSkillPacketBySlot(PyObject* poSelf, PyObject* poArgs);
 PyObject* pyRecvDigMotionCallback(PyObject* poSelf, PyObject* poArgs);
 
 PyObject* pyItemGrndFilterClear(PyObject* poSelf, PyObject* poArgs);
@@ -166,8 +168,9 @@ void addItemGround(GroundItemAddPacket& item);
 void delItemGround(GroundItemDeletePacket& item);
 void clearInstances();
 void callDigMotionCallback(DWORD target_player, DWORD target_vein, DWORD n);
-long getCurrentSpeed();
+//long getCurrentSpeed();
 void setPixelPosition(fPoint fPos);
+void sendUseSkillBySlot(DWORD dwSkillSlotIndex, DWORD dwTargetVID); //By index and sets cooldown
 BYTE getLastMovementType();
 fPoint getLastDestPosition();
 
@@ -178,5 +181,7 @@ bool getCharacterPosition(DWORD vid, fPoint3D* pos);
 //Intialize stuff
 void initModule();
 void SetChrMngrAndInstanceMap(void* classPointer);
+void SetPythonPlayerPointer(void* classPointer);
+void SetSendUseSkillFunc(void* func);
 void SetMoveToDistPositionFunc(DetoursHook<tMoveToDestPosition>* hook);
 void SetMoveToToDirectionFunc(DetoursHook<tMoveToDirection>* hook);

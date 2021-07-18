@@ -292,7 +292,7 @@ bool SendStopFishing(BYTE type, float timeLeft);
 bool SendPickupItemPacket(DWORD vid);
 bool SendUseSkillPacket(DWORD dwSkillIndex, DWORD dwTargetVID);
 
-void SetStatePacketFixer(bool val); //If true will set replace all eFunc of state packet with FUNC_WAIT
+
 int getCurrentPhase();
 DWORD getMainCharacterVID();
 void GlobalToLocalPosition(long& lx, long& ly);

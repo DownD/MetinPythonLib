@@ -15,6 +15,7 @@ PyObject* getMainPlayerPosition;*/
 typedef void*(__thiscall* tGetInstancePointer)(DWORD classPointer, DWORD vid);
 
 tGetInstancePointer fGetInstancePointer;
+tSendUseSkill fSendUseSkill;
 
 //Hooks
 DetoursHook<tMoveToDestPosition>* moveToDestPositionHook = 0;
@@ -30,6 +31,7 @@ float speedMultiplier = 1;
 //Client characterManager stuff
 std::map<DWORD, void*>* clientInstanceMap; //Not working
 DWORD* characterManagerClassPointer;
+DWORD* playerclassPointer;
 DWORD characterManagerSubClass;
 
 //CallBacks Functions
@@ -115,6 +117,7 @@ bool executePythonFile(char* file) {
 	}
 	else {
 		DEBUG_INFO_LEVEL_1("Python script execution complete!");
+		Py_DECREF(PyFileObject);
 		return true;
 	}
 
@@ -131,6 +134,7 @@ error_code:
 	default:
 		return 0;
 	}*/
+	Py_DECREF(PyFileObject);
 	return 0;
 }
 
@@ -209,7 +213,7 @@ PyObject* moveToDestPosition(PyObject* poSelf, PyObject* poArgs)
 	return Py_BuildNone();
 }
 
-long getCurrentSpeed() {
+/*long getCurrentSpeed() {
 	PyObject* poArgs = Py_BuildValue("(i)", STATUS_MOVEMENT_SPEED);
 	long ret = 0;
 
@@ -219,20 +223,26 @@ long getCurrentSpeed() {
 	}
 	Py_DECREF(poArgs);
 	return ret;
+}*/
+
+void setPixelPosition(fPoint fPos){
+
+	DWORD actor = getMainCharacterVID();
+	PyObject* poArgs_select = Py_BuildValue("(i)", actor);
+	PyObject* poArgs = Py_BuildValue("(iii)",(int)fPos.x, (int)fPos.y, actor);
+	long ret = 0;
+	
+	DEBUG_INFO_LEVEL_3("SetPixelPosition x->%d, y->%d vid->%d", (int)fPos.x, (int)fPos.y,(int)actor);
+	PyCallClassMemberFunc(chr_mod, "SelectInstance", poArgs_select, &ret);
+
+	PyCallClassMemberFunc(chr_mod, "SetPixelPosition", poArgs, &ret);
+	Py_DECREF(poArgs_select);
+	Py_DECREF(poArgs);
 }
 
-void setPixelPosition(fPoint fPos)
+void sendUseSkillBySlot(DWORD dwSkillSlotIndex, DWORD dwTargetVID)
 {
-
-	PyObject* poArgs = Py_BuildValue("(ii)",(int)fPos.x, (int)fPos.y);
-	long ret = 0;
-	DEBUG_INFO_LEVEL_3("SetPixelPosition x->%d, y->%d", (int)fPos.x, (int)fPos.y);
-	if (PyCallClassMemberFunc(chr_mod, "SetPixelPosition", poArgs, &ret)) {
-		Py_DECREF(poArgs);
-		return;
-	}
-
-	Py_DECREF(poArgs);
+	fSendUseSkill(*playerclassPointer, dwSkillSlotIndex, dwTargetVID);
 }
 
 BYTE getLastMovementType()
@@ -257,7 +267,7 @@ PyObject* pySetMoveSpeed(PyObject* poSelf, PyObject* poArgs)
 
 DWORD __stdcall _GetEter(DWORD return_value, CMappedFile* file, const char* fileName, void** buffer) {
 
-
+	DEBUG_INFO_LEVEL_4("Hook Ether_Get called, name=%s, return_value=%d",fileName,return_value);
 	if (getTrigger && strcmp(eterFile.name.c_str(), fileName) == 0) {
 
 		if (eterFile.data != 0) {
@@ -284,14 +294,14 @@ bool __fastcall __MoveToDestPosition(void* classPointer, DWORD EDX, fPoint& pos)
 {
 	lastMovement = MOVE_POSITION;
 	lastDestPos = pos;
-	//DEBUG_INFO_LEVEL_4("__MoveToDestPosition Called");
+	DEBUG_INFO_LEVEL_4("__MoveToDestPosition Called x->%f y->%f",pos.x,pos.y);
 	return moveToDestPositionHook->originalFunction(classPointer, pos);
 }
 
 bool __fastcall __MoveToDirection(void* classPointer, DWORD EDX, float rot)
 {
 	lastMovement = MOVE_WALK;
-	//DEBUG_INFO_LEVEL_4("__MoveToDirection Called");
+	DEBUG_INFO_LEVEL_4("__MoveToDirection Called rot=%f",rot);
 	return moveToDirectionHook->originalFunction(classPointer, rot);
 }
 
@@ -310,11 +320,12 @@ void changeInstancePosition(CharacterMovePacket& packet_move)
 		DEBUG_INFO_LEVEL_3("No instance vid %d found, creating new one",packet_move.dwVID);
 		PlayerCreatePacket player = { 0 };
 		player.dwVID = packet_move.dwVID;
-		player.x = packet_move.lX;
-		player.y = packet_move.lY;
+		//player.x = packet_move.lX;
+		//player.y = packet_move.lY;
 		appendNewInstance(player);
 		return;
 	}
+	return;
 	DEBUG_INFO_LEVEL_4("VID %d-> X:%d Y:%d", packet_move.dwVID, packet_move.lX, packet_move.lY);
 	auto& instance = instances[packet_move.dwVID];
 	instance.x = packet_move.lX;
@@ -421,10 +432,13 @@ void addItemGround(GroundItemAddPacket& itemPacket)
 	item.y = itemPacket.y;
 	item.vid = itemPacket.VID;
 
-	DEBUG_INFO_LEVEL_3("Adding item ground with vid=%d at position x=%d,y=%d", item.vid, item.x, item.y);
+	if (item.vid <= 0) {
+		return;
+	}
 
+	DEBUG_INFO_LEVEL_3("Adding item ground with index=%d vid=%d at position x=%d,y=%d, ownerVID=%d", item.index, item.vid, item.x, item.y, item.ownerVID);
 
-	groundItems[item.vid] = item;
+	groundItems.insert(std::pair<DWORD, GroundItem>(item.vid, item));
 }
 
 void delItemGround(GroundItemDeletePacket& item)
@@ -533,6 +547,10 @@ bool getClosestUnblocked(int x_start, int y_start, Point* buffer) {
 
 		closestPoints[7].y--;
 
+		if (closestPoints[3].x-- <= 0) {
+			return false;
+		}
+
 		for (int i = 0; i < 8; i++) {
 			if (!isBlockedPosition(closestPoints[i].x, closestPoints[i].y)) {
 				*buffer = closestPoints[i];
@@ -606,6 +624,8 @@ PyObject * FindPath(PyObject * poSelf, PyObject * poArgs)
 	x_end /= 100;
 	y_end /= 100;
 
+	DEBUG_INFO_LEVEL_3("Finding path from (%d,%d) to (%d,%d)", x_start, y_start, x_end, y_end);
+
 	int x_start_unblocked = -1;
 	int y_start_unblocked = -1;
 
@@ -616,6 +636,10 @@ PyObject * FindPath(PyObject * poSelf, PyObject * poArgs)
 			y_start_unblocked = a.y;
 			DEBUG_INFO_LEVEL_3("[PATH-FIDING] Start Position blocked, new position X:%d  Y:%d", x_start_unblocked, y_start_unblocked);
 		}
+		else {
+			DEBUG_INFO_LEVEL_3("[PATH-FIDING] Cannot get closest unblocked position");
+			return PyList_New(0);
+		}
 	}
 
 	if (isBlockedPosition(x_end, y_end)) {
@@ -624,6 +648,10 @@ PyObject * FindPath(PyObject * poSelf, PyObject * poArgs)
 			x_end = a.x;
 			y_end = a.y;
 			DEBUG_INFO_LEVEL_3("[PATH-FIDING] End Position blocked, new position X:%d  Y:%d", x_end, y_end);
+		}
+		else {
+			DEBUG_INFO_LEVEL_3("[PATH-FIDING] Cannot get closest unblocked position");
+			return PyList_New(0);
 		}
 	}
 
@@ -652,7 +680,6 @@ PyObject * FindPath(PyObject * poSelf, PyObject * poArgs)
 		PyObject* obj = Py_BuildValue("ii", p.x*100, p.y*100);
 		PyList_Append(pList, obj);
 	}
-
 	return pList;
 
 
@@ -868,10 +895,7 @@ PyObject* setOutFilterMode(PyObject* poSelf, PyObject* poArgs)
 
 void* getInstancePtr(DWORD vid)
 {
-
-
 	return fGetInstancePointer(characterManagerSubClass,vid);
-
 }
 
 PyObject * pyIsDead(PyObject * poSelf, PyObject * poArgs)
@@ -1006,7 +1030,7 @@ PyObject* pyRecvDigMotionCallback(PyObject* poSelf, PyObject* poArgs)
 PyObject* pyItemGrndFilterClear(PyObject* poSelf, PyObject* poArgs)
 {
 	pickupFilter.clear();
-	return nullptr;
+	return Py_BuildNone();
 }
 
 //PICKUP STUFF
@@ -1028,6 +1052,7 @@ PyObject* pyItemGrndAddFilter(PyObject* poSelf, PyObject* poArgs)
 	if (!PyTuple_GetInteger(poArgs, 0, &index))
 		return Py_BuildException();
 
+	DEBUG_INFO_LEVEL_3("Pickup Filter Add=%d", index);
 	pickupFilter.insert(index);
 	return Py_BuildNone();
 }
@@ -1038,6 +1063,7 @@ PyObject* pyItemGrndDelFilter(PyObject* poSelf, PyObject* poArgs)
 	if (!PyTuple_GetInteger(poArgs, 0, &index))
 		return Py_BuildException();
 
+	DEBUG_INFO_LEVEL_3("Pickup Filter Remove=%d", index);
 	pickupFilter.erase(index);
 	return Py_BuildNone();
 }
@@ -1050,17 +1076,23 @@ PyObject* pyGetCloseItemGround(PyObject* poSelf, PyObject* poArgs)
 	if (!PyTuple_GetInteger(poArgs, 1, &y))
 		return Py_BuildException();
 
-	DEBUG_INFO_LEVEL_4("Number of items in filter %d", pickupFilter.size())
+	DEBUG_INFO_LEVEL_4("Number of items on ground=%d", groundItems.size());
 
-	float minDist = std::numeric_limits<float>::max();
+	DWORD mainVID = getMainCharacterVID();
+
+	DEBUG_INFO_LEVEL_4("Main VID=%d", mainVID);
+
+	float minDist = (std::numeric_limits<float>::max)();
 	DWORD selVID = 0;
+	GroundItem selItem = { 0 };
 	for (auto iter = groundItems.begin(); iter != groundItems.end();iter++) {
 		DWORD vid = iter->first;
-		GroundItem item = iter->second;
-
-		if (item.ownerVID != getMainCharacterVID() && item.ownerVID != 0) {
+		GroundItem& item = iter->second;
+		if (vid == 0)
 			continue;
-		}
+		/*if (item.ownerVID != mainVID && item.ownerVID != 0) { //Needs aditional packet
+			continue;
+		}*/
 
 		bool is_in = pickupFilter.find(item.index) != pickupFilter.end();
 		if (pickOnFilter && is_in) {
@@ -1068,18 +1100,21 @@ PyObject* pyGetCloseItemGround(PyObject* poSelf, PyObject* poArgs)
 			if (dist<minDist) {
 				minDist = dist;
 				selVID = vid;
+				selItem = item;
 			}
 		}
-		if (!pickOnFilter && !is_in) {
+		else if (!pickOnFilter && !is_in) {
 			float dist = distance(x, y, item.x, item.y);
 			if (dist < minDist) {
 				minDist = dist;
 				selVID = vid;
+				selItem = item;
 			}
 		}
 	}
-	if (selVID != 0) {
-		return Py_BuildValue("(iii)", selVID, groundItems[selVID].x, groundItems[selVID].y);
+	if (selVID > 0) {
+		DEBUG_INFO_LEVEL_4("Close Item itemVID=%d VID=%d ID=%d | X:%d  Y:%d", selItem.vid, selVID, selItem.index, selItem.x, selItem.y);
+		return Py_BuildValue("(iii)", selVID, selItem.x, selItem.y);
 	}
 	else {
 		return Py_BuildValue("(iii)", 0, 0, 0);
@@ -1124,6 +1159,19 @@ PyObject* pySendUseSkillPacket(PyObject* poSelf, PyObject* poArgs) {
 
 }
 
+PyObject* pySendUseSkillPacketBySlot(PyObject* poSelf, PyObject* poArgs)
+{
+	int vid = 0;
+	int dwSkillSlotIndex = 0;
+	if (!PyTuple_GetInteger(poArgs, 0, &dwSkillSlotIndex))
+		return Py_BuildException();
+	if (!PyTuple_GetInteger(poArgs, 1, &vid))
+		return Py_BuildException();
+
+	sendUseSkillBySlot(dwSkillSlotIndex, vid);
+	return Py_BuildNone();
+}
+
 
 
 
@@ -1160,6 +1208,7 @@ static PyMethodDef s_methods[] =
 	{ "DisableCollisions",		pyDisableCollisions,METH_VARARGS },
 	{ "RegisterNewShopCallback",pyRegisterNewShopCallback,METH_VARARGS },
 	{ "SendUseSkillPacket",		pySendUseSkillPacket,METH_VARARGS },
+	{ "SendUseSkillPacketBySlot",pySendUseSkillPacketBySlot,METH_VARARGS },
 
 	//PICKUP
 	{ "ItemGrndFilterClear",	pyItemGrndFilterClear,	METH_VARARGS },
@@ -1231,7 +1280,7 @@ void initModule() {
 		return;
 	}
 	executeScriptFromMainThread("init.py");
-	Sleep(1000); //Solve crash on slow CPUs
+	Sleep(2000); //Solve crash on slow CPUs
 	chr_mod = PyImport_ImportModule("chr");
 	player_mod = PyImport_ImportModule("player");
 }
@@ -1254,6 +1303,16 @@ void SetChrMngrAndInstanceMap(void* classPointer)
 	DEBUG_INFO_LEVEL_1("GetInstancePointer %#x", fGetInstancePointer);
 }
 
+void SetPythonPlayerPointer(void* classPointer)
+{
+	playerclassPointer = (DWORD*)classPointer;
+}
+
+void SetSendUseSkillFunc(void* func)
+{
+	fSendUseSkill = (tSendUseSkill)func;
+}
+
 void SetMoveToDistPositionFunc(DetoursHook<tMoveToDestPosition>* hook)
 {
 	moveToDestPositionHook = hook;
@@ -1270,7 +1329,9 @@ void SetMoveToToDirectionFunc(DetoursHook<tMoveToDirection>* hook)
 bool moveToDestPosition(DWORD vid,fPoint& pos) {
 	void* p = getInstancePtr(vid);
 	if (p) {
-		DEBUG_INFO_LEVEL_3("Moving VID %d to posititon X:%f y:%f!",vid,pos.x,pos.y);
+		DEBUG_INFO_LEVEL_3("Moving VID %d to position X:%f y:%f",vid,pos.x,pos.y);
+		lastMovement = MOVE_POSITION;
+		lastDestPos = pos;
 		return moveToDestPositionHook->originalFunction(p, pos);
 	}
 	else {

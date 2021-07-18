@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include "App.h"
 #include "utils.h"
+#include <io.h>
 
 HANDLE threadID;
 
@@ -22,7 +23,28 @@ void SetupConsole()
 	freopen("CONOUT$", "wb", stderr);
 	freopen("CONIN$", "rb", stdin);
 	SetConsoleTitle("Debug Console");
+
 }
+
+void SetupDebugFile()
+{
+
+	std::string log_path(getDllPath());
+	log_path += "ex_log.txt";
+	freopen(log_path.c_str(), "wb", stdout);
+	freopen(log_path.c_str(), "wb", stderr);
+}
+/*
+void SetupDebugFile()
+{
+	std::string log_path(getDllPath());
+	log_path += "ex_log.txt";
+
+	HANDLE new_stdout = CreateFileA(log_path.c_str(), GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+	SetStdHandle(STD_OUTPUT_HANDLE, new_stdout);
+	int fd = _open_osfhandle((intptr_t)new_stdout, O_WRONLY | O_TEXT);
+	_dup2(fd, 1);
+}*/
 
 
 DWORD WINAPI ThreadProc(LPVOID lpParameter)
@@ -31,6 +53,10 @@ DWORD WINAPI ThreadProc(LPVOID lpParameter)
 	SetupConsole();
 	setDebugStreamFiles();
 	DEBUG_INFO_LEVEL_1("Dll Loaded From %s", getDllPath());
+#endif
+#ifdef _DEBUG_FILE
+	SetupDebugFile();
+	setDebugStreamFiles();
 #endif
 	init();
 	MessageBox(NULL, "Success Loading", "SUCCESS", MB_OK);

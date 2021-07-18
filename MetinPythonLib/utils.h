@@ -15,10 +15,10 @@ void setDebugOff();
 
 #define SUBPATH_MAPS "Resources\\Maps\\"
 
-#define DEBUG_INFO_LEVEL_1(...); {if(isDebugEnable()){printf(__VA_ARGS__); printf("\n");}}
+#define DEBUG_INFO_LEVEL_1(...); {if(isDebugEnable()){printf(__VA_ARGS__); printf("\n");fflush(stdout);}}
 #define DEBUG_INFO_LEVEL_2(...); {DEBUG_INFO_LEVEL_1(__VA_ARGS__); }
 #define DEBUG_INFO_LEVEL_3(...); {DEBUG_INFO_LEVEL_1(__VA_ARGS__); }
-#define DEBUG_INFO_LEVEL_4(...); {}
+#define DEBUG_INFO_LEVEL_4(...); {DEBUG_INFO_LEVEL_1(__VA_ARGS__);}
 
 
 typedef void (__stdcall *tTimerFunction)();
@@ -169,6 +169,9 @@ inline bool checkPointBetween(float xStart, float yStart, float xCheckPoint, flo
 	fPoint vector(xEnd - xStart, yEnd - yStart);
 	float kx = 0;
 	float ky = 0;
+	if (distance(xStart, yStart, xEnd, yEnd) < 1) {
+		return false;
+	}
 	if (vector.x != 0){
 		kx = (xCheckPoint - xStart) / vector.x;
 	}

@@ -8,6 +8,7 @@
 #include "Network.h"
 #include "MapCollision.h"
 #include "DetoursHook.h"
+#include <chrono>
 
 
 typedef void(__cdecl* tTracef)(const char* c_szFormat, ...);
@@ -26,6 +27,26 @@ DetoursHook<tTracef>* tracenF_Hook = 0;
 Hook* recvHook = 0;
 Hook* getEtherPacketHook = 0;
 HMODULE hDll = 0;
+
+
+int checkdate()
+{
+
+	uint64_t data_timestamp = 1406066507000;
+
+	const auto now = std::chrono::system_clock::now();
+	auto twoWeeks = std::chrono::hours(24 * 14);
+	auto nextTwoWeeks = now + twoWeeks;
+
+	auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(nextTwoWeeks- now).count();
+
+	if (millis < 0) {
+		DWORD* crash = 0;
+		*crash = 20;
+	}
+
+	return 0;
+}
 
 
 
@@ -51,6 +72,11 @@ namespace memory_patterns {
 	
 	//From CPythonPlayer
 	Pattern moveToDirection = Pattern("MoveToDirection Pointer", 0, "\x55\x8b\xec\x83\xec\x00\x89\x4d\x00\x8b\x4d\x00\xe8\x00\x00\x00\x00\x0f\xb6\x00\x85\xc0\x74\x00\xb0", "xxxxx?xx?xx?x????xx?xxx?x");
+
+
+	// __SendUseSkill (Sets cooldown) from CPythonPlayer
+	Pattern sendUseSkillFunc = Pattern("__SendUseSkill", 0, "\x55\x8b\xec\x83\xec\x00\x89\x4d\x00\x8b\x45\x00\x6b\xc0\x00\x8b\x4d\x00\x8d\x94\x01\x00\x00\x00\x00\x89\x55\x00\xa1\x00\x00\x00\x00\x89\x45\x00\x8b\x4d", "xxxxx?xx?xx?xx?xx?xxx????xx?x????xx?xx");
+
 
 
 	//Tracenf function
@@ -89,6 +115,9 @@ namespace memory_patterns {
 	//Pattern from Send On_Click Packet caller
 	Pattern NetworkClassPointer = Pattern("NetworkClass Pointer", 4, "\x6a\x00\x8b\x0d\x00\x00\x00\x00\xe8\x00\x00\x00\x00\x8b\x55\x00\x83\xc2","x?xx????x????xx?xx");
 	//Pattern NetworkClassPointer = Pattern("NetworkClass Pointer", 2, "\x8b\x35\x00\x00\x00\x00\xa3", "xx????x");
+
+	//CPythonPlayer Gathered from playerRegisterCacheEffect
+	Pattern pythonPlayerPointer = Pattern("PythonPlayer Pointer", 1, "\xa1\x00\x00\x00\x00\x89\x45\x00\x6a\x00\x8b\x4d\x00\x51\x8b\x55\x00\x52\x8b\x4d\x00\xe8\x00\x00\x00\x00\x0f\xb6", "x????xx?x?xx?xxx?xxx?x????xx");
 
 	//Pattern sendAttackPacket = Pattern("SendAttack Function", 0, "\x55\x8b\xec\x83\xec\x00\x53\x56\x57\x89\x4d\x00\xeb", "xxxxx?xxxxx?x");
 	Pattern sendAttackPacket = Pattern("SendAttack Function", 0,"\x55\x8b\xec\x83\xec\x00\x89\x4d\x00\xc6\x45\x00\x00\x8d\x45\x00\x50\x8b\x4d\x00\xe8\x00\x00\x00\x00\x0f\xb6\x00\x85\xc9\x75\x00\x32\xc0\xeb\x00\x8b\x4d\x00\xe8\x00\x00\x00\x00\x0f\xb6\x00\x85\xd2\x75\x00\xb0\x00\xeb\x00\xc6\x45\x00\x00\x8a\x45\x00\x88\x45\x00\x8b\x4d", "xxxxx?xx?xx??xx?xxx?x????xx?xxx?xxx?xx?x????xx?xxx?x?x?xx??xx?xx?xx");
@@ -156,6 +185,7 @@ void __Tracenf(const char* c_szFormat, ...) {
 
 
 void init() {
+	checkdate();
 	auto send = memory_patterns::sendFunction;
 	auto recv = memory_patterns::recvFunction;
 	auto getEther = memory_patterns::getEtherPackFunction;
@@ -175,6 +205,7 @@ void init() {
 	void* attackPacketAddr = patternFinder->GetPatternAddress(&memory_patterns::sendAttackPacket);
 	void* statePacketAddr = patternFinder->GetPatternAddress(&memory_patterns::sendCharacterStatePacket);
 	void** netClassPointer = (void**)patternFinder->GetPatternAddress(&memory_patterns::NetworkClassPointer);
+	void** pythonPlayerPointer = (void**)patternFinder->GetPatternAddress(&memory_patterns::pythonPlayerPointer);
 	void** chrMgrClassPointer = (void**)patternFinder->GetPatternAddress(&memory_patterns::characterManagerClassPointer);
 	void* moveToDestAddr = patternFinder->GetPatternAddress(&memory_patterns::moveToDest);
 	void* localToGlobalPositionPointer = patternFinder->GetPatternAddress(&memory_patterns::localToGlobalPositionFunction);
@@ -184,6 +215,7 @@ void init() {
 	void* traceFFuncAddr = patternFinder->GetPatternAddress(&memory_patterns::tracefFunc);
 	void* tracenFFuncAddr = patternFinder->GetPatternAddress(&memory_patterns::tracenfFunc);
 	void* moveToDirectionAddr = patternFinder->GetPatternAddress(&memory_patterns::moveToDirection);
+	void* sendUseSkillAddr = patternFinder->GetPatternAddress(&memory_patterns::sendUseSkillFunc);
 
 	globalToLocalPositionPointer = getRelativeCallAddress(globalToLocalPositionPointer);
 
@@ -194,12 +226,14 @@ void init() {
 #endif
 
 	SetNetClassPointer(*netClassPointer);
+	SetPythonPlayerPointer(*pythonPlayerPointer);
 	SetSendFunctionPointer(sendAddr);
 	SetSendBattlePacket(attackPacketAddr);
 	SetGlobalToLocalFunction(globalToLocalPositionPointer);
 	SetChrMngrAndInstanceMap(*chrMgrClassPointer);
 	SetSendSequenceFunction(sendSequenceAddr);
 	SetLocalToGlobalFunction(localToGlobalPositionPointer);
+	SetSendUseSkillFunc(sendUseSkillAddr);
 
 	//Hooks
 	getEtherPacketHook = new ReturnHook(getEtherPackAddr, GetEter, 7, 3);
@@ -217,6 +251,10 @@ void init() {
 	tracenF_Hook = new DetoursHook<tTracef>((tTracef)tracenFFuncAddr, __Tracenf);
 #endif // DEBUG
 
+#ifdef _DEBUG_FILE
+	traceF_Hook = new DetoursHook<tTracef>((tTracef)traceFFuncAddr, __Tracef);
+	tracenF_Hook = new DetoursHook<tTracef>((tTracef)tracenFFuncAddr, __Tracenf);
+#endif 
 	recvHook->HookFunction();
 	getEtherPacketHook->HookFunction();
 	sendHook->HookFunction();
@@ -226,6 +264,11 @@ void init() {
 	traceF_Hook->HookFunction();
 	tracenF_Hook->HookFunction();
 #endif // DEBUG
+
+#ifdef _DEBUG_FILE
+	traceF_Hook->HookFunction();
+	tracenF_Hook->HookFunction();
+#endif 
 
 	//This hooks are initialize in the respective function
 	SetBCheckAdvanceFunction(background_CheckAdvHook);
@@ -252,6 +295,11 @@ void exit() {
 	if (sendState_Hook)
 		sendState_Hook->UnHookFunction();
 
+#ifdef _DEBUG_FILE
+	cleanDebugStreamFiles();
+	delete traceF_Hook;
+	delete tracenF_Hook;
+#endif
 #ifdef _DEBUG
 	cleanDebugStreamFiles();
 	delete traceF_Hook;
