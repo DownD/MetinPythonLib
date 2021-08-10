@@ -115,11 +115,15 @@ DWORD* Patterns::GetPatternAddress(Pattern* pat) {
 	if (addr) { 
 		
 		DWORD* result = (DWORD*)((int)addr + pat->offset);
+#ifdef _DEBUG
 		DEBUG_INFO_LEVEL_1("Pattern %s with address -> %#x", pat->name, result);
+#endif
 		return result;
 
 	}else {
-		DEBUG_INFO_LEVEL_1("ERROR FINDING PATTERN -> %s",pat->name);	
+#ifdef _DEBUG
+		DEBUG_INFO_LEVEL_1("ERROR FINDING PATTERN -> %s", pat->name);
+#endif
 	}
 
 	return addr;
@@ -197,4 +201,9 @@ void Patterns::printModules()
 		printf("\n     base size      = 0x%10X", module.modBaseSize);
 
 	} while (Module32Next(Snapshot, &module));
+}
+
+
+void* Patterns::GetStartModuleAddress() {
+	return mInfo.lpBaseOfDll;
 }

@@ -15,10 +15,15 @@ void setDebugOff();
 
 #define SUBPATH_MAPS "Resources\\Maps\\"
 
-#define DEBUG_INFO_LEVEL_1(...); {if(isDebugEnable()){printf(__VA_ARGS__); printf("\n");}}
+#define ADRESS_FILE_NAME "addresses.csv"
+
+#define DEBUG_INFO_LEVEL_1(...); {if(isDebugEnable()){printf(__VA_ARGS__); printf("\n");fflush(stdout);}}
 #define DEBUG_INFO_LEVEL_2(...); {DEBUG_INFO_LEVEL_1(__VA_ARGS__); }
 #define DEBUG_INFO_LEVEL_3(...); {DEBUG_INFO_LEVEL_1(__VA_ARGS__); }
-#define DEBUG_INFO_LEVEL_4(...); {}
+#define DEBUG_INFO_LEVEL_4(...); {DEBUG_INFO_LEVEL_1(__VA_ARGS__);}
+#define DEBUG_INFO_LEVEL_5(...); {DEBUG_INFO_LEVEL_1(__VA_ARGS__);}
+
+
 
 
 typedef void (__stdcall *tTimerFunction)();
@@ -28,10 +33,18 @@ struct TPixelPosition {
 	float x, y, z;
 };
 
+std::string base64_encode(unsigned char const* bytes_to_encode, unsigned int in_len);
+std::string base64_decode(std::string const& encoded_string);
+
+std::string decrypt(const std::string& data);
+std::string encrypt(const std::string& data);
 bool getCurrentPathFromModule(HMODULE hMod, char* dllPath, int size);
 void stripFileFromPath(char* dllPath, int size);
 const char* getDllPath();
 const char* getMapsPath();
+
+HRESULT getKeyPath(std::string* path);
+DWORD getHWID();
 
 void setDllPath(char* file);
 void setDebugStreamFiles();
@@ -164,11 +177,24 @@ inline fPoint getPointAtDistanceTimes(float x1, float y1, float x2, float y2, fl
 	return result;
 }
 
+#pragma pack(push, 1)
+template<class T>
+int fillPacket(void* data, int size, T* _struct) {
+	ZeroMemory(_struct, sizeof(T));
+	int curr_size = std::min<int>(size, sizeof(T));
+	memcpy(_struct, data, curr_size);
+	return curr_size;
+}
+#pragma pack(pop)
+
 
 inline bool checkPointBetween(float xStart, float yStart, float xCheckPoint, float yCheckPoint, float xEnd, float yEnd ) {
 	fPoint vector(xEnd - xStart, yEnd - yStart);
 	float kx = 0;
 	float ky = 0;
+	if (distance(xStart, yStart, xEnd, yEnd) < 1) {
+		return false;
+	}
 	if (vector.x != 0){
 		kx = (xCheckPoint - xStart) / vector.x;
 	}
@@ -182,3 +208,9 @@ inline bool checkPointBetween(float xStart, float yStart, float xCheckPoint, flo
 
 	return false;
 }
+
+
+
+bool addPathToInterpreter(const char* path);
+
+bool executePythonFile(const char* file);

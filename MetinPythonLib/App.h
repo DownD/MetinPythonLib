@@ -1,10 +1,32 @@
 #pragma once
-#include <Windows.h>
+#include "Singleton.h"
+#include "defines.h"
 
 #define METIN_GF
 
 
 extern HMODULE hDll;
 
-void init();
-void exit();
+
+
+class CApp : public CSingleton<CApp>{
+public:
+	CApp();
+	~CApp();
+
+	void init();
+	void exit();
+
+	bool __AppProcess(ClassPointer p);
+
+private:
+	void initMainThread();
+	void initPythonModules();
+	void SetupDebugFile();
+	void SetupConsole();
+
+private:
+
+	bool mainScriptExec;
+	bool passed;
+};

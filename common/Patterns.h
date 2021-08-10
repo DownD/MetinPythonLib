@@ -23,6 +23,7 @@ public:
 	~Patterns();
 
 	DWORD* GetPatternAddress(Pattern* pat);
+	void* GetStartModuleAddress();
 
 
 

@@ -1,6 +1,7 @@
 #include "utils.h"
 #include <map>
 #include <iomanip>
+#include <shlobj.h>
 
 static std::map<tTimePoint, tTimerFunction> timer_functions;
 char DLLPATH[256] = { 0 };
@@ -9,6 +10,8 @@ bool debug_print = 1;
 
 FILE* traceFile;
 FILE* tracenFile;
+
+static std::string key = "678345EYRUJKLM";
 
 int split(char * str, char c, std::vector<std::string>* vec)
 {
@@ -88,9 +91,11 @@ bool isDebugEnable()
 {
 #ifdef _DEBUG
 	return debug_print;
-#else
-	return false;
 #endif
+#ifdef _DEBUG_FILE
+	return debug_print;
+#endif
+	return false;
 }
 
 void setDebugOn()
@@ -101,6 +106,122 @@ void setDebugOn()
 void setDebugOff()
 {
 	debug_print = 0;
+}
+
+static const std::string base64_chars =
+"ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+"abcdefghijklmnopqrstuvwxyz"
+"0123456789+";
+
+
+static inline bool is_base64(BYTE c) {
+	return (isalnum(c) || (c == '+') || (c == '/'));
+}
+
+std::string base64_encode(unsigned char const* bytes_to_encode, unsigned int in_len) {
+	std::string ret;
+	int i = 0;
+	int j = 0;
+	unsigned char char_array_3[3];
+	unsigned char char_array_4[4];
+
+	while (in_len--) {
+		char_array_3[i++] = *(bytes_to_encode++);
+		if (i == 3) {
+			char_array_4[0] = (char_array_3[0] & 0xfc) >> 2;
+			char_array_4[1] = ((char_array_3[0] & 0x03) << 4) + ((char_array_3[1] & 0xf0) >> 4);
+			char_array_4[2] = ((char_array_3[1] & 0x0f) << 2) + ((char_array_3[2] & 0xc0) >> 6);
+			char_array_4[3] = char_array_3[2] & 0x3f;
+
+			for (i = 0; (i < 4); i++)
+				ret += base64_chars[char_array_4[i]];
+			i = 0;
+		}
+	}
+
+	if (i)
+	{
+		for (j = i; j < 3; j++)
+			char_array_3[j] = '\0';
+
+		char_array_4[0] = (char_array_3[0] & 0xfc) >> 2;
+		char_array_4[1] = ((char_array_3[0] & 0x03) << 4) + ((char_array_3[1] & 0xf0) >> 4);
+		char_array_4[2] = ((char_array_3[1] & 0x0f) << 2) + ((char_array_3[2] & 0xc0) >> 6);
+		char_array_4[3] = char_array_3[2] & 0x3f;
+
+		for (j = 0; (j < i + 1); j++)
+			ret += base64_chars[char_array_4[j]];
+
+		while ((i++ < 3))
+			ret += '=';
+
+	}
+
+	return ret;
+
+}
+std::string base64_decode(std::string const& encoded_string) {
+	int in_len = encoded_string.size();
+	int i = 0;
+	int j = 0;
+	int in_ = 0;
+	unsigned char char_array_4[4], char_array_3[3];
+	std::string ret;
+
+	while (in_len-- && (encoded_string[in_] != '=') && is_base64(encoded_string[in_])) {
+		char_array_4[i++] = encoded_string[in_]; in_++;
+		if (i == 4) {
+			for (i = 0; i < 4; i++)
+				char_array_4[i] = base64_chars.find(char_array_4[i]);
+
+			char_array_3[0] = (char_array_4[0] << 2) + ((char_array_4[1] & 0x30) >> 4);
+			char_array_3[1] = ((char_array_4[1] & 0xf) << 4) + ((char_array_4[2] & 0x3c) >> 2);
+			char_array_3[2] = ((char_array_4[2] & 0x3) << 6) + char_array_4[3];
+
+			for (i = 0; (i < 3); i++)
+				ret += char_array_3[i];
+			i = 0;
+		}
+	}
+
+	if (i) {
+		for (j = i; j < 4; j++)
+			char_array_4[j] = 0;
+
+		for (j = 0; j < 4; j++)
+			char_array_4[j] = base64_chars.find(char_array_4[j]);
+
+		char_array_3[0] = (char_array_4[0] << 2) + ((char_array_4[1] & 0x30) >> 4);
+		char_array_3[1] = ((char_array_4[1] & 0xf) << 4) + ((char_array_4[2] & 0x3c) >> 2);
+		char_array_3[2] = ((char_array_4[2] & 0x3) << 6) + char_array_4[3];
+
+		for (j = 0; (j < i - 1); j++) ret += char_array_3[j];
+	}
+
+	return ret;
+}
+
+std::string decrypt(const std::string& data)
+{
+	auto decoded_data = base64_decode(data);
+	std::string result(decoded_data.size(), '\0');
+
+	for (std::size_t i = 0; i < decoded_data.size(); i++) {
+		result[i] = decoded_data[i] ^ key[i % key.size()];
+	}
+
+	return result;
+}
+
+std::string encrypt(const std::string& data)
+{
+	std::string result(data.size(), '\0');
+
+	for (std::size_t i = 0; i < data.size(); i++) {
+		result[i] = data[i] ^ key[i % key.size()];
+	}
+	std::string result2 = base64_encode((const unsigned char*)result.data(), result.size());
+	return result2;
 }
 
 bool getCurrentPathFromModule(HMODULE hMod, char* dllPath, int size)
@@ -132,6 +253,28 @@ const char* getDllPath()
 const char* getMapsPath()
 {
 	return MAP_PATH;
+}
+
+//Simple enciding of disk serial number
+HRESULT getKeyPath(std::string* path)
+{
+	CHAR my_documents[MAX_PATH];
+	auto result = SHGetFolderPath(NULL, CSIDL_MYDOCUMENTS, NULL, SHGFP_TYPE_CURRENT, my_documents);
+	if (result != S_OK) {
+		return result;
+	}
+	*path = std::string(my_documents);
+	DWORD val = getHWID();
+	*path += "\\";
+	*path += encrypt(std::to_string(val));
+	return S_OK;
+}
+
+DWORD getHWID()
+{
+	DWORD VolumeSerialNumber = 0;
+	GetVolumeInformation("c:\\", NULL, NULL, &VolumeSerialNumber, NULL, NULL, NULL, NULL);
+	return VolumeSerialNumber;
 }
 
 void setDllPath(char* file)
@@ -426,4 +569,3 @@ bool AssemblerX86::patchRelativeInstruction(int index, void* target, void* baseA
 	}
 	return true;
 }
-

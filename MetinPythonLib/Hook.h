@@ -1,7 +1,7 @@
 #pragma once
 #include <Windows.h>
 #include <unordered_map>
-#include "utils.h"
+#include "../common/utils.h"
 
 typedef void(*tFunction)(void);
 
@@ -10,7 +10,6 @@ class Hook
 public:
 	virtual bool HookFunction() = 0;
 	virtual bool UnHookFunction() = 0;
-
 
 	virtual ~Hook() {};
 
