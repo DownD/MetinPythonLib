@@ -113,7 +113,7 @@ void CPlayer::importPython()
 
 void CPlayer::__GetEter(CMappedFile& file, const char* fileName, void** buffer)
 {
-	DEBUG_INFO_LEVEL_4("Hook Ether_Get called, name=%s", fileName);
+	DEBUG_INFO_LEVEL_5("Hook Ether_Get called, name=%s", fileName);
 	if (getTrigger && strcmp(eterFile.name.c_str(), fileName) == 0) {
 
 		if (eterFile.data != 0) {

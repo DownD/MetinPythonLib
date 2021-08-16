@@ -485,6 +485,21 @@ PyObject* pyRecvDigMotionCallback(PyObject* poSelf, PyObject* poArgs)
 	return Py_BuildNone();
 }
 
+PyObject* pyRecvStartFishCallback(PyObject* poSelf, PyObject* poArgs)
+{
+	PyObject* obj;
+	if (!PyTuple_GetObject(poArgs, 0, &obj)) {
+		return Py_BuildException();
+	}
+
+	CNetworkStream& net = CNetworkStream::Instance();
+	bool val = net.setStartFishCallback(obj);
+	if (val)
+		return Py_BuildNone();
+	else
+		return Py_BuildException();
+}
+
 
 
 PyObject* pyItemGrndFilterClear(PyObject* poSelf, PyObject* poArgs)
@@ -673,18 +688,19 @@ static PyMethodDef s_methods[] =
 	{ "RegisterDigMotionCallback",	pyRecvDigMotionCallback,METH_VARARGS },
 
 
-#ifdef METIN_GF
+//#ifdef METIN_GF
 	{ "SendStartFishing",		pySendStartFishing,	METH_VARARGS },
 	{ "SendStopFishing",		pySendStopFishing,	METH_VARARGS },
 	{ "BlockFishingPackets",	pyBlockFishingPackets,	METH_VARARGS },
 	{ "UnblockFishingPackets",	pyUnblockFishingPackets,METH_VARARGS },
+	{ "RecvStartFishCallback",	pyRecvStartFishCallback,METH_VARARGS},
 
 	//{ "SetKeyState",			pySetKeyState,		METH_VARARGS },
 	//{ "SetAttackKeyState",		pySetKeyState,		METH_VARARGS },
 	{ "GetPixelPosition",		GetPixelPosition,	METH_VARARGS},
 	{ "MoveToDestPosition",     moveToDestPosition, METH_VARARGS},
 	{ "SetMoveSpeedMultiplier",	pySetMoveSpeed,		METH_VARARGS},
-#endif
+//#endif
 
 	{ "GetRequest",	pyGetRequest,		METH_VARARGS},
 

@@ -17,6 +17,7 @@ CNetworkStream::CNetworkStream() : lastPoint(0,0)
 
 	recvDigMotionCallback = 0;
 	shopRegisterCallback = 0;
+	recvStartFishCallback = 0;
 
 	filterInboundOnlyIncluded = false;
 	filterOutboundOnlyIncluded = false;
@@ -139,63 +140,24 @@ void CNetworkStream::SendUseSkillBySlot(DWORD dwSkillSlotIndex, DWORD dwTargetVI
 }
 
 
-bool CNetworkStream::__RecvPacket(DWORD returnFunction, bool return_value, int size, void* buffer)
+bool CNetworkStream::__RecvPacket(int size, void* buffer)
 {
-	BYTE header = getPacketHeader(buffer, size);
-	if (return_value != 0 && size > 0 && header != 0) {
+	CMemory& mem = CMemory::Instance();
 
-		DEBUG_INFO_LEVEL_5("Hook RecvPacket header=%d", header);
-
-		//PacketFilter
-		if (printToConsole) {
-			if (inbound_header_filter.find(header) == inbound_header_filter.end()) {
-				if (!filterInboundOnlyIncluded)
-					printPacket(returnFunction, (BYTE*)buffer,size, INBOUND);
-			}
-			else {
-				if (filterInboundOnlyIncluded)
-					printPacket(returnFunction, (BYTE*)buffer, size, INBOUND);
-			}
-		}
-
-
-		switch (currentPhase) {
-		case PHASE_GAME:
-			return_value = RecvGamePhase(buffer, size,header);
-			break;
-
-		case PHASE_LOADING:
-			return_value = RecvLoadingPhase(buffer, size,header);
-			break;
-		default: {
-			switch (header) {
-			case HEADER_GC_PHASE: {
-				SRcv_ChangePhasePacket phase;
-				if(fillPacket(buffer,size, &phase)>=2)
-					setPhase(phase);
-				break;
-			}
-			case HEADER_GC_CHARACTER_ADD: {
-				SRcv_PlayerCreatePacket instance;
-				fillPacket(buffer, size, &instance);
-				GlobalToLocalPosition(instance.x, instance.y);
-				CInstanceManager& mgr = CInstanceManager::Instance();
-				mgr.appendNewInstance(instance);
-				break;
-			}
-			}
-		}
-
+	return mem.callRecvPacket(size, buffer);
+	/*if (return_value && size>0) {
+		BYTE header = getPacketHeader(buffer, size);
+		if (header == HEADER_GC_FISHING) {
+			printPacket(0, (BYTE*)buffer, size, INBOUND);
 		}
 	}
-
-	return return_value;
+	return return_value;*/
 }
 
 bool CNetworkStream::__SendPacket(int size, void* buffer)
 {
 	BYTE header = getPacketHeader(buffer, size);
-	DEBUG_INFO_LEVEL_5("Hook SendPacket called header = %d return size=%d", header, size);
+	DEBUG_INFO_LEVEL_4("Hook SendPacket called header = %d return size=%d", header, size);
 	//PacketFilter
 	if (printToConsole) {
 		if (outbound_header_filter.find(header) == outbound_header_filter.end()) {
@@ -210,11 +172,12 @@ bool CNetworkStream::__SendPacket(int size, void* buffer)
 
 	switch (header) {
 	case HEADER_CG_FISHING: { //SEQUENCE IS NOT SENT
-		if (blockFishingPackets) {
+		printPacket(0, (BYTE*)buffer, size, OUTBOUND);
+		/*if (blockFishingPackets) {
 			DEBUG_INFO_LEVEL_2("Blocking Fishing Packet");
 			block_next_sequence = 1; //Also block sequence packet
 			return 1;			//Block fishing packets
-		}
+		}*/
 		break;
 	}
 	}
@@ -309,19 +272,59 @@ bool CNetworkStream::__SendStatePacket(fPoint& pos, float rot, BYTE eFunc, BYTE 
 	return mem.callSendStatePacket(pos, rot, eFunc, uArg);
 }
 
-bool CNetworkStream::__CheckPacket(BYTE& header)
+bool CNetworkStream::__CheckPacket(BYTE * header)
 {
 	CMemory& mem = CMemory::Instance();
 	bool val = mem.callCheckPacket(header);
-	if (!val)
+	if (!val || header == 0)
 		return false;
+
+	DEBUG_INFO_LEVEL_5("Hook CheckPacket header=%d", *header);
+
+	switch (currentPhase) {
+	case PHASE_GAME:
+		val = RecvGamePhase(header);
+		break;
+
+	case PHASE_LOADING:
+		val = RecvLoadingPhase(header);
+		break;
+	default: {
+		switch (*header) {
+		case HEADER_GC_PHASE: {
+			SRcv_ChangePhasePacket phase;
+			if (peekNetworkStream(sizeof(SRcv_ChangePhasePacket), &phase)) {
+				if (phase.phase != 1 && phase.phase != 2)
+					setPhase(phase);
+			}
+			else {
+				DEBUG_INFO_LEVEL_2("Could not parse phase packet!");
+			}
+			break;
+		}
+		case HEADER_GC_CHARACTER_ADD: {
+			SRcv_PlayerCreatePacket instance;
+			if (peekNetworkStream(sizeof(SRcv_PlayerCreatePacket), &instance)) {
+				GlobalToLocalPosition(instance.x, instance.y);
+				CInstanceManager& mgr = CInstanceManager::Instance();
+				mgr.appendNewInstance(instance);
+			}
+			else {
+				DEBUG_INFO_LEVEL_2("Could not parse character add packet!");
+			}
+			break;
+		}
+		}
+
+		}
+	}
 
 	return val;
 }
 
 bool CNetworkStream::__SendSequencePacket()
 {
-	DEBUG_INFO_LEVEL_3("__SendSequence called ");
+	DEBUG_INFO_LEVEL_5("__SendSequence called ");
 	if (block_next_sequence) {
 		block_next_sequence = 0;
 		DEBUG_INFO_LEVEL_3("Hook SendSequence called return val=%d", 1);
@@ -383,6 +386,18 @@ void CNetworkStream::callDigMotionCallback(DWORD target_player, DWORD target_vei
 	}
 }
 
+void CNetworkStream::callStartFishCallback()
+{
+	//call python callback
+	DEBUG_INFO_LEVEL_3("Start Fish recived");
+	if (recvStartFishCallback && PyCallable_Check(recvStartFishCallback)) {
+		DEBUG_INFO_LEVEL_3("Calling python StartFishCallback");
+		PyObject* val = Py_BuildValue("()");
+		PyObject_CallObject(recvStartFishCallback, val);
+		Py_DECREF(val);
+	}
+}
+
 //THIS FUNCTION WILL CRASH IF IT HAS SELF ARGUMENT
 bool CNetworkStream::setDigMotionCallback(PyObject* func)
 {
@@ -408,6 +423,22 @@ void CNetworkStream::SetSpeedMultiplier(float val)
 void CNetworkStream::SetFishingPacketsBlock(bool val)
 {
 	blockFishingPackets = val;
+}
+
+bool CNetworkStream::setStartFishCallback(PyObject* func)
+{
+	if (PyCallable_Check(func)) {
+		DEBUG_INFO_LEVEL_2("StartFishCallback function set sucessfully");
+		if (recvStartFishCallback)
+			Py_DECREF(recvStartFishCallback);
+		recvStartFishCallback = func;
+		return true;
+	}
+	else {
+		DEBUG_INFO_LEVEL_1("RegisterStartFishCallback argument is not a function");
+		recvStartFishCallback = 0;
+		return false;
+	}
 }
 
 bool CNetworkStream::setNewShopCallback(PyObject* func)
@@ -558,84 +589,28 @@ void CNetworkStream::setPhase(SRcv_ChangePhasePacket& phase) {
 	}
 }
 
-
-bool CNetworkStream::interceptPackets(BYTE header, void* buffer, int size)
+bool CNetworkStream::peekNetworkStream(int len, void* buffer)
 {
-	/*BYTE header = getPacketHeader(buffer, size);
-	if (return_value != 0 && size > 0 && header != 0) {
-
-		DEBUG_INFO_LEVEL_5("Hook RecvPacket header=%d", header);
-
-		//PacketFilter
-		if (printToConsole) {
-			if (inbound_header_filter.find(header) == inbound_header_filter.end()) {
-				if (!filterInboundOnlyIncluded)
-					printPacket(returnFunction, (BYTE*)buffer, size, INBOUND);
-			}
-			else {
-				if (filterInboundOnlyIncluded)
-					printPacket(returnFunction, (BYTE*)buffer, size, INBOUND);
-			}
-		}*/
-	bool return_value = 0;
-	switch (currentPhase) {
-	case PHASE_GAME:
-		return_value = RecvGamePhase(buffer, size, header);
-		break;
-
-	case PHASE_LOADING:
-		return_value = RecvLoadingPhase(buffer, size, header);
-		break;
-	default: {
-		switch (header) {
-		case HEADER_GC_PHASE: {
-			SRcv_ChangePhasePacket phase;
-			if (fillPacket(buffer, size, &phase) >= 2)
-				setPhase(phase);
-			break;
-		}
-		case HEADER_GC_CHARACTER_ADD: {
-			SRcv_PlayerCreatePacket instance;
-			fillPacket(buffer, size, &instance);
-			GlobalToLocalPosition(instance.x, instance.y);
-			CInstanceManager& mgr = CInstanceManager::Instance();
-			mgr.appendNewInstance(instance);
-			break;
-		}
-		}
-	}
-		switch (currentPhase) {
-		case PHASE_GAME:
-			return_value = RecvGamePhase(buffer, size, header);
-			break;
-
-		case PHASE_LOADING:
-			return_value = RecvLoadingPhase(buffer, size, header);
-			break;
-		default: {
-			switch (header) {
-			case HEADER_GC_PHASE: {
-				SRcv_ChangePhasePacket phase;
-				if (fillPacket(buffer, size, &phase) >= 2)
-					setPhase(phase);
-				break;
-			}
-			case HEADER_GC_CHARACTER_ADD: {
-				SRcv_PlayerCreatePacket instance;
-				fillPacket(buffer, size, &instance);
-				GlobalToLocalPosition(instance.x, instance.y);
-				CInstanceManager& mgr = CInstanceManager::Instance();
-				mgr.appendNewInstance(instance);
-				break;
-			}
-			}
-		}
-
-		}
-	}
-
-	return return_value;
+	CMemory& mem = CMemory::Instance();
+	return mem.callPeek(len, buffer);
 }
+
+int CNetworkStream::getFishingPacketSize(BYTE header, bool isRecive)
+{
+	switch (header) {
+		case 0x0:
+		case 0x1:
+		case 0x3:
+		case 0x4:
+		case 0x5:
+			return 8;
+		case 0x2:
+			return 0x14;
+	}
+	DEBUG_INFO_LEVEL_3("Fishing header unknown: %d", header);
+	return 0;
+}
+
 
 BYTE CNetworkStream::getPacketHeader(void* buffer, int size)
 {
@@ -645,76 +620,126 @@ BYTE CNetworkStream::getPacketHeader(void* buffer, int size)
 	return 0;
 }
 
-bool CNetworkStream::RecvGamePhase(void* buffer, int size, BYTE header)
+bool CNetworkStream::RecvGamePhase(BYTE* header)
 {
-	switch (header) {
+	switch (*header) {
 	case HEADER_GC_FISHING: {
-		if (blockFishingPackets) {
-			if (size >= 2 && (((BYTE*)buffer)[1] == 0x0 || ((BYTE*)buffer)[1] == 0x4)) { //This is for refresh the inventory window
+		SRecvHeaderFishingPacket instancePacket;
+		if (peekNetworkStream(sizeof(SRecvHeaderFishingPacket), &instancePacket)) {
+			if (blockFishingPackets && instancePacket.fishingHeader !=5 ) {
+
+				CMemory& mem = CMemory::Instance();
+				BYTE tmp[0x21];
+				if(!mem.callRecvPacket(getFishingPacketSize(instancePacket.fishingHeader), tmp)) {
+					DEBUG_INFO_LEVEL_2("Could not block fishing packet!");
+				}
+
+				if (instancePacket.fishingHeader == 2) {
+					callStartFishCallback();
+				}
 				return false;
 			}
 		}
+		else {
+			DEBUG_INFO_LEVEL_2("Could not parse fishing packet!");
+		}
+		/*if (blockFishingPackets) {
+			if (size >= 2 && (((BYTE*)buffer)[1] == 0x0 || ((BYTE*)buffer)[1] == 0x4)) { //This is for refresh the inventory window
+				return false;
+			}
+		}*/
 		break;
 	}
 	case HEADER_GC_ITEM_GROUND_ADD: {
 		SRcv_GroundItemAddPacket instance;
-		fillPacket(buffer,size, &instance);
-		GlobalToLocalPosition(instance.x, instance.y);
-		CInstanceManager& mgr = CInstanceManager::Instance();
-		mgr.addItemGround(instance);
+		if (peekNetworkStream(sizeof(SRcv_GroundItemAddPacket), &instance)) {
+			GlobalToLocalPosition(instance.x, instance.y);
+			CInstanceManager& mgr = CInstanceManager::Instance();
+			mgr.addItemGround(instance);
+		}
+		else {
+			DEBUG_INFO_LEVEL_2("Could not parse item ground add packet!");
+		}
 		break;
 	}
 	case HEADER_GC_ITEM_GROUND_DEL: {
 		SRcv_GroundItemDeletePacket instance;
-		fillPacket(buffer, size, &instance);
-		CInstanceManager& mgr = CInstanceManager::Instance();
-		mgr.delItemGround(instance);
+		if (peekNetworkStream(sizeof(SRcv_GroundItemDeletePacket), &instance)) {
+			CInstanceManager& mgr = CInstanceManager::Instance();
+			mgr.delItemGround(instance);
+		}
+		else {
+			DEBUG_INFO_LEVEL_2("Could not parse item ground delete packet!");
+		}
 		break;
 	}
 	case HEADER_GC_CHARACTER_ADD: {
 		SRcv_PlayerCreatePacket instance;
-		fillPacket(buffer, size, &instance);
-		GlobalToLocalPosition(instance.x, instance.y);
-		CInstanceManager& mgr = CInstanceManager::Instance();
-		mgr.appendNewInstance(instance);
+		if (peekNetworkStream(sizeof(SRcv_PlayerCreatePacket), &instance)) {
+			GlobalToLocalPosition(instance.x, instance.y);
+			CInstanceManager& mgr = CInstanceManager::Instance();
+			mgr.appendNewInstance(instance);
+		}else {
+			DEBUG_INFO_LEVEL_2("Could not parse character add packet!");
+		}
 		break;
 	}
 	case HEADER_GC_CHARACTER_MOVE: {
 
 		SRcv_CharacterMovePacket instance;
-		fillPacket(buffer, size, &instance);
-		GlobalToLocalPosition(instance.lX, instance.lY);
-		CInstanceManager& mgr = CInstanceManager::Instance();
-		mgr.changeInstancePosition(instance);
+		if (peekNetworkStream(sizeof(SRcv_CharacterMovePacket), &instance)) {
+			GlobalToLocalPosition(instance.lX, instance.lY);
+			CInstanceManager& mgr = CInstanceManager::Instance();
+			mgr.changeInstancePosition(instance);
+		}
+		else {
+			DEBUG_INFO_LEVEL_2("Could not parse character move packet!");
+		}
 		break;
 	}
 	case HEADER_GC_CHARACTER_DEL: {
 
-		SRcv_PlayerCreatePacket instance_;
-		fillPacket(buffer, size, &instance_);
-		CInstanceManager& mgr = CInstanceManager::Instance();
-		mgr.deleteInstance(instance_.dwVID);
+		SRcv_DeletePlayerPacket instance_;
+		if (peekNetworkStream(sizeof(SRcv_DeletePlayerPacket), &instance_)) {
+			CInstanceManager& mgr = CInstanceManager::Instance();
+			mgr.deleteInstance(instance_.dwVID);
+		}
+		else {
+			DEBUG_INFO_LEVEL_2("Could not parse character delete packet!");
+		}
 		break;
 	}
 	case HEADER_GC_PHASE: {
 		SRcv_ChangePhasePacket phase;
-		fillPacket(buffer, size, &phase);
-		if (phase.phase != 1 && phase.phase != 2)
-			setPhase(phase);
+		if (peekNetworkStream(sizeof(SRcv_ChangePhasePacket), &phase)) {
+			if (phase.phase != 1 && phase.phase != 2)
+				setPhase(phase);
+		}
+		else {
+			DEBUG_INFO_LEVEL_2("Could not parse phase packet!");
+		}
 		break;
 	}
 	case HEADER_CG_DIG_MOTION: {
 		SRcv_DigMotionPacket instance_;
-		fillPacket(buffer, size, &instance_);
-		callDigMotionCallback(instance_.vid, instance_.target_vid, instance_.count);
+		if (peekNetworkStream(sizeof(SRcv_DigMotionPacket), &instance_)) {
+			callDigMotionCallback(instance_.vid, instance_.target_vid, instance_.count);
+		}
+		else {
+			DEBUG_INFO_LEVEL_2("Could not parse dig motion packet!");
+		}
 		break;
 	}
 
 	case HEADER_GC_DEAD: {
 		SRcvDeadPacket dead;
-		fillPacket(buffer, size, &dead);
-		CInstanceManager& mgr = CInstanceManager::Instance();
-		mgr.changeInstanceIsDead(dead.vid, 1);
+		if (peekNetworkStream(sizeof(SRcvDeadPacket), &dead)) {
+			CInstanceManager& mgr = CInstanceManager::Instance();
+			mgr.changeInstanceIsDead(dead.vid, 1);
+		}
+		else {
+			DEBUG_INFO_LEVEL_2("Could not parse dead packet!");
+		}
 		break;
 	}
 	}
@@ -722,29 +747,42 @@ bool CNetworkStream::RecvGamePhase(void* buffer, int size, BYTE header)
 	return true;
 }
 
-bool CNetworkStream::RecvLoadingPhase(void* buffer, int size, BYTE header)
+
+bool CNetworkStream::RecvLoadingPhase( BYTE* header)
 {
-	switch (header) {
+	switch (*header) {
 	case HEADER_GC_CHARACTER_ADD: {
 		SRcv_PlayerCreatePacket instance;
-		fillPacket(buffer, size, &instance);
-		GlobalToLocalPosition(instance.x, instance.y);
-		CInstanceManager& mgr = CInstanceManager::Instance();
-		mgr.appendNewInstance(instance);
+		if (peekNetworkStream(sizeof(SRcv_PlayerCreatePacket), &instance)) {
+			GlobalToLocalPosition(instance.x, instance.y);
+			CInstanceManager& mgr = CInstanceManager::Instance();
+			mgr.appendNewInstance(instance);
+		}
+		else {
+			DEBUG_INFO_LEVEL_2("Could not parse character add packet!");
+		}
 		break;
 	}
 	case HEADER_GC_MAIN_CHARACTER: {
 		SRcv_MainCharacterPacket m;
-		fillPacket(buffer, size, &m);
-		DEBUG_INFO_LEVEL_2("MAIN VID: %d", m.dwVID);
-		mainCharacterVID = m.dwVID;
+		if (peekNetworkStream(sizeof(SRcv_MainCharacterPacket), &m)) {
+			DEBUG_INFO_LEVEL_2("MAIN VID: %d", m.dwVID);
+			mainCharacterVID = m.dwVID;
+		}
+		else {
+			DEBUG_INFO_LEVEL_2("Could not parse main character packet!");
+		}
 		break;
 	}
 	case HEADER_GC_PHASE: {
 		SRcv_ChangePhasePacket phase;
-		fillPacket(buffer, size, &phase);
-		if (phase.phase != 1 && phase.phase != 2)
-			setPhase(phase);
+		if (peekNetworkStream(sizeof(SRcv_ChangePhasePacket), &phase)) {
+			if (phase.phase != 1 && phase.phase != 2)
+				setPhase(phase);
+		}
+		else {
+			DEBUG_INFO_LEVEL_2("Could not parse phase packet!");
+		}
 		break;
 	}
 	}

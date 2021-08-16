@@ -48,6 +48,7 @@ struct CMappedFile;
 
 //Functions
 typedef void(__cdecl* tTracef)(const char* c_szFormat, ...);
+typedef bool(__thiscall* tRecvPacket)(ClassPointer classPointer, int size, void* buffer);
 typedef bool(__thiscall* tSendPacket)(ClassPointer classPointer, int size, void* buffer);
 typedef bool(__thiscall* tSendSequencePacket)(ClassPointer classPointer);
 typedef bool(__thiscall* tSendStatePacket)(ClassPointer classPointer, fPoint& pos, float rot, BYTE eFunc, BYTE uArg);
@@ -56,7 +57,7 @@ typedef bool(__thiscall* tInstanceBase_CheckAdvancing)(ClassPointer classPointer
 typedef bool(__thiscall* tMoveToDirection)(ClassPointer classPointer, float rot);
 typedef bool(__thiscall* tMoveToDestPosition)(ClassPointer classPointer, fPoint& pos);
 typedef void(__thiscall* tSendUseSkillBySlot)(ClassPointer classPointer, DWORD dwSkillSlotIndex, DWORD dwTargetVID);
-typedef bool(__thiscall* tCheckPacket)(ClassPointer classPointer, BYTE packetHeader);
+typedef bool(__thiscall* tCheckPacket)(ClassPointer classPointer, BYTE* packetHeader);
 typedef bool(__thiscall* tPeek)(ClassPointer classPointer, int len,void* buffer);
 
 typedef bool(__thiscall* tGlobalToLocalPosition)(ClassPointer classPointer, long& lx, long& ly);
@@ -270,6 +271,12 @@ struct SSend_StopFishingPacket
 	BYTE		u2 = 8;   //8
 	DWORD		type;	  //0 - unsuccess, 3 sucess
 	float		timeLeft; //seconds
+};
+
+struct SRecvHeaderFishingPacket
+{
+	BYTE		header = HEADER_CG_FISHING;
+	BYTE        fishingHeader;
 };
 
 

@@ -23,7 +23,7 @@ public:
 	inline ClassPointer getPythonChrMgr() { return *pythonChrMgr; };
 	inline ClassPointer getPythonPlayer() { return *pythonPlayer; };
 	inline ClassPointer getNetworkStream() { return networkStream; };
-	inline ClassPointer setNetworkStream(ClassPointer val) { return networkStream=val; };
+	inline void setNetworkStream(ClassPointer val) {networkStream=val; };
 
 	//Hooked original functions
 	inline bool callBackgroundCheckAdv(ClassPointer p,void* instanceBase) { return backgroundCheckAdvHook->originalFunction(p, instanceBase);}
@@ -35,8 +35,8 @@ public:
 	inline bool callMoveToDirection(ClassPointer p, float rot) { return setMoveToDirectionHook->originalFunction(p, rot); }
 	inline bool callProcess(ClassPointer p) { return processHook->originalFunction(p); }
 	inline bool callGet(ClassPointer cp, CMappedFile& file, const char* fileName, void** buffer) { return getEtherPacketHook->originalFunction(cp, file, fileName, (LPCVOID*)buffer); }
-	inline bool callCheckPacket(BYTE& header) { return checkPacketHook->originalFunction(getPythonNetwork(),header); }
-
+	inline bool callCheckPacket(BYTE * header) { return checkPacketHook->originalFunction(getPythonNetwork(),header); }
+	inline bool callRecvPacket(int size, void* buffer) { return recvHook->originalFunction(getNetworkStream(), size, buffer); }
 
 	//Client functions
 	inline bool callSendAttackPacket(BYTE type, DWORD vid) { return sendAttackPacketFunc(getPythonNetwork(), type, vid); }
@@ -57,7 +57,7 @@ private:
 private:
 
 	//Hooks
-	Hook* recvHook;
+	DetoursHook<tRecvPacket>* recvHook;
 
 	DetoursHook<tGet> * getEtherPacketHook;
 	DetoursHook<tBackground_CheckAdvancing>* backgroundCheckAdvHook;

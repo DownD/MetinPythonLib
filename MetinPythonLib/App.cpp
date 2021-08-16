@@ -69,7 +69,12 @@ void CApp::init() {
 #else
 	//Sleep(1000);
 #endif
-	memory.setupProcessHook();
+	if (memory.setupProcessHook()) {
+		DEBUG_INFO_LEVEL_1("Process Hook sucessfull");
+	}
+	else {
+		DEBUG_INFO_LEVEL_1("Error on process hook");
+	}
 }
 
 void CApp::initMainThread() {

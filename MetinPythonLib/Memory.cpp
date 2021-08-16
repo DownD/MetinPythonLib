@@ -19,9 +19,11 @@ bool __fastcall __Process(ClassPointer p) {
 	return instance.__AppProcess(p);
 }
 
-bool __stdcall __RecvPacket(DWORD return_function, bool return_value, int size, void* buffer) {
+bool __fastcall __RecvPacket(ClassPointer p, DWORD edx,int size, void* buffer) {
 	CNetworkStream& net = CNetworkStream::Instance();
-	return net.__RecvPacket(return_function, return_value,size, buffer);
+	CMemory& mem = CMemory::Instance();
+	mem.setNetworkStream(p);
+	return net.__RecvPacket(size, buffer);
 }
 bool __fastcall __SendPacket(ClassPointer classPointer,DWORD edx, int size, void* buffer) {
 	CNetworkStream& net = CNetworkStream::Instance();
@@ -38,18 +40,6 @@ bool __fastcall __SendPacket(ClassPointer classPointer,DWORD edx, int size, void
 }*/
 
 
-
-
-void __declspec(naked) __RecvPacketJMP(int size, void* buffer) {
-	//pushes the return address
-	__asm {
-		POP edx
-		PUSH eax
-		PUSH edx
-		PUSH edx //Return Address
-		JMP __RecvPacket
-	}
-}
 
 bool __fastcall __SendSequencePacket(DWORD classPointer)
 {
@@ -90,9 +80,10 @@ bool __fastcall __MoveToDirection(ClassPointer classPointer, DWORD EDX, float ro
 	return instance.__MoveToDirection(classPointer, rot);
 }
 
-bool __fastcall __CheckPacket(ClassPointer classPointer, DWORD EDX, BYTE & header)
+bool __fastcall __CheckPacket(ClassPointer classPointer, DWORD EDX, BYTE * header)
 {
 	CNetworkStream& instance = CNetworkStream::Instance();
+	CMemory& mem = CMemory::Instance();
 	return instance.__CheckPacket(header);
 }
 
@@ -174,7 +165,14 @@ bool CMemory::setupPatterns(HMODULE hDll)
 	localToGlobalFunc = (tLocalToGlobalPosition)addrLoader.GetAddress(LOCALTOGLOBAL_FUNCTION);
 	globalToLocalFunc = (tGlobalToLocalPosition)addrLoader.GetAddress(GLOBALTOLOCAL_FUNCTION);
 	peekFunc = (tPeek)addrLoader.GetAddress(PEEK_FUNCTION);
+
+	peekFunc = (tPeek)getRelativeCallAddress((void*)peekFunc);
 	globalToLocalFunc = (tGlobalToLocalPosition)getRelativeCallAddress((void*)globalToLocalFunc);
+	recvAddr = getRelativeCallAddress(recvAddr);
+
+	DEBUG_INFO_LEVEL_1("Peek relative final address: %#x", peekFunc);
+	DEBUG_INFO_LEVEL_1("globalToLocal relative final address: %#x", globalToLocalFunc);
+	DEBUG_INFO_LEVEL_1("recv relative final address: %#x", recvAddr);
 
 	pythonNetwork = SetClassPointer((DWORD**)netClassPointer);
 	pythonPlayer = SetClassPointer((DWORD**)pythonPlayerPointer);
@@ -194,7 +192,7 @@ bool CMemory::setupHooks()
 {
 	//Hooks
 	getEtherPacketHook = new DetoursHook<tGet>((tGet)getEtherPackAddr, __GetEter);
-	recvHook = new ReturnHook(recvAddr, __RecvPacketJMP, 5, 2);
+	recvHook = new DetoursHook<tRecvPacket>((tRecvPacket)recvAddr, __RecvPacket);
 	sendHook = new DetoursHook<tSendPacket>((tSendPacket)sendAddr, __SendPacket);//new JMPStartFuncHook(sendAddr, __SendPacketJMP, 6, THIS_CALL);
 	sendSequenceHook = new DetoursHook<tSendSequencePacket>((tSendSequencePacket)sendSequenceAddr, __SendSequencePacket);
 	backgroundCheckAdvHook = new DetoursHook<tBackground_CheckAdvancing>((tBackground_CheckAdvancing)backgroundCheckAdvancingAddr, __BackgroundCheckAdvanced);
@@ -202,7 +200,7 @@ bool CMemory::setupHooks()
 	sendStateHook = new DetoursHook<tSendStatePacket>((tSendStatePacket)statePacketAddr, __SendStatePacket);
 	setMoveToDestPositionHook = new DetoursHook<tMoveToDestPosition>((tMoveToDestPosition)moveToDestAddr, __MoveToDestPosition);
 	setMoveToDirectionHook = new DetoursHook<tMoveToDirection>((tMoveToDirection)moveToDirectionAddr, __MoveToDirection);
-	checkPacketHook = new DetoursHook<tCheckPacket>((tCheckPacket)checkPacketHook, __CheckPacket);
+	checkPacketHook = new DetoursHook<tCheckPacket>((tCheckPacket)checkPacketAddr, __CheckPacket);
 
 	traceFHook = new DetoursHook<tTracef>((tTracef)traceFFuncAddr, __Tracef);
 	tracenFHook = new DetoursHook<tTracef>((tTracef)tracenFFuncAddr, __Tracenf);

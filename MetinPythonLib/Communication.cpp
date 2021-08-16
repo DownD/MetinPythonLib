@@ -84,9 +84,10 @@ int CCommunication::MainServerSetAuthKey()
 
 		}
 
-		//Write a default key if it doesnot exst yet
+		//Write a default key if it does not exist yet
 		else {
 			std::string key_write = DEFAULT_API_KEY;
+			authKey = DEFAULT_API_KEY;
 			std::ofstream f(path.c_str());
 			if (f.good()) {
 				f.write(key_write.data(), key_write.size());
@@ -103,12 +104,15 @@ int CCommunication::MainServerSetAuthKey()
 		url += TEST_AUTH_ENDPOINT;
 
 		Json::Value tmp;
-		int val = MainServerPreformRequest(url, &tmp);
-		if (val) {
+		if (MainServerPreformRequest(url, &tmp)) {
 			DEBUG_INFO_LEVEL_2("Api key is set and accepted");
 			return 1;
 		}
+		else {
+			DEBUG_INFO_LEVEL_2("Current Api key is not accepted");
+		}
 
+		//PRESENT KEY IS NOT ELIGIBLE REQUEST A NEW ONE
 
 		//Get request code
 		std::string code = "";
@@ -146,7 +150,7 @@ int CCommunication::MainServerSetAuthKey()
 
 int CCommunication::MainServerGetOffsets(std::map<int, DWORD>* bufferOffsets)
 {
-	if (authKey.size() < 2) {
+	if (authKey.size() < 1) {
 		DEBUG_INFO_LEVEL_1("Missing auth key!");
 		return 0;
 	}

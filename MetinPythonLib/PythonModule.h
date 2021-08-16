@@ -32,6 +32,7 @@ PyObject* pyRegisterNewShopCallback(PyObject* poSelf, PyObject* poArgs);
 PyObject* pySendUseSkillPacket(PyObject* poSelf, PyObject* poArgs);
 PyObject* pySendUseSkillPacketBySlot(PyObject* poSelf, PyObject* poArgs);
 PyObject* pyRecvDigMotionCallback(PyObject* poSelf, PyObject* poArgs);
+PyObject* pyRecvStartFishCallback(PyObject* poSelf, PyObject* poArgs);
 
 PyObject* pyItemGrndFilterClear(PyObject* poSelf, PyObject* poArgs);
 PyObject* pyItemGrndNotOnFilter(PyObject* poSelf, PyObject* poArgs);

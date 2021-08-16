@@ -34,11 +34,11 @@ public:
 	void SendUseSkillBySlot(DWORD dwSkillSlotIndex, DWORD dwTargetVID);
 
 	//Hooks callbacks
-	bool __RecvPacket(DWORD returnFunction, bool return_value, int size, void* buffer);
+	bool __RecvPacket(int size, void* buffer);
 	bool __SendPacket(int size, void* buffer);
 	bool __SendSequencePacket();
 	bool __SendStatePacket(fPoint& pos, float rot, BYTE eFunc, BYTE uArg);
-	bool __CheckPacket(BYTE &header);
+	bool __CheckPacket(BYTE * header);
 
 
 	int GetCurrentPhase();
@@ -53,6 +53,7 @@ public:
 	//Fishing and speed hooks
 	void SetSpeedMultiplier(float val);
 	void SetFishingPacketsBlock(bool val); //1 block packets, 0 do not block packets
+	bool setStartFishCallback(PyObject* func);
 
 	//New Shop callback
 	bool setNewShopCallback(PyObject* func);
@@ -73,12 +74,17 @@ public:
 
 private:
 
-	bool interceptPackets(BYTE header, void* buffer = nullptr, int size = 0);
+	void callStartFishCallback();
 
 	BYTE getPacketHeader(void* buffer, int size);
-	bool RecvGamePhase(void* buffer, int size,BYTE header);
-	bool RecvLoadingPhase(void* buffer, int size, BYTE header);
+	bool RecvGamePhase(BYTE* header);
+	bool RecvLoadingPhase(BYTE* header);
 	void setPhase(SRcv_ChangePhasePacket& phase);
+
+	bool peekNetworkStream(int len,void * buffer);
+
+	//0x2 fishing header is responsible for telling client when it can be fished
+	int getFishingPacketSize(BYTE header, bool isRecive= true);
 
 
 private:
@@ -95,6 +101,7 @@ private:
 	//DigMotion callback
 	PyObject* recvDigMotionCallback;
 	PyObject* shopRegisterCallback;
+	PyObject* recvStartFishCallback;
 
 	//Packet filter
 	bool filterInboundOnlyIncluded;

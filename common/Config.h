@@ -1,10 +1,10 @@
 #pragma once
 
-//#define GET_ADDRESS_FROM_SERVER
-#define USE_BUILTIN_PATTERNS
+#define GET_ADDRESS_FROM_SERVER
+//#define USE_BUILTIN_PATTERNS
 //#define GET_ADDRESS_FROM_FILE
 
-#define WEB_SERVER_ADDRESS "http://127.0.0.1:8081/"
+#define WEB_SERVER_ADDRESS "http://136.244.118.103:80/"
 #define OFFSETS_ENDPOINT "get_offsets"
 #define REQUEST_AUTH_ENDPOINT "request_auth_code"
 #define REQUEST_API_KEY_ENDPOINT "request_api_key"
@@ -16,7 +16,7 @@
 
 
 //Related to pattern scanner
-#define DUMP_TO_FILE
+//#define DUMP_TO_FILE
 #define SEND_TO_SERVER
 
 

@@ -21,7 +21,7 @@ void setDebugOff();
 #define DEBUG_INFO_LEVEL_2(...); {DEBUG_INFO_LEVEL_1(__VA_ARGS__); }
 #define DEBUG_INFO_LEVEL_3(...); {DEBUG_INFO_LEVEL_1(__VA_ARGS__); }
 #define DEBUG_INFO_LEVEL_4(...); {DEBUG_INFO_LEVEL_1(__VA_ARGS__);}
-#define DEBUG_INFO_LEVEL_5(...); {DEBUG_INFO_LEVEL_1(__VA_ARGS__);}
+#define DEBUG_INFO_LEVEL_5(...); {}
 
 
 
