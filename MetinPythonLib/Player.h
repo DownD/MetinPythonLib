@@ -1,4 +1,5 @@
 #pragma once
+#include "stdafx.h"
 #include "Singleton.h"
 #include "../common/utils.h"
 #include "defines.h"

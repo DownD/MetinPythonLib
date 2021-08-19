@@ -1,3 +1,4 @@
+#include "stdafx.h"
 #include "PythonUtils.h"
 
 bool __PyCallClassMemberFunc_ByCString(PyObject* poClass, const char* c_szFunc, PyObject* poArgs, PyObject** poRet);
@@ -46,10 +47,10 @@ bool PyTuple_GetObject(PyObject* poArgs, int pos, PyObject** ret)
 		return false;
 
 	PyObject * poItem = PyTuple_GetItem(poArgs, pos);
-
 	if (!poItem)
 		return false;
 
+	Py_INCREF(poItem);
 	*ret = poItem;
 	return true;
 }

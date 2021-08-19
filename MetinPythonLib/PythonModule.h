@@ -1,4 +1,5 @@
 #pragma once
+#include "stdafx.h"
 #include <stdio.h>
 #include <string>
 #include "shlwapi.h"
@@ -63,6 +64,9 @@ PyObject* setOutFilterMode(PyObject* poSelf, PyObject* poArgs);
 
 //NETOWORKING RELATED
 PyObject* pyGetRequest(PyObject* poSelf, PyObject* poArgs);
+PyObject* pyOpenWebsocket(PyObject* poSelf, PyObject* poArgs);
+PyObject* pySendWebsocket(PyObject* poSelf, PyObject* poArgs);
+PyObject* pyCloseWebsocket(PyObject* poSelf, PyObject* poArgs);
 
 bool addPathToInterpreter(const char* path);
 bool executePythonFile(const char* file);

@@ -1,3 +1,4 @@
+#include "stdafx.h"
 #include "InstanceManager.h"
 #include "NetworkStream.h"
 #include "Memory.h"

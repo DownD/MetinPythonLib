@@ -1,5 +1,5 @@
 #pragma once
-#include <Windows.h>
+#include "stdafx.h"
 #include "DetoursHook.h"
 #include "../common/Patterns.h"
 #include "ReturnHook.h"

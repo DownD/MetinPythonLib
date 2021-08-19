@@ -1,3 +1,4 @@
+#include "stdafx.h"
 #include "Background.h"
 #include "NetworkStream.h"
 
@@ -16,6 +17,9 @@ CBackground::~CBackground()
 void CBackground::importPython()
 {
 	background_mod = PyImport_ImportModule("background");
+	if (!background_mod) {
+		DEBUG_INFO_LEVEL_1("Error importing background python module");
+	}
 }
 
 bool CBackground::setCurrentCollisionMap()
@@ -30,14 +34,14 @@ bool CBackground::setCurrentCollisionMap()
 		Py_DECREF(poArgs);
 		return false;
 	}
-
+	DEBUG_INFO_LEVEL_2("Setting collision map name=%s",map_name.c_str());
 	//printf("Setting Map Collision %s\n", map_name.c_str());
 	Py_DECREF(poArgs);
-
 	if (currMap) {
 		if (map_name.compare(currMap->getMapName()) == 0)
 			return true;
 		delete currMap;
+		currMap = 0;
 	}
 	currMap = new MapCollision(map_name.c_str());
 	return true;

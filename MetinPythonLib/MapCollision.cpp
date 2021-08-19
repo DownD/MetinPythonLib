@@ -1,3 +1,4 @@
+#include "stdafx.h"
 #include "MapCollision.h"
 #include "Player.h"
 #include <sstream>
@@ -155,7 +156,7 @@ bool MapCollision::constructMapFromClient()
 
 			std::string fullPath = baseFolder + x_folder.str() + y_folder.str() + "\\attr.atr";
 			if (fileExists(fullPath.c_str())) {
-				CPlayer player = CPlayer::Instance();
+				CPlayer& player = CPlayer::Instance();
 				EterFile* f = player.CGetEter(fullPath.c_str());
 				MapPiece *p = new MapPiece(f, x, y, baseFolder + x_folder.str() + y_folder.str());
 				buffer.push_back(p);
@@ -170,11 +171,12 @@ bool MapCollision::constructMapFromClient()
 			}
 		}
 	}
-	if (buffer.size() == 0) {
-#ifdef _DEBUG
+	if (buffer.size() == 0 || xPieces==0) {
 		DEBUG_INFO_LEVEL_1("No map found with name %s\n", mapName.c_str());
-#endif
 		return false;
+	}
+	else {
+		DEBUG_INFO_LEVEL_3("Map %s loaded max_X_Piece:%d max_Y_Piece:%d\n", mapName.c_str(), xPieces,largestYPiece);
 	}
 
 
@@ -389,7 +391,7 @@ MapCollision::MapPiece::MapPiece(EterFile * file,int x,int y,std::string path)
 	yStart = y*ATTR_HEIGHT;
 
 	std::string areaData = path + "\\areadata.txt";
-	CPlayer player = CPlayer::Instance();
+	CPlayer& player = CPlayer::Instance();
 	auto eterArea = player.CGetEter(areaData.c_str());
 	area.loadFile((char*)eterArea->data,eterArea->size);
 

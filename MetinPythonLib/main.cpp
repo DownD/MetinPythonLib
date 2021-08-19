@@ -1,6 +1,5 @@
 #pragma once
-#include <Windows.h>
-#include <stdio.h>
+#include "stdafx.h"
 #include "App.h"
 #include "../common/utils.h"
 #include <io.h>

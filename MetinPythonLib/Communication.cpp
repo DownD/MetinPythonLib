@@ -1,3 +1,4 @@
+#include "stdafx.h"
 #include "Communication.h"
 #include "../common/Config.h"
 #include <fstream>
@@ -19,29 +20,54 @@ CCommunication::~CCommunication()
 
 void CCommunication::Process()
 {
+
+	//Get requests
 	int still_running;
 	curl_multi_perform(curlMulti, &still_running);
-	if (still_running)
-		return;
+	if (!still_running) {
 
-	int msgq = 0;
-	struct CURLMsg* m;
-	m = curl_multi_info_read(curlMulti, &msgq);
-	if (m && (m->msg == CURLMSG_DONE)) {
-		CURL* e = m->easy_handle;
-		int id;
-		curl_easy_getinfo(e, CURLINFO_PRIVATE, &id);
-		curl_multi_remove_handle(curlMulti, e);
-		curl_easy_cleanup(e);
+		int msgq = 0;
+		struct CURLMsg* m;
+		m = curl_multi_info_read(curlMulti, &msgq);
+		if (m && (m->msg == CURLMSG_DONE)) {
+			CURL* e = m->easy_handle;
+			int id;
+			curl_easy_getinfo(e, CURLINFO_PRIVATE, &id);
+			curl_multi_remove_handle(curlMulti, e);
+			curl_easy_cleanup(e);
 
-		GetInstance& info = getRecvBuffer.at(id);
-		info.function.ExecuteCallback(id, &info.msgBuffer);
+			GetInstance& info = getRecvBuffer.at(id);
+			info.function.ExecuteCallback(id, &info.msgBuffer);
 
-		getRecvBuffer.erase(id);
-		if (id >= maxID) {
-			--maxID;
+			getRecvBuffer.erase(id);
+			if (id >= maxID) {
+				--maxID;
+			}
 		}
 	}
+
+	//Websockets
+	auto conIter = webSocketList.begin();
+	while (conIter != webSocketList.end()) {
+		WebSocketInfo& socket = conIter->second;
+
+		//Check if is still conected, otherwise delete it
+
+		std::string buffer;
+		while (websocketHandler.Recv(socket.id, &buffer)) {
+			DEBUG_INFO_LEVEL_3("Websocket with id=%d recived message: %s", socket.id,buffer.c_str());
+			socket.recvCallback.ExecuteCallback(socket.id, &buffer, false);
+		}
+		if (!websocketHandler.IsConnected(socket.id)) {
+			DEBUG_INFO_LEVEL_1("Websocket with id %d is not connected, removing it", socket.id);
+			socket.recvCallback.Cleanup();
+			webSocketList.erase(conIter++);
+			continue;
+		}
+		++conIter;
+	}
+
+
 }
 
 int CCommunication::GetRequest(std::string& url, ComCallbackFunction callback, int id)
@@ -68,6 +94,31 @@ int CCommunication::GetRequest(const char* url, ComCallbackFunction callback, in
 	return id;
 }
 
+int CCommunication::OpenWebsocket(const char* host, ComCallbackFunction callback)
+{
+	int id = websocketHandler.Connect(host);
+	if (id == -1)
+		return -1;
+	webSocketList.insert({ id,WebSocketInfo(id,callback) });
+
+	DEBUG_INFO_LEVEL_1("Websocket to %s created with ID %d", host, id);
+	return id;
+}
+
+bool CCommunication::WebsocketSend(int id, const char* message)
+{
+	return websocketHandler.Send(id, message);
+}
+
+bool CCommunication::CloseWebsocket(int id)
+{
+	bool val = websocketHandler.Close(id);
+	if (val) {
+		webSocketList.at(id).recvCallback.Cleanup();
+		webSocketList.erase(id);
+	}
+	return val;
+}
 
 int CCommunication::MainServerSetAuthKey()
 {

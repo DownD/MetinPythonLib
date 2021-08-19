@@ -1,12 +1,5 @@
 #pragma once
-#ifdef _DEBUG
-#undef _DEBUG
-#include <Python.h>
-#define _DEBUG
-#else
-#include <Python.h>
-#endif
-#include <windows.h>
+#include "stdafx.h"
 #include <string>
 #include <iostream>
 #include <set>

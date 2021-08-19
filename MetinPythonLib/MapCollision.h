@@ -1,4 +1,5 @@
 #pragma once
+#include "stdafx.h"
 #include "../common/utils.h"
 #include "defines.h"
 #include "JPS.h"

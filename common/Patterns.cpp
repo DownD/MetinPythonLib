@@ -1,4 +1,5 @@
 #include "Patterns.h"
+#include "utils.h"
 
 Patterns::Patterns(HMODULE hMod, Pattern* modulePattern) : hMod(hMod){
 	if(!Init(modulePattern))

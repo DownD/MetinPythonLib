@@ -1,4 +1,5 @@
 #pragma once
+#include "stdafx.h"
 #include <curl\curl.h>
 #include <curl\multi.h>
 #include <json/json.h>
@@ -7,6 +8,7 @@
 #include "Singleton.h"
 #include "PythonUtils.h"
 #include "../common/utils.h"
+#include "WebsocketHandler.h"
 
 #define CURL_STATICLIB
 
@@ -27,16 +29,22 @@ struct ComCallbackFunction {
 		}
 		else {
 			if (PyCallable_Check(pyFunction)) {
-				PyObject* val = Py_BuildValue("(is)", id,buffer->data());
+				PyObject* val = Py_BuildValue("(is)", id,buffer->c_str());
 				PyObject_CallObject(pyFunction, val);
 				Py_XDECREF(val);
 				if (decrefPy) {
-					Py_DECREF(pyFunction);
+					Py_XDECREF(pyFunction);
 				}
 			}
 			else {
 				DEBUG_INFO_LEVEL_2("Callback is not a python function");
 			}
+		}
+	}
+
+	void Cleanup() {
+		if (isCFunc) {
+			Py_XDECREF(pyFunction);
 		}
 	}
 
@@ -54,6 +62,14 @@ class CCommunication : public CSingleton<CCommunication>
 		ComCallbackFunction function;
 		std::string msgBuffer;
 	};
+	struct WebSocketInfo {
+		WebSocketInfo(int id, ComCallbackFunction callback) :recvCallback(callback),id(id) { 
+
+		}
+		ComCallbackFunction recvCallback; //Called from main thread
+		int id;
+	};
+
 public:
 
 	CCommunication();
@@ -61,14 +77,20 @@ public:
 
 	void Process();
 
-	//Multi-threaded
+	//Multi-threaded - communication with remote servers
 	int GetRequest(std::string& url, ComCallbackFunction callback,int id=0);
 	int GetRequest(const char* url, ComCallbackFunction callback, int id = 0);
+
+	//Websockets
+	int OpenWebsocket(const char* host, ComCallbackFunction callback);
+	bool WebsocketSend(int id,const char* message);
+	bool CloseWebsocket(int id);
+
+
 
 	//Blocking requests - main server
 	int MainServerSetAuthKey(); //Handle request, and write key
 	int MainServerGetOffsets(std::map<int,DWORD>* bufferOffsets);
-
 
 private:
 
@@ -85,6 +107,7 @@ private:
 	static size_t WriteCallback(void* contents, size_t size, size_t nmemb, int id);
 	static size_t WriteSingleThreadback(void* contents, size_t size, size_t nmemb, void* userp);
 
+
 private:
 	CURLM* curlMulti;
 
@@ -92,6 +115,12 @@ private:
 	int maxID;
 	static std::map<int, GetInstance> getRecvBuffer;
 
+	//Websockets
+	CWebSocketHandler websocketHandler;
+	std::map<int, WebSocketInfo> webSocketList;
+
+
+	//Exlib server authkey
 	std::string authKey;
 };
 

@@ -90,7 +90,7 @@ Adds some functions to the python API, and try to inject a script.py from the cu
 	
   - RegisterDigMotionCallback(\<callable_function\>callback)<br>
     Sets a callback function, that will be called whenever a dig motion(mining packet) is called.<br>
-	The callback function will be called with the following arguments (player_vid,ore_vid,count)<br>
+	  The callback function will be called with the following arguments (player_vid,ore_vid,count)<br>
 	
   - \<string\>PATH<br>
     Path of the location where the library was injected<br>
@@ -116,14 +116,38 @@ Adds some functions to the python API, and try to inject a script.py from the cu
   - GetItemGrndID(\<int\> VID)<br>
     Return the ID of an item in the ground with the specified VID<br> 
 
-  - IsPositionBlocked(\<int\>x_start,\<int\>y_start,\<int\>x_end,\<int\>y_end)<br>
+  - IsPathBlocked(\<int\>x_start,\<int\>y_start,\<int\>x_end,\<int\>y_end)<br>
     Returns false if none of the points is blocked in a straight line other, if any of the points is blocked returns true.<br>
     
+
+### Remote Communication
+Communication with the outside world.
+All functions are asynchronous.
+
+ - GetRequest(\<string\> url,\<callable_function\>callback) returns \<int\><br>
+   Sends a async GET request to the specified url.
+   The callback is called when the response arrives from the server, it will be called with 2 arguments, the ID of the request and a string message respectively.
+   If the request is successful it returns an ID of the request otherwise returns -1.
+
+
+ - OpenWebsocket(\<string\> url,\<callable_function\>callback) returns \<int\><br>
+   Opens a websocket to the specified url.
+   The callback is responsible for handling the receive messages. It will be called every time a message is received, with 2 arguments, the ID of the socket and a string containing the message respectively .
+   If the request is schedule successfully it returns an ID of the socket otherwise returns -1.
+   
+ - SendWebsocket(\<int\> id,\<string\>message) returns \<int\><br>
+   Sends a message to the socket with the specified id.
+   If the message is schedule successfully it returns 1 otherwise returns 0.
+
+ - CloseWebsocket(\<int\> id) returns \<int\><br>
+   Closes a socket with the specified id.
+   If the message is schedule successfully it returns 1 otherwise returns 0.
+
 ### Pickup Filter
 A filter o be applied when calling GetCloseItemGround, by default the filter is set to pick items not present in filter.
 
   - ItemGrndDelFilter(\<int\> index)<br>
-    Delets an item id from the filter.
+    Deletes an item id from the filter.
 
   - ItemGrndAddFilter(\<int\> index)<br>
     Adds an item id to the filter.
@@ -218,6 +242,11 @@ After this it will encrypt the packet with specific keys stored in memory, and w
 
 Python 2.7 (32 bits) needs to be installed in the system (C:/Python27) by default.
 
+- Dependencies using vcpkg:
+  cpprestsdk -> ```vcpkg install --recurse cpprestsdk[default-features,websockets]:x86-windows-static```
+  curl -> ```vcpkg install curl:x86-windows-static```
+  jsoncpp -> ```vcpkg install jsoncpp:x86-windows-static```
+  websocketpp -> ```vcpkg install websocketpp:x86-windows-static```
 
 # Updates
 v1.1:

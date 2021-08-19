@@ -1,3 +1,4 @@
+#include "stdafx.h"
 #include "NetworkStream.h"
 #include "Memory.h"
 #include "Player.h"
@@ -172,7 +173,6 @@ bool CNetworkStream::__SendPacket(int size, void* buffer)
 
 	switch (header) {
 	case HEADER_CG_FISHING: { //SEQUENCE IS NOT SENT
-		printPacket(0, (BYTE*)buffer, size, OUTBOUND);
 		/*if (blockFishingPackets) {
 			DEBUG_INFO_LEVEL_2("Blocking Fishing Packet");
 			block_next_sequence = 1; //Also block sequence packet
@@ -578,7 +578,7 @@ void CNetworkStream::setPhase(SRcv_ChangePhasePacket& phase) {
 	DEBUG_INFO_LEVEL_1("Phased changed to: %d", currentPhase);
 	CBackground& background = CBackground::Instance();
 	CInstanceManager& mgr = CInstanceManager::Instance();
-	//CPlayer& player = CPlayer::Instance();
+	//CPlayer& player = CPlayer::Instance
 	
 	if (phase.phase == PHASE_LOADING) {
 		mgr.clearInstances();

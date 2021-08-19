@@ -1,9 +1,9 @@
 #pragma once
+#include "stdafx.h"
 #include "Singleton.h"
 #include "../common/utils.h"
 #include "defines.h"
 #include "PythonUtils.h"
-
 
 typedef bool PACKET_TYPE;
 #define INBOUND 1

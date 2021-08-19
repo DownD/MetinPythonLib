@@ -1,3 +1,4 @@
+#include "stdafx.h"
 #include "PythonModule.h"
 #include "App.h"
 #include "NetworkStream.h"
@@ -638,6 +639,61 @@ PyObject* pyGetRequest(PyObject* poSelf, PyObject* poArgs)
 	return Py_BuildValue("(i)", -1);
 }
 
+PyObject* pyOpenWebsocket(PyObject* poSelf, PyObject* poArgs)
+{
+	char* url = 0;
+	PyObject* callback = 0;
+	if (!PyTuple_GetString(poArgs, 0, &url))
+		return Py_BuildException();
+	if (!PyTuple_GetObject(poArgs, 1, &callback)) {
+		return Py_BuildException();
+	}
+
+	if (PyCallable_Check(callback)) {
+		CCommunication& c = CCommunication::Instance();
+		int id = c.OpenWebsocket(url, ComCallbackFunction(callback));
+		if (id != -1) {
+			return Py_BuildValue("i", id);
+		}
+	}
+	else {
+		Py_XDECREF(callback);
+	}
+
+	return Py_BuildValue("i", -1);
+}
+
+PyObject* pySendWebsocket(PyObject* poSelf, PyObject* poArgs)
+{
+	int id = 0;
+	char* message;
+	if (!PyTuple_GetInteger(poArgs, 0, &id))
+		return Py_BuildException();
+	if (!PyTuple_GetString(poArgs, 1, &message)) {
+		return Py_BuildException();
+	}
+
+	
+	CCommunication& c = CCommunication::Instance();
+	bool val = c.WebsocketSend(id, message);
+	if (val) {
+		DEBUG_INFO_LEVEL_3("Websocket message sent: %s", message);
+	}
+	return Py_BuildValue("i", c.WebsocketSend(id, message));
+}
+
+PyObject* pyCloseWebsocket(PyObject* poSelf, PyObject* poArgs)
+{
+	int id = 0;
+	if (!PyTuple_GetInteger(poArgs, 0, &id))
+		return Py_BuildException();
+
+
+
+	CCommunication& c = CCommunication::Instance();
+	return Py_BuildValue("i", c.CloseWebsocket(id));
+}
+
 
 static PyMethodDef s_methods[] =
 {
@@ -703,6 +759,9 @@ static PyMethodDef s_methods[] =
 //#endif
 
 	{ "GetRequest",	pyGetRequest,		METH_VARARGS},
+	{ "OpenWebsocket",	pyOpenWebsocket,		METH_VARARGS},
+	{ "SendWebsocket",	pySendWebsocket,		METH_VARARGS},
+	{ "CloseWebsocket",	pyCloseWebsocket,		METH_VARARGS},
 
 	{ NULL, NULL }
 };

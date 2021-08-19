@@ -1,5 +1,5 @@
+#include "stdafx.h"
 #include "App.h"
-#include <stdio.h>
 #include "PythonModule.h"
 #include "Memory.h"
 #include "InstanceManager.h"
@@ -46,8 +46,8 @@ void CApp::init() {
 	setDebugStreamFiles();
 	SetupDebugFile();
 #endif
-	static CCommunication coms = CCommunication();
 	static CBackground bck = CBackground();
+	static CCommunication coms; //Weird compile error with constructor
 	static CInstanceManager mgr = CInstanceManager();
 	static CPlayer pl = CPlayer();
 	static CNetworkStream ns = CNetworkStream();

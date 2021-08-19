@@ -1,3 +1,4 @@
+#include "stdafx.h"
 #include "CAddressLoader.h"
 #include "../common/Config.h"
 #include "defines.h"
