@@ -17,11 +17,19 @@ void setDebugOff();
 
 #define ADRESS_FILE_NAME "addresses.csv"
 
+#if defined(_DEBUG) || defined(_DEBUG_FILE)
 #define DEBUG_INFO_LEVEL_1(...); {if(isDebugEnable()){printf(__VA_ARGS__); printf("\n");fflush(stdout);}}
 #define DEBUG_INFO_LEVEL_2(...); {DEBUG_INFO_LEVEL_1(__VA_ARGS__); }
 #define DEBUG_INFO_LEVEL_3(...); {DEBUG_INFO_LEVEL_1(__VA_ARGS__); }
 #define DEBUG_INFO_LEVEL_4(...); {DEBUG_INFO_LEVEL_1(__VA_ARGS__);}
 #define DEBUG_INFO_LEVEL_5(...); {}
+#else
+#define DEBUG_INFO_LEVEL_1(...); {}
+#define DEBUG_INFO_LEVEL_2(...); {}
+#define DEBUG_INFO_LEVEL_3(...); {}
+#define DEBUG_INFO_LEVEL_4(...); {}
+#define DEBUG_INFO_LEVEL_5(...); {}
+#endif
 
 
 

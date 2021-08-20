@@ -119,6 +119,11 @@ Adds some functions to the python API, and try to inject a script.py from the cu
   - IsPathBlocked(\<int\>x_start,\<int\>y_start,\<int\>x_end,\<int\>y_end)<br>
     Returns false if none of the points is blocked in a straight line other, if any of the points is blocked returns true.<br>
     
+  - BlockAttackPackets()<br>
+    Blocks all attack packets sent from the client, the only attack packets allowed are the ones sent by this module.<br>
+
+  - UnblockAttackPackets()<br>
+    Unblocks all attack packets.<br>
 
 ### Remote Communication
 Communication with the outside world.

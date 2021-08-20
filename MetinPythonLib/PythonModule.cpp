@@ -501,6 +501,20 @@ PyObject* pyRecvStartFishCallback(PyObject* poSelf, PyObject* poArgs)
 		return Py_BuildException();
 }
 
+PyObject* pyBlockAttackPackets(PyObject* poSelf, PyObject* poArgs)
+{
+	CNetworkStream& net = CNetworkStream::Instance();
+	net.blockAttackPackets();
+	return Py_BuildNone();
+}
+
+PyObject* pyUnblockAttackPackets(PyObject* poSelf, PyObject* poArgs)
+{
+	CNetworkStream& net = CNetworkStream::Instance();
+	net.unblockAttackPackets();
+	return Py_BuildNone();
+}
+
 
 
 PyObject* pyItemGrndFilterClear(PyObject* poSelf, PyObject* poArgs)
@@ -743,6 +757,8 @@ static PyMethodDef s_methods[] =
 
 	{ "RegisterDigMotionCallback",	pyRecvDigMotionCallback,METH_VARARGS },
 
+	{ "BlockAttackPackets",	pyBlockAttackPackets,		METH_VARARGS},
+	{ "UnblockAttackPackets",pyUnblockAttackPackets,		METH_VARARGS},
 
 //#ifdef METIN_GF
 	{ "SendStartFishing",		pySendStartFishing,	METH_VARARGS },
@@ -762,6 +778,7 @@ static PyMethodDef s_methods[] =
 	{ "OpenWebsocket",	pyOpenWebsocket,		METH_VARARGS},
 	{ "SendWebsocket",	pySendWebsocket,		METH_VARARGS},
 	{ "CloseWebsocket",	pyCloseWebsocket,		METH_VARARGS},
+
 
 	{ NULL, NULL }
 };

@@ -7,6 +7,7 @@
 
 CNetworkStream::CNetworkStream() : lastPoint(0,0)
 {
+	m_blockAttackPackets = false;
 	currentPhase = 0;
 	lastPointIsStored = false;
 	speed_Multiplier = 1.0;
@@ -322,6 +323,16 @@ bool CNetworkStream::__CheckPacket(BYTE * header)
 	return val;
 }
 
+bool CNetworkStream::__SendAttackPacket(BYTE type, DWORD vid)
+{
+	DEBUG_INFO_LEVEL_4("__SendAttackPacket called ");
+	CMemory& mem = CMemory::Instance();
+	if (m_blockAttackPackets)
+		return true;
+	else
+		return mem.callSendAttackPacket(type, vid);
+}
+
 bool CNetworkStream::__SendSequencePacket()
 {
 	DEBUG_INFO_LEVEL_5("__SendSequence called ");
@@ -565,6 +576,16 @@ std::set<BYTE>* CNetworkStream::getPacketFilter(PACKET_TYPE t)
 		return &inbound_header_filter;
 	else
 		return &outbound_header_filter;
+}
+
+void CNetworkStream::blockAttackPackets()
+{
+	m_blockAttackPackets = true;
+}
+
+void CNetworkStream::unblockAttackPackets()
+{
+	m_blockAttackPackets = false;
 }
 
 void CNetworkStream::setPhase(SRcv_ChangePhasePacket& phase) {

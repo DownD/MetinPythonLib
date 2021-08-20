@@ -1,5 +1,4 @@
 #pragma once
-#include "stdafx.h"
 #include "../common/utils.h"
 #define MAX_TELEPORT_DIST 2400
 

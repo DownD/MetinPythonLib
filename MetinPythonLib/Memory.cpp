@@ -40,6 +40,11 @@ bool __fastcall __SendPacket(ClassPointer classPointer,DWORD edx, int size, void
 	}
 }*/
 
+bool __fastcall __SendAttackPacket(ClassPointer classPointer, DWORD EDX, BYTE type, DWORD vid) {
+	CNetworkStream& net = CNetworkStream::Instance();
+	return net.__SendAttackPacket(type, vid);
+}
+
 
 
 bool __fastcall __SendSequencePacket(DWORD classPointer)
@@ -160,8 +165,9 @@ bool CMemory::setupPatterns(HMODULE hDll)
 	moveToDirectionAddr = addrLoader.GetAddress(MOVETODIRECTION_FUNCTION);
 	processAddr = addrLoader.GetAddress(PYTHONAPP_PROCESS);
 	checkPacketAddr = addrLoader.GetAddress(CHECK_PACKET_FUNCTION);
+	sendAttackPacketAddr = addrLoader.GetAddress(SENDATTACK_FUNCTION);
 
-	sendAttackPacketFunc = (tSendAttackPacket)addrLoader.GetAddress(SENDATTACK_FUNCTION);
+	//sendAttackPacketFunc = (tSendAttackPacket)addrLoader.GetAddress(SENDATTACK_FUNCTION);
 	sendUseSkillBySlotFunc = (tSendUseSkillBySlot)addrLoader.GetAddress(PYTHONPLAYER_SENDUSESKILL);
 	localToGlobalFunc = (tLocalToGlobalPosition)addrLoader.GetAddress(LOCALTOGLOBAL_FUNCTION);
 	globalToLocalFunc = (tGlobalToLocalPosition)addrLoader.GetAddress(GLOBALTOLOCAL_FUNCTION);
@@ -202,6 +208,7 @@ bool CMemory::setupHooks()
 	setMoveToDestPositionHook = new DetoursHook<tMoveToDestPosition>((tMoveToDestPosition)moveToDestAddr, __MoveToDestPosition);
 	setMoveToDirectionHook = new DetoursHook<tMoveToDirection>((tMoveToDirection)moveToDirectionAddr, __MoveToDirection);
 	checkPacketHook = new DetoursHook<tCheckPacket>((tCheckPacket)checkPacketAddr, __CheckPacket);
+	sendAttackPacketHook = new DetoursHook<tSendAttackPacket>((tSendAttackPacket)sendAttackPacketAddr, __SendAttackPacket);
 
 	traceFHook = new DetoursHook<tTracef>((tTracef)traceFFuncAddr, __Tracef);
 	tracenFHook = new DetoursHook<tTracef>((tTracef)tracenFFuncAddr, __Tracenf);
@@ -225,6 +232,7 @@ bool CMemory::setupHooks()
 	setMoveToDestPositionHook->HookFunction();
 	setMoveToDirectionHook->HookFunction();
 	checkPacketHook->HookFunction();
+	sendAttackPacketHook->HookFunction();
 	return true;
 }
 

@@ -39,6 +39,7 @@ public:
 	bool __SendSequencePacket();
 	bool __SendStatePacket(fPoint& pos, float rot, BYTE eFunc, BYTE uArg);
 	bool __CheckPacket(BYTE * header);
+	bool __SendAttackPacket(BYTE type, DWORD vid);
 
 
 	int GetCurrentPhase();
@@ -71,6 +72,10 @@ public:
 	void printPacket(DWORD calling_function, BYTE* buffer , int size, bool type);
 	std::set<BYTE>* getPacketFilter(PACKET_TYPE t);
 
+
+	//Block attack packets
+	void blockAttackPackets();
+	void unblockAttackPackets();
 
 private:
 
@@ -109,6 +114,9 @@ private:
 	bool printToConsole;
 	std::set<BYTE> inbound_header_filter;
 	std::set<BYTE> outbound_header_filter;
+
+	//Attack packets
+	bool m_blockAttackPackets;
 
 	DWORD mainCharacterVID;
 	BYTE currentPhase;

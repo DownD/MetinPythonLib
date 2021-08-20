@@ -35,6 +35,9 @@ PyObject* pySendUseSkillPacketBySlot(PyObject* poSelf, PyObject* poArgs);
 PyObject* pyRecvDigMotionCallback(PyObject* poSelf, PyObject* poArgs);
 PyObject* pyRecvStartFishCallback(PyObject* poSelf, PyObject* poArgs);
 
+PyObject* pyBlockAttackPackets(PyObject* poSelf, PyObject* poArgs);
+PyObject* pyUnblockAttackPackets(PyObject* poSelf, PyObject* poArgs);
+
 PyObject* pyItemGrndFilterClear(PyObject* poSelf, PyObject* poArgs);
 PyObject* pyItemGrndNotOnFilter(PyObject* poSelf, PyObject* poArgs);
 PyObject* pyItemGrndOnFilter(PyObject* poSelf, PyObject* poArgs);

@@ -39,7 +39,7 @@ public:
 	inline bool callRecvPacket(int size, void* buffer) { return recvHook->originalFunction(getNetworkStream(), size, buffer); }
 
 	//Client functions
-	inline bool callSendAttackPacket(BYTE type, DWORD vid) { return sendAttackPacketFunc(getPythonNetwork(), type, vid); }
+	inline bool callSendAttackPacket(BYTE type, DWORD vid) { return sendAttackPacketHook->originalFunction(getPythonNetwork(), type, vid); }
 	inline bool callGlobalToLocalPosition(long& lx, long& ly){return globalToLocalFunc(getPythonNetwork(),lx,ly);}
 	inline bool callLocalToGlobalPosition(long& lx, long& ly) { return localToGlobalFunc(getPythonNetwork(), lx, ly); }
 	inline void* callGetInstancePointer(DWORD vid) { return getInstanceFunc(getInstanceClassPtr,vid); }
@@ -69,6 +69,7 @@ private:
 	DetoursHook<tMoveToDirection>* setMoveToDirectionHook;
 	DetoursHook<tProcess>* processHook;
 	DetoursHook<tCheckPacket>* checkPacketHook;
+	DetoursHook<tSendAttackPacket>* sendAttackPacketHook;
 
 	//Pointers
 	void* recvAddr;
@@ -87,10 +88,11 @@ private:
 	void* moveToDirectionAddr;
 	void* processAddr;
 	void* checkPacketAddr;
+	void* sendAttackPacketAddr;
 
 	tLocalToGlobalPosition	localToGlobalFunc;
 	tGlobalToLocalPosition	globalToLocalFunc;
-	tSendAttackPacket		sendAttackPacketFunc;
+	//tSendAttackPacket		sendAttackPacketFunc;
 	tGetInstancePointer		getInstanceFunc;
 	tSendUseSkillBySlot		sendUseSkillBySlotFunc;
 	tPeek					peekFunc;

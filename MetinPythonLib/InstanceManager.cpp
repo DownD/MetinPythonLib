@@ -159,6 +159,7 @@ bool CInstanceManager::getCloseItemGround(int x, int y, SGroundItem* buffer)
 	float minDist = (std::numeric_limits<float>::max)();
 	DWORD selVID = 0;
 	SGroundItem selItem = { 0 };
+
 	for (auto iter = groundItems.begin(); iter != groundItems.end(); iter++) {
 		DWORD vid = iter->first;
 		SGroundItem& item = iter->second;
