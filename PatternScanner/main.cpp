@@ -18,13 +18,11 @@
 HANDLE threadID;
 HMODULE hDll;
 
-//Supposed to be a std::vector
 struct DLLArgs {
 	int size;
 	int reserved;
-	wchar_t path[256];
+	char path[256];
 };
-
 
 void SetupConsole()
 {
@@ -39,7 +37,8 @@ void SetupConsole()
 
 
 int get_api_key(std::string* key) {
-	*key = "s3msAiwKABfS0+8KxztaZUKhisC/F7PPJB8SiLOvalk=";
+	//*key = "s3msAiwKABfS0+8KxztaZUKhisC/F7PPJB8SiLOvalk=";
+	*key = "dsfdsf";
 	return 1;
 }
 
@@ -160,7 +159,6 @@ DWORD WINAPI ThreadProc(LPVOID lpParameter)
 	}
 
 	PRINT("Server adresses updated!");
-	system("pause");
 #endif
 
 	delete patternFinder;
@@ -176,21 +174,21 @@ BOOLEAN WINAPI DllMain(IN HINSTANCE hDllHandle,
 
 	//  Perform global initialization.
 	char test[256] = { 0 };
-
+	DLLArgs* args = (DLLArgs*)Reserved;
 	switch (nReason)
 	{
 	case DLL_PROCESS_ATTACH:
 		if (Reserved) {
-			DLLArgs* dl = (DLLArgs*)Reserved;
-			sprintf(test, "%ws", dl->path);
-			setDllPath(test);
+			DLLArgs* args = (DLLArgs*)Reserved;
+			setDllPath(args->path);
 		}
 		else {
 			GetModuleFileNameA(hDllHandle, test, 256);
 			setDllPath(test);
 		}
 		hDll = (HMODULE)hDllHandle;
-		threadID = CreateThread(NULL, 0, ThreadProc, NULL, 0, NULL);
+		//threadID = CreateThread(NULL, 0, ThreadProc, NULL, 0, NULL);
+		ThreadProc(0);
 		break;
 
 		/*case DLL_PROCESS_DETACH:

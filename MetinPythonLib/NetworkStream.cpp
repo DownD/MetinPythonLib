@@ -145,8 +145,16 @@ void CNetworkStream::SendUseSkillBySlot(DWORD dwSkillSlotIndex, DWORD dwTargetVI
 bool CNetworkStream::__RecvPacket(int size, void* buffer)
 {
 	CMemory& mem = CMemory::Instance();
+	bool val = mem.callRecvPacket(size, buffer);
+	if (size > 0 && printToConsole && val) {
+		BYTE* byte_buffer = (BYTE*)buffer;
+		if (byte_buffer[0] != 0) {
+			printPacket(0, byte_buffer, size, INBOUND);
 
-	return mem.callRecvPacket(size, buffer);
+		}
+	}
+
+	return val;
 	/*if (return_value && size>0) {
 		BYTE header = getPacketHeader(buffer, size);
 		if (header == HEADER_GC_FISHING) {
@@ -161,14 +169,11 @@ bool CNetworkStream::__SendPacket(int size, void* buffer)
 	BYTE header = getPacketHeader(buffer, size);
 	DEBUG_INFO_LEVEL_4("Hook SendPacket called header = %d return size=%d", header, size);
 	//PacketFilter
-	if (printToConsole) {
-		if (outbound_header_filter.find(header) == outbound_header_filter.end()) {
-			if (!filterOutboundOnlyIncluded)
-				printPacket(0, (BYTE*)buffer, size, OUTBOUND);
-		}
-		else {
-			if (filterOutboundOnlyIncluded)
-				printPacket(0, (BYTE*)buffer, size, OUTBOUND);
+	if (size > 0 && printToConsole) {
+		BYTE* byte_buffer = (BYTE*)buffer;
+		if (byte_buffer[0] != 0) {
+			printPacket(0, byte_buffer, size, OUTBOUND);
+
 		}
 	}
 
@@ -554,6 +559,23 @@ void CNetworkStream::printPacket(DWORD calling_function, BYTE* buffer, int size,
 	if (size < 1) {
 		return;
 	}
+
+	if (outbound_header_filter.find(buffer[0]) == outbound_header_filter.end() && filterOutboundOnlyIncluded && type == OUTBOUND) {
+		return;
+	}
+	if (inbound_header_filter.find(buffer[0]) == inbound_header_filter.end() && filterInboundOnlyIncluded && type == INBOUND) {
+		return;
+	}
+
+	if (outbound_header_filter.find(buffer[0]) != outbound_header_filter.end() && !filterOutboundOnlyIncluded && type == OUTBOUND) {
+		return;
+	}
+	if (inbound_header_filter.find(buffer[0]) != inbound_header_filter.end() && !filterInboundOnlyIncluded && type == INBOUND) {
+		return;
+	}
+
+
+
 	if (INBOUND == type) {
 		printf("[INBOUND]\n");
 	}
@@ -568,6 +590,7 @@ void CNetworkStream::printPacket(DWORD calling_function, BYTE* buffer, int size,
 		printf("%#x ", buffer[i]);
 	}
 	printf("\n\n");
+	fflush(stdout);
 }
 
 std::set<BYTE>* CNetworkStream::getPacketFilter(PACKET_TYPE t)
@@ -664,11 +687,6 @@ bool CNetworkStream::RecvGamePhase(BYTE* header)
 		else {
 			DEBUG_INFO_LEVEL_2("Could not parse fishing packet!");
 		}
-		/*if (blockFishingPackets) {
-			if (size >= 2 && (((BYTE*)buffer)[1] == 0x0 || ((BYTE*)buffer)[1] == 0x4)) { //This is for refresh the inventory window
-				return false;
-			}
-		}*/
 		break;
 	}
 	case HEADER_GC_ITEM_GROUND_ADD: {
@@ -727,6 +745,17 @@ bool CNetworkStream::RecvGamePhase(BYTE* header)
 		}
 		else {
 			DEBUG_INFO_LEVEL_2("Could not parse character delete packet!");
+		}
+		break;
+	}
+	case HEADER_GC_ITEM_OWNERSHIP: {
+		SRcv_PacketOwnership instance;
+		if (peekNetworkStream(sizeof(SRcv_PacketOwnership), &instance)) {
+			CInstanceManager& mgr = CInstanceManager::Instance();
+			mgr.changeItemOwnership(instance);
+		}
+		else {
+			DEBUG_INFO_LEVEL_2("Could not parse item ownership packet!");
 		}
 		break;
 	}
@@ -792,6 +821,29 @@ bool CNetworkStream::RecvLoadingPhase( BYTE* header)
 		}
 		else {
 			DEBUG_INFO_LEVEL_2("Could not parse main character packet!");
+		}
+		break;
+	}
+	case HEADER_GC_ITEM_OWNERSHIP: {
+		SRcv_PacketOwnership instance;
+		if (peekNetworkStream(sizeof(SRcv_PacketOwnership), &instance)) {
+			CInstanceManager& mgr = CInstanceManager::Instance();
+			mgr.changeItemOwnership(instance);
+		}
+		else {
+			DEBUG_INFO_LEVEL_2("Could not parse item ownership packet!");
+		}
+		break;
+	}
+	case HEADER_GC_ITEM_GROUND_ADD: {
+		SRcv_GroundItemAddPacket instance;
+		if (peekNetworkStream(sizeof(SRcv_GroundItemAddPacket), &instance)) {
+			GlobalToLocalPosition(instance.x, instance.y);
+			CInstanceManager& mgr = CInstanceManager::Instance();
+			mgr.addItemGround(instance);
+		}
+		else {
+			DEBUG_INFO_LEVEL_2("Could not parse item ground add packet!");
 		}
 		break;
 	}

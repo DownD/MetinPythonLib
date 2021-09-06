@@ -12,7 +12,7 @@ HANDLE threadID;
 struct DLLArgs {
 	int size;
 	int reserved;
-	wchar_t path[256];
+	char path[256];
 };
 
 /*
@@ -60,8 +60,7 @@ BOOLEAN WINAPI DllMain(IN HINSTANCE hDllHandle,
 	case DLL_PROCESS_ATTACH:
 		if (Reserved) {
 			DLLArgs* dl = (DLLArgs*)Reserved;
-			sprintf(test, "%ws", dl->path);
-			setDllPath(test);
+			setDllPath(dl->path);
 		}
 		else {
 			GetModuleFileNameA(hDllHandle, test, 256);
@@ -71,11 +70,11 @@ BOOLEAN WINAPI DllMain(IN HINSTANCE hDllHandle,
 		threadID = CreateThread(NULL, 0, ThreadProc, NULL, 0, NULL);
 		break;
 
-	/*case DLL_PROCESS_DETACH:
+	case DLL_PROCESS_DETACH:
 		CApp & app = CApp::Instance();
 		DEBUG_INFO_LEVEL_1("DETACHED CALLED");
-		app.exit();
-		break;*/
+		//app.exit();
+		break;
 	}
 
 	return true;

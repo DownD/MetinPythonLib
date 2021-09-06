@@ -550,6 +550,20 @@ PyObject* pyItemGrndAddFilter(PyObject* poSelf, PyObject* poArgs)
 	return Py_BuildNone();
 }
 
+PyObject* pyItemGrndItemFirst(PyObject* poSelf, PyObject* poArgs)
+{
+	CInstanceManager& mgr = CInstanceManager::Instance();
+	mgr.setPickItemFirst(true);
+	return Py_BuildNone();
+}
+
+PyObject* pyItemGrndNoItemFirst(PyObject* poSelf, PyObject* poArgs)
+{
+	CInstanceManager& mgr = CInstanceManager::Instance();
+	mgr.setPickItemFirst(false);
+	return Py_BuildNone();
+}
+
 PyObject* pyItemGrndDelFilter(PyObject* poSelf, PyObject* poArgs)
 {
 	int index = 0;
@@ -558,6 +572,31 @@ PyObject* pyItemGrndDelFilter(PyObject* poSelf, PyObject* poArgs)
 
 	CInstanceManager& mgr = CInstanceManager::Instance();
 	mgr.deleteItemFilter(index);
+	return Py_BuildNone();
+}
+
+PyObject* pyItemGrndSelectRange(PyObject* poSelf, PyObject* poArgs)
+{
+	float range = 0;
+	if (!PyTuple_GetFloat(poArgs, 0, &range))
+		return Py_BuildException();
+
+	CInstanceManager& mgr = CInstanceManager::Instance();
+	mgr.setPickupRange(range);
+	return Py_BuildNone();
+}
+
+PyObject* pyItemGrndIgnoreBlockedPath(PyObject* poSelf, PyObject* poArgs)
+{
+	CInstanceManager& mgr = CInstanceManager::Instance();
+	mgr.setIgnoreBlockedPath(true);
+	return Py_BuildNone();
+}
+
+PyObject* pyItemGrndNoIgnoreBlockedPath(PyObject* poSelf, PyObject* poArgs)
+{
+	CInstanceManager& mgr = CInstanceManager::Instance();
+	mgr.setIgnoreBlockedPath(false);
 	return Py_BuildNone();
 }
 
@@ -754,11 +793,16 @@ static PyMethodDef s_methods[] =
 	{ "GetCloseItemGround",		pyGetCloseItemGround,	METH_VARARGS },
 	{ "SendPickupItem",			pySendPickupItem,		METH_VARARGS },
 	{ "GetItemGrndID",			pyGetItemGrndID,		METH_VARARGS },
+	{ "ItemGrndSelectRange",	pyItemGrndSelectRange,	METH_VARARGS },
+	{ "ItemGrndNoItemFirst",	pyItemGrndNoItemFirst,	METH_VARARGS},
+	{ "ItemGrndItemFirst",		pyItemGrndItemFirst,	METH_VARARGS},
+	{ "ItemGrndInBlockedPath",		pyItemGrndIgnoreBlockedPath,	METH_VARARGS},
+	{ "ItemGrndNotInBlockedPath",		pyItemGrndNoIgnoreBlockedPath,	METH_VARARGS},
 
 	{ "RegisterDigMotionCallback",	pyRecvDigMotionCallback,METH_VARARGS },
 
-	{ "BlockAttackPackets",	pyBlockAttackPackets,		METH_VARARGS},
-	{ "UnblockAttackPackets",pyUnblockAttackPackets,		METH_VARARGS},
+	{ "BlockAttackPackets",		pyBlockAttackPackets,		METH_VARARGS},
+	{ "UnblockAttackPackets",	pyUnblockAttackPackets,		METH_VARARGS},
 
 //#ifdef METIN_GF
 	{ "SendStartFishing",		pySendStartFishing,	METH_VARARGS },

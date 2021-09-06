@@ -55,6 +55,15 @@ fPoint CPlayer::getLastDestPosition()
 	return lastDestPos;
 }
 
+std::string CPlayer::getPlayerName()
+{
+	std::string result;
+	if (!PyCallClassMemberFunc(player_mod, "GetName", Py_BuildValue("()"),result)) {
+		return "";
+	}
+	return result;
+}
+
 PyObject* CPlayer::GetEterPacket(PyObject* poSelf, PyObject* poArgs)
 {
 	char* szFileName;
@@ -74,13 +83,14 @@ PyObject* CPlayer::GetEterPacket(PyObject* poSelf, PyObject* poArgs)
 
 	Py_DECREF(poArgs);
 	Py_DECREF(mod);
+	Py_DECREF(szFileName);
 
 	//PyObject * obj = PyString_FromStringAndSize((const char*)eterFile.data, eterFile.size);
 	if (val == 0) {
 		PyObject* buffer = PyBuffer_FromMemory(eterFile.data, eterFile.size);
 		return Py_BuildValue("O", buffer);
 	}
-	return Py_BuildValue("");
+	return Py_BuildValue("()");
 }
 
 CPlayer::CPlayer() : lastDestPos(0,0)

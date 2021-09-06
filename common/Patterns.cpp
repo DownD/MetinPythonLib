@@ -18,7 +18,6 @@ bool Patterns::Init(Pattern* modulePattern) {
 		mInfo.lpBaseOfDll = 0;
 		mInfo.SizeOfImage = 0x7FFFFFFF;
 		DWORD result = FindPattern(modulePattern->pattern, modulePattern->mask);
-		int a = 0;
 
 		if (result) {
 			MEMORY_BASIC_INFORMATION mi;
@@ -116,15 +115,11 @@ DWORD* Patterns::GetPatternAddress(Pattern* pat) {
 	if (addr) { 
 		
 		DWORD* result = (DWORD*)((int)addr + pat->offset);
-#ifdef _DEBUG
 		DEBUG_INFO_LEVEL_1("Pattern %s with address -> %#x", pat->name, result);
-#endif
 		return result;
 
 	}else {
-#ifdef _DEBUG
 		DEBUG_INFO_LEVEL_1("ERROR FINDING PATTERN -> %s", pat->name);
-#endif
 	}
 
 	return addr;

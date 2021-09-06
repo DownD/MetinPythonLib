@@ -113,9 +113,6 @@ Adds some functions to the python API, and try to inject a script.py from the cu
     The same as SendUseSkillPacket but the first argument is a slot index instead of the skill index<br>
     And also sets the cooldown of the skill on the client.<br>
 
-  - GetItemGrndID(\<int\> VID)<br>
-    Return the ID of an item in the ground with the specified VID<br> 
-
   - IsPathBlocked(\<int\>x_start,\<int\>y_start,\<int\>x_end,\<int\>y_end)<br>
     Returns false if none of the points is blocked in a straight line other, if any of the points is blocked returns true.<br>
     
@@ -165,9 +162,24 @@ A filter o be applied when calling GetCloseItemGround, by default the filter is 
 
   - ItemGrndFilterClear()<br>
     Deletes every item in the filter.
-   
-  
-    
+
+  - GetItemGrndID(\<int\> VID)<br>
+    Return the ID of an item in the ground with the specified VID<br> 
+
+  - ItemGrndSelectRange(\<float\> range)<br>
+    Set's the maximum range to pick items<br> 
+
+  - ItemGrndItemFirst()<br>
+    Makes the function GetCloseItemGround return the closest item if there is no item returns the closest yang<br> 
+
+  - ItemGrndNoItemFirst()<br>
+    Makes the function GetCloseItemGround return the closest item or yang closest<br>
+
+  - ItemGrndInBlockedPath()<br>
+    Ignore items items that are in a blocked path<br> 
+
+  - ItemGrndNotInBlockedPath()<br>
+    Allow to return items that are in a blocked path<br> 
 
 ### Simulation of old functions
 These simulates the functions that were removed from the modules by Gameforge.

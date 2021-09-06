@@ -23,6 +23,10 @@ public:
 	void delItemGround(SRcv_GroundItemDeletePacket& item);
 	void clearInstances();
 
+	//Sets ownerVID of items to -1 if it belongs to another person
+	void changeItemOwnership(SRcv_PacketOwnership& ownership);
+
+
 	bool getCharacterPosition(DWORD vid, fPoint3D* pos);
 	void* getInstancePtr(DWORD vid);
 	bool isInstanceDead(DWORD vid);
@@ -35,12 +39,19 @@ public:
 	inline void setModeFilter(bool val) { pickOnFilter = val; };
 	bool getCloseItemGround(int x, int y, SGroundItem* buffer);
 	DWORD getItemGrndID(DWORD vid);
+	void setPickItemFirst(bool val);
+	void setPickupRange(float range);
+	void setIgnoreBlockedPath(bool val){ignoreBlockedPath = val;}
 
 private:
 	PyObject* pyVIDList;
 	PyObject* chrMod;
 
 	bool pickOnFilter;
+	bool pickItemFirst;
+	bool ignoreBlockedPath;
+	float pickRange;
+
 	std::set<DWORD> pickupFilter;
 	std::map<DWORD, SGroundItem> groundItems;
 	std::unordered_map<DWORD, SInstance> instances;

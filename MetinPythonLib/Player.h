@@ -29,6 +29,8 @@ public:
 	BYTE getLastMovementType();
 	fPoint getLastDestPosition();
 
+	std::string getPlayerName();
+
 	//Wallhack
 	void inline SetBuildingWallHack(bool val) { wallHackBuildings = val; }; //1 turn on wallhack
 	void inline SetMonsterTerrainWallHack(bool val) { wallHackTerrainMonsters = val; };  //1 turn on wallhack

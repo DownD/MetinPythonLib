@@ -2,12 +2,19 @@
 #include "InstanceManager.h"
 #include "NetworkStream.h"
 #include "Memory.h"
+#include "Background.h"
+#include "Player.h"
+
+#define YANG_ID  1
 
 CInstanceManager::CInstanceManager()
 {
 	pyVIDList = PyDict_New();
 	chrMod = 0;
+	pickItemFirst = false;
 	pickOnFilter = false;
+	pickRange = 300;
+	ignoreBlockedPath = false;
 }
 
 CInstanceManager::~CInstanceManager()
@@ -90,7 +97,7 @@ void CInstanceManager::addItemGround(SRcv_GroundItemAddPacket& itemPacket)
 {
 	SGroundItem item;
 	item.index = itemPacket.itemIndex;
-	item.ownerVID = itemPacket.playerVID;
+	item.owner = 0;
 	item.x = itemPacket.x;
 	item.y = itemPacket.y;
 	item.vid = itemPacket.VID;
@@ -99,7 +106,7 @@ void CInstanceManager::addItemGround(SRcv_GroundItemAddPacket& itemPacket)
 		return;
 	}
 
-	DEBUG_INFO_LEVEL_3("Adding item ground with index=%d vid=%d at position x=%d,y=%d, ownerVID=%d", item.index, item.vid, item.x, item.y, item.ownerVID);
+	DEBUG_INFO_LEVEL_3("Adding item ground with index=%d vid=%d at position x=%d,y=%d, ownerVID=%d", item.index, item.vid, item.x, item.y, item.owner);
 
 	groundItems.insert(std::pair<DWORD, SGroundItem>(item.vid, item));
 }
@@ -120,6 +127,30 @@ void CInstanceManager::clearInstances()
 	instances.clear();
 	groundItems.clear();
 	PyDict_Clear(pyVIDList);
+}
+
+void CInstanceManager::changeItemOwnership(SRcv_PacketOwnership& ownership)
+{
+	auto iter = groundItems.find(ownership.dwVID);
+	if (iter != groundItems.end()) {
+		DEBUG_INFO_LEVEL_4("Setting ground Item %d ownership to %s!", ownership.dwVID, ownership.szName);
+		CPlayer& player = CPlayer::Instance();
+		std::string mainPlayerName = player.getPlayerName();
+		auto& item = iter->second;
+		if (mainPlayerName.compare(ownership.szName) == 0) {
+			item.owner= 0;
+		}
+		else if (mainPlayerName.compare("") == 0) {
+			item.owner = 0;
+		}
+		else {
+			item.owner  = -1;
+		}
+		
+	}
+	else {
+		DEBUG_INFO_LEVEL_3("Ground Item %d doesn't exist on list while trying to set ownership!", ownership.dwVID);
+	}
 }
 
 bool CInstanceManager::getCharacterPosition(DWORD vid, fPoint3D* pos)
@@ -153,44 +184,84 @@ bool CInstanceManager::getCloseItemGround(int x, int y, SGroundItem* buffer)
 {
 	DEBUG_INFO_LEVEL_4("Number of items on ground=%d", groundItems.size());
 
-	CNetworkStream& net = CNetworkStream::Instance();
-	DWORD mainVID = net.GetMainCharacterVID();
 
-	float minDist = (std::numeric_limits<float>::max)();
-	DWORD selVID = 0;
-	SGroundItem selItem = { 0 };
+	DWORD selItemVID = 0;
+	float minItemDist = (std::numeric_limits<float>::max)();
+
+	DWORD selYangVID = 0;
+	float minYangDist = (std::numeric_limits<float>::max)();
+
+	CBackground& background = CBackground::Instance();
+
 
 	for (auto iter = groundItems.begin(); iter != groundItems.end(); iter++) {
 		DWORD vid = iter->first;
 		SGroundItem& item = iter->second;
 		if (vid == 0)
 			continue;
-		/*if (item.ownerVID != mainVID && item.ownerVID != 0) { //Needs aditional packet
+		if (item.owner != 0) {
 			continue;
-		}*/
+		}
+		float dist = distance(x, y, item.x, item.y);
+		if (dist > pickRange) {
+			continue;
+		}
 
+		if (ignoreBlockedPath && background.isPathBlocked(x, y, item.x, item.y)) {
+			continue;
+		}
+		DEBUG_INFO_LEVEL_5("Item Arround itemVID=%d ID=%d ownerVID=%d | X:%d  Y:%d", item.vid, item.index, item.owner, item.x, item.y);
 		bool is_in = pickupFilter.find(item.index) != pickupFilter.end();
+
 		if (pickOnFilter && is_in) {
-			float dist = distance(x, y, item.x, item.y);
-			if (dist < minDist) {
-				minDist = dist;
-				selVID = vid;
-				selItem = item;
+			if (item.index == YANG_ID) {
+				if (dist < minYangDist) {
+					minYangDist = dist;
+					selYangVID = vid;
+				}
+			}
+			else {
+				if (dist < minItemDist) {
+					minItemDist = dist;
+					selItemVID = vid;
+				}
 			}
 		}
 		else if (!pickOnFilter && !is_in) {
-			float dist = distance(x, y, item.x, item.y);
-			if (dist < minDist) {
-				minDist = dist;
-				selVID = vid;
-				selItem = item;
+			if (item.index == YANG_ID) {
+				if (dist < minYangDist) {
+					minYangDist = dist;
+					selYangVID = vid;
+				}
+			}
+			else {
+				if (dist < minItemDist) {
+					minItemDist = dist;
+					selItemVID = vid;
+				}
 			}
 		}
 	}
-	if (selVID > 0) {
-		DEBUG_INFO_LEVEL_4("Close Item itemVID=%d VID=%d ID=%d | X:%d  Y:%d", selItem.vid, selVID, selItem.index, selItem.x, selItem.y);
+	if (pickItemFirst && selItemVID) {
+		SGroundItem& selItem = groundItems.at(selItemVID);
+		DEBUG_INFO_LEVEL_4("Close Item itemVID=%d ID=%d ownerVID=%d | X:%d  Y:%d", selItem.vid, selItem.index, selItem.owner, selItem.x, selItem.y);
 		*buffer = selItem;
 		return true;
+	}
+
+	if (selItemVID || selYangVID) {
+		if (minItemDist < minYangDist) {
+			SGroundItem& selItem = groundItems.at(selItemVID);
+			DEBUG_INFO_LEVEL_4("Close Item itemVID=%d ID=%d ownerVID=%d  | X:%d  Y:%d", selItem.vid,  selItem.index, selItem.owner, selItem.x, selItem.y);
+			*buffer = selItem;
+			return true;
+		}
+		else {
+			SGroundItem& selItem = groundItems.at(selYangVID);
+			DEBUG_INFO_LEVEL_4("Close Item itemVID=%d ID=%d ownerVID=%d  | X:%d  Y:%d", selItem.vid, selItem.index,selItem.owner, selItem.x, selItem.y);
+			*buffer = selItem;
+			return true;
+		}
 	}
 	else {
 		return false;
@@ -203,4 +274,14 @@ DWORD CInstanceManager::getItemGrndID(DWORD vid)
 		return 0;
 
 	return groundItems.at(vid).index;
+}
+
+void CInstanceManager::setPickItemFirst(bool val)
+{
+	pickItemFirst = val;
+}
+
+void CInstanceManager::setPickupRange(float range)
+{
+	pickRange = range;
 }

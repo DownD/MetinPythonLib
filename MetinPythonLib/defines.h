@@ -13,6 +13,7 @@
 #define MIN_RACE_SHOP 30000
 #define MAX_RACE_SHOP 30008
 
+#define CHARACTER_NAME_MAX_LEN 24
 
 //Pattern IDS
 #define PYTHONAPP_PROCESS 1
@@ -42,6 +43,7 @@
 #define GLOBAL_PATTERN "\x55\x8b\xec\x83\xec\x00\x89\x4d\x00\xc6\x45\x00\x00\x8d\x45\x00\x50\x8b\x4d\x00\xe8\x00\x00\x00\x00\x0f\xb6\x00\x85\xc9\x75\x00\x32\xc0\xe9\x00\x00\x00\x00\x8b\x4d\x00\xe8\x00\x00\x00\x00\x0f\xb6\x00\x85\xd2\x75\x00\xb0\x00\xeb\x00\x8d\x45\x00\x89\x45\x00\x8b\x4d\x00\xc6\x01\x00\xba\x00\x00\x00\x00\x8b\x45\x00\x66\x89\x50\x00\x6a\x00\x6a\x00\x8d\x4d\x00\x51\xe8\x00\x00\x00\x00\x83\xc4\x00\xc6\x45\x00\x00\xc6\x45\x00\x00\x8b\x55"
 #define GLOBAL_PATTERN_MASK "xxxxx?xx?xx??xx?xxx?x????xx?xxx?xxx????xx?x????xx?xxx?x?x?xx?xx?xx?xx?x????xx?xxx?x?x?xx?xx????xx?xx??xx??xx"
 #define GLOBAL_PATTERN_OFFSET 0
+
 
 typedef DWORD ClassPointer;
 struct CMappedFile;
@@ -154,6 +156,7 @@ enum {
 		HEADER_GC_ITEM_GROUND_DEL = 129,
 		HEADER_GC_SHOP_SIGN = 26,
 		HEADER_CG_DIG_MOTION = 7,
+		HEADER_GC_ITEM_OWNERSHIP = 98,
 
 
 		//TO SERVER
@@ -188,7 +191,6 @@ struct SRcv_GroundItemAddPacket {
 
 	DWORD VID;
 	DWORD itemIndex;
-	DWORD playerVID;
 };
 
 struct SRcv_GroundItemDeletePacket {
@@ -305,6 +307,13 @@ struct SRcv_DeletePlayerPacket
 	DWORD	dwVID;
 };
 
+struct SRcv_PacketOwnership
+{
+	BYTE        bHeader;
+	DWORD       dwVID;
+	char        szName[CHARACTER_NAME_MAX_LEN + 1];
+};
+
 
 struct SRcv_PlayerCreatePacket {
 
@@ -359,5 +368,5 @@ struct SGroundItem {
 	long x, y;
 	DWORD index;
 	DWORD vid;
-	DWORD ownerVID;
+	DWORD owner;//-1 if owner is other player, 0 if is own item or doesn't have an owner 
 };

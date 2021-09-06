@@ -29,7 +29,7 @@ bool CBackground::setCurrentCollisionMap()
 
 	if (!PyCallClassMemberFunc(background_mod, "GetCurrentMapName", poArgs, map_name)) {
 #ifdef _DEBUG
-		DEBUG_INFO_LEVEL_1("Error calling GetCurrenMap %s\n", map_name.c_str());
+		DEBUG_INFO_LEVEL_1("Error calling GetCurrentMap %s\n", map_name.c_str());
 #endif
 		Py_DECREF(poArgs);
 		return false;
