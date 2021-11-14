@@ -207,10 +207,12 @@ bool CInstanceManager::getCloseItemGround(int x, int y, SGroundItem* buffer)
 			continue;
 		}
 
-		if (ignoreBlockedPath && background.isPathBlocked(x, y, item.x, item.y)) {
-			continue;
+		if (ignoreBlockedPath) {
+			if (background.isPathBlocked(x, y, item.x, item.y)) {
+				continue;
+			}
 		}
-		DEBUG_INFO_LEVEL_5("Item Arround itemVID=%d ID=%d ownerVID=%d | X:%d  Y:%d", item.vid, item.index, item.owner, item.x, item.y);
+		DEBUG_INFO_LEVEL_4("Item Arround itemVID=%d ID=%d ownerVID=%d | X:%d  Y:%d", item.vid, item.index, item.owner, item.x, item.y);
 		bool is_in = pickupFilter.find(item.index) != pickupFilter.end();
 
 		if (pickOnFilter && is_in) {

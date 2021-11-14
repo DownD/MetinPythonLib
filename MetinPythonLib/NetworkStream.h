@@ -32,6 +32,7 @@ public:
 	bool SendPickupItemPacket(DWORD vid);
 	bool SendUseSkillPacket(DWORD dwSkillIndex, DWORD dwTargetVID);
 	void SendUseSkillBySlot(DWORD dwSkillSlotIndex, DWORD dwTargetVID);
+	bool SendSyncPacket(std::vector<InstanceLocalPosition>& targetPositions);
 
 	//Hooks callbacks
 	bool __RecvPacket(int size, void* buffer);
@@ -60,6 +61,10 @@ public:
 	bool setNewShopCallback(PyObject* func);
 	void callNewInstanceShop(DWORD player);
 
+	//Chat
+	bool setChatCallback(PyObject* func);
+	void callRecvChatCallback(DWORD vid, const char* msg, BYTE type, BYTE empire, const char* locale); //msg must be a null terminated string!
+
 	//Packet filter
 	void openConsole();
 	void closeConsole();
@@ -86,6 +91,10 @@ private:
 	bool RecvLoadingPhase(BYTE* header);
 	void setPhase(SRcv_ChangePhasePacket& phase);
 
+
+	void handleChatPacket(SRcv_ChatPacket & packet);
+
+
 	bool peekNetworkStream(int len,void * buffer);
 
 	//0x2 fishing header is responsible for telling client when it can be fished
@@ -103,10 +112,11 @@ private:
 	bool blockFishingPackets;
 	bool block_next_sequence;
 
-	//DigMotion callback
+	//callbacks
 	PyObject* recvDigMotionCallback;
 	PyObject* shopRegisterCallback;
 	PyObject* recvStartFishCallback;
+	PyObject* chatCallback;
 
 	//Packet filter
 	bool filterInboundOnlyIncluded;

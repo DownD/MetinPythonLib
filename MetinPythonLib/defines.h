@@ -38,6 +38,7 @@
 #define RECV_FUNCTION 21
 #define CHECK_PACKET_FUNCTION 22
 #define PEEK_FUNCTION 23
+#define RENDER_MID_FUNCTION 24
 
 
 #define GLOBAL_PATTERN "\x55\x8b\xec\x83\xec\x00\x89\x4d\x00\xc6\x45\x00\x00\x8d\x45\x00\x50\x8b\x4d\x00\xe8\x00\x00\x00\x00\x0f\xb6\x00\x85\xc9\x75\x00\x32\xc0\xe9\x00\x00\x00\x00\x8b\x4d\x00\xe8\x00\x00\x00\x00\x0f\xb6\x00\x85\xd2\x75\x00\xb0\x00\xeb\x00\x8d\x45\x00\x89\x45\x00\x8b\x4d\x00\xc6\x01\x00\xba\x00\x00\x00\x00\x8b\x45\x00\x66\x89\x50\x00\x6a\x00\x6a\x00\x8d\x4d\x00\x51\xe8\x00\x00\x00\x00\x83\xc4\x00\xc6\x45\x00\x00\xc6\x45\x00\x00\x8b\x55"
@@ -111,6 +112,11 @@ struct SState
 	FLOAT fAdvRotSelf;
 };
 
+struct InstanceLocalPosition {
+	DWORD vid;
+	float x, y;
+};
+
 
 enum {
 	PHASE_LOADING = 4,
@@ -150,13 +156,14 @@ enum {
 		HEADER_GC_PHASE = 255,
 		HEADER_GC_CHARACTER_MOVE = 85,
 		HEADER_GC_MAIN_CHARACTER = 75,
-		HEADER_GC_CHAT = 121,
+		HEADER_GC_CHAT = 0x56,
 		HEADER_GC_FISHING = 42,
 		HEADER_GC_ITEM_GROUND_ADD = 117,
 		HEADER_GC_ITEM_GROUND_DEL = 129,
 		HEADER_GC_SHOP_SIGN = 26,
 		HEADER_CG_DIG_MOTION = 7,
 		HEADER_GC_ITEM_OWNERSHIP = 98,
+		HEADER_CG_SYNC_POSITION = 13,
 
 
 		//TO SERVER
@@ -275,6 +282,19 @@ struct SSend_StopFishingPacket
 	float		timeLeft; //seconds
 };
 
+struct SSend_SyncPosition
+{
+	BYTE        header = HEADER_CG_SYNC_POSITION;
+	WORD		wSize;
+};
+
+struct SSend_SyncPositionElement
+{
+	DWORD       dwVID;
+	long        lX;
+	long        lY;
+};
+
 struct SRecvHeaderFishingPacket
 {
 	BYTE		header = HEADER_CG_FISHING;
@@ -299,6 +319,15 @@ struct SRcv_CharacterMovePacket
 	LONG		lY;
 	DWORD		dwTime;
 	DWORD		dwDuration;
+};
+
+struct SRcv_ChatPacket
+{
+	BYTE	header = HEADER_GC_CHAT;
+	WORD	size;
+	BYTE	type;
+	DWORD	dwVID;
+	BYTE	bEmpire;
 };
 
 struct SRcv_DeletePlayerPacket

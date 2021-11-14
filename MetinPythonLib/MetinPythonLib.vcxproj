@@ -254,6 +254,7 @@
     <ClCompile Include="CAddressLoader.cpp" />
     <ClCompile Include="Communication.cpp" />
     <ClCompile Include="InstanceManager.cpp" />
+    <ClCompile Include="MemoryPatch.cpp" />
     <ClCompile Include="Player.cpp" />
     <ClCompile Include="NetworkStream.cpp" />
     <ClCompile Include="Hook.cpp" />
@@ -279,6 +280,7 @@
     <ClInclude Include="CAddressLoader.h" />
     <ClInclude Include="Communication.h" />
     <ClInclude Include="InstanceManager.h" />
+    <ClInclude Include="MemoryPatch.h" />
     <ClInclude Include="Player.h" />
     <ClInclude Include="NetworkStream.h" />
     <ClInclude Include="defines.h" />

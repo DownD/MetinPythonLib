@@ -20,6 +20,7 @@ CNetworkStream::CNetworkStream() : lastPoint(0,0)
 	recvDigMotionCallback = 0;
 	shopRegisterCallback = 0;
 	recvStartFishCallback = 0;
+	chatCallback = 0;
 
 	filterInboundOnlyIncluded = false;
 	filterOutboundOnlyIncluded = false;
@@ -46,6 +47,7 @@ void CNetworkStream::importPython()
 
 bool CNetworkStream::SendBattlePacket(DWORD vid, BYTE type)
 {
+	DEBUG_INFO_LEVEL_5("Sending AttackPacket vid=%d",vid);
 	CMemory& mem = CMemory::Instance();
 	return mem.callSendAttackPacket(type, vid);
 }
@@ -53,6 +55,7 @@ bool CNetworkStream::SendBattlePacket(DWORD vid, BYTE type)
 bool CNetworkStream::SendStatePacket(fPoint& pos, float rot, BYTE eFunc, BYTE uArg)
 {
 	CMemory& mem = CMemory::Instance();
+	DEBUG_INFO_LEVEL_5("Sending StatePacket to x=%f,y=%f,rot=%f,eFunc=%d,uArg=%d", pos.x,pos.y,rot,eFunc,uArg);
 	return mem.callSendStatePacket(pos, rot, eFunc, uArg);
 }
 
@@ -141,6 +144,37 @@ void CNetworkStream::SendUseSkillBySlot(DWORD dwSkillSlotIndex, DWORD dwTargetVI
 	return mem.callSendUseSkillBySlot(dwSkillSlotIndex,dwTargetVID);
 }
 
+bool CNetworkStream::SendSyncPacket(std::vector<InstanceLocalPosition>& targetPositions)
+{
+	SSend_SyncPosition kPacketSync;
+	kPacketSync.wSize = sizeof(kPacketSync) + sizeof(SSend_SyncPositionElement) * targetPositions.size();
+
+	DEBUG_INFO_LEVEL_3("Sending sync packet size=%d", kPacketSync.wSize);
+	if (!SendPacket(sizeof(SSend_SyncPosition), &kPacketSync)) {
+		DEBUG_INFO_LEVEL_2("Fail to send Sync Packet");
+		return false;
+	}
+	for(InstanceLocalPosition & pos : targetPositions){
+		SSend_SyncPositionElement kSyncPos;
+		kSyncPos.dwVID = pos.vid;
+		kSyncPos.lX = (long)pos.x;
+		kSyncPos.lY = (long)pos.y;
+		DEBUG_INFO_LEVEL_3("SendSyncPacketElement: Local vid=%d, x=%d, y=%d", kSyncPos.dwVID, kSyncPos.lX, kSyncPos.lY);
+		if (!LocalToGlobalPosition(kSyncPos.lX, kSyncPos.lY)) {
+			DEBUG_INFO_LEVEL_2("Fail to transform local to global on Sync Packet");
+			return false;
+		}
+		DEBUG_INFO_LEVEL_3("SendSyncPacketElement: Global vid=%d, x=%d, y=%d", kSyncPos.dwVID, kSyncPos.lX, kSyncPos.lY);
+		if (!SendPacket(sizeof(SSend_SyncPositionElement), &kSyncPos))
+		{
+			DEBUG_INFO_LEVEL_2("Fail to send Sync Element Packet");
+			return false;
+		}
+	}
+
+	return SendSequencePacket();
+}
+
 
 bool CNetworkStream::__RecvPacket(int size, void* buffer)
 {
@@ -196,11 +230,11 @@ bool CNetworkStream::__SendStatePacket(fPoint& pos, float rot, BYTE eFunc, BYTE 
 {
 	DEBUG_INFO_LEVEL_3("__SendStatePacket StartPos X->%f, Y->%f, EndPos X->%f, Y->%f", lastPoint.x, lastPoint.y, pos.x, pos.y);
 	CMemory& mem = CMemory::Instance();
-	if (pos.x < 0 || pos.y < 0) {
-		mem.callSendStatePacket(pos, rot, eFunc, uArg);
-	}
 
 	if (eFunc == CHAR_STATE_FUNC_WALK && speed_Multiplier > 1) {
+		if (pos.x < 0 || pos.y < 0) {
+			return false;
+		}
 		if (!lastPointIsStored) {
 			lastPoint = pos;
 			lastPointIsStored = true;
@@ -283,7 +317,7 @@ bool CNetworkStream::__CheckPacket(BYTE * header)
 	CMemory& mem = CMemory::Instance();
 	bool val = mem.callCheckPacket(header);
 	if (!val || header == 0)
-		return false;
+		return val;
 
 	DEBUG_INFO_LEVEL_5("Hook CheckPacket header=%d", *header);
 
@@ -330,7 +364,7 @@ bool CNetworkStream::__CheckPacket(BYTE * header)
 
 bool CNetworkStream::__SendAttackPacket(BYTE type, DWORD vid)
 {
-	DEBUG_INFO_LEVEL_4("__SendAttackPacket called ");
+	DEBUG_INFO_LEVEL_5("__SendAttackPacket called ");
 	CMemory& mem = CMemory::Instance();
 	if (m_blockAttackPackets)
 		return true;
@@ -479,7 +513,31 @@ void CNetworkStream::callNewInstanceShop(DWORD player)
 		DEBUG_INFO_LEVEL_3("Calling python RegisterShopCallback");
 		PyObject* val = Py_BuildValue("(i)", player);
 		PyObject_CallObject(shopRegisterCallback, val);
-		Py_XDECREF(val);
+	}
+}
+
+bool CNetworkStream::setChatCallback(PyObject* func)
+{
+	if (!PyCallable_Check(func)) {
+		DEBUG_INFO_LEVEL_1("ChatCallback argument is not a function");
+		return false;
+	}
+
+	if (chatCallback)
+		Py_DECREF(chatCallback);
+	chatCallback = func;
+
+	DEBUG_INFO_LEVEL_2("ChatCallback function set sucessfully");
+
+	return true;
+}
+
+void CNetworkStream::callRecvChatCallback(DWORD vid, const char* msg, BYTE type, BYTE empire, const char* locale)
+{
+	if (chatCallback && PyCallable_Check(chatCallback)) {
+		DEBUG_INFO_LEVEL_3("Calling python chatCallback message=%s,locale=%s",msg,locale);
+		PyObject* val = Py_BuildValue("iiiss", vid,type,empire,msg,locale);
+		PyObject_CallObject(chatCallback, val);
 	}
 }
 
@@ -633,6 +691,25 @@ void CNetworkStream::setPhase(SRcv_ChangePhasePacket& phase) {
 	}
 }
 
+void CNetworkStream::handleChatPacket(SRcv_ChatPacket& packet)
+{
+	if (packet.size > 1025) {
+		DEBUG_INFO_LEVEL_1("Error chat packet recived is too large dwSize=%d",packet.size);
+		return;
+	}
+	int startChatMsgIndex = sizeof(SRcv_ChatPacket);
+	char line[1024 + 1 + sizeof(SRcv_ChatPacket)] = { 0 };
+	char* locale = (char*)((int)line + sizeof(SRcv_ChatPacket) + 1);
+	char* msg = (char*)((int)line + sizeof(SRcv_ChatPacket) + 4);
+	if (!peekNetworkStream(packet.size, line)) {
+		DEBUG_INFO_LEVEL_2("Could not parse chat message packet!");
+	}
+
+	callRecvChatCallback(packet.dwVID, msg, packet.type, packet.bEmpire,locale);
+
+}
+
+
 bool CNetworkStream::peekNetworkStream(int len, void* buffer)
 {
 	CMemory& mem = CMemory::Instance();
@@ -686,6 +763,16 @@ bool CNetworkStream::RecvGamePhase(BYTE* header)
 		}
 		else {
 			DEBUG_INFO_LEVEL_2("Could not parse fishing packet!");
+		}
+		break;
+	}
+	case HEADER_GC_CHAT: {
+		SRcv_ChatPacket chatPacket;
+		if (peekNetworkStream(sizeof(SRcv_ChatPacket), &chatPacket)) {
+			handleChatPacket(chatPacket);
+		}
+		else {
+			DEBUG_INFO_LEVEL_2("Could not parse chat packet!");
 		}
 		break;
 	}

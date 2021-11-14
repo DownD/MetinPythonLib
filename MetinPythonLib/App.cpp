@@ -134,6 +134,18 @@ void CApp::exit() {
 	FreeConsole();
 }
 
+void CApp::setSkipRenderer()
+{
+	CMemory& mem = CMemory::Instance();
+	mem.setSkipRenderer();
+}
+
+void CApp::unsetSkipRenderer()
+{
+	CMemory& mem = CMemory::Instance();
+	mem.unsetSkipRenderer();
+}
+
 CApp::CApp()
 {
 

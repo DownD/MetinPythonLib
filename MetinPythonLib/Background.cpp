@@ -31,12 +31,12 @@ bool CBackground::setCurrentCollisionMap()
 #ifdef _DEBUG
 		DEBUG_INFO_LEVEL_1("Error calling GetCurrentMap %s\n", map_name.c_str());
 #endif
-		Py_DECREF(poArgs);
+		Py_XDECREF(poArgs);
 		return false;
 	}
 	DEBUG_INFO_LEVEL_2("Setting collision map name=%s",map_name.c_str());
 	//printf("Setting Map Collision %s\n", map_name.c_str());
-	Py_DECREF(poArgs);
+	Py_XDECREF(poArgs);
 	if (currMap) {
 		if (map_name.compare(currMap->getMapName()) == 0)
 			return true;
@@ -106,18 +106,17 @@ bool CBackground::findPath(int x_start, int y_start, int x_end, int y_end, std::
 
 bool CBackground::isPathBlocked(int x_start, int y_start, int x_end, int y_end)
 {
-	if (!currMap) {
-		return true;
-	}
-	//DEBUG_INFO_LEVEL_4("x_start: %d, y_start: %d | x_end: %d, y_end: %d", x_start, y_start, x_end, y_end);
-
+	x_start /= 100;
+	y_start /= 100;
+	x_end /= 100;
+	y_end /= 100;
+	DEBUG_INFO_LEVEL_4("x_start: %d, y_start: %d | x_end: %d, y_end: %d", x_start, y_start, x_end, y_end);
 	CNetworkStream& net = CNetworkStream::Instance();
 	if (net.GetCurrentPhase() == PHASE_GAME) {
-		setCurrentCollisionMap();
 		if (currMap == 0) {
-			return true;
+			setCurrentCollisionMap();
 		}
-		else {
+		if(currMap) {
 
 			//swap points if start is bigger then end
 			if (x_start > x_end) {
@@ -132,7 +131,7 @@ bool CBackground::isPathBlocked(int x_start, int y_start, int x_end, int y_end)
 			//calc position blocked
 			float m = 0;
 			float b = 0;
-			if (x_start != x_end) {
+			if (abs(x_start - x_end)>0) {
 				m = (y_end - y_start) / (x_end - x_start);
 				b = y_start - m * x_start;
 				for (int ix = x_start; ix <= x_end; ix++) {
@@ -165,9 +164,7 @@ bool CBackground::isPathBlocked(int x_start, int y_start, int x_end, int y_end)
 			
 		}
 	}
-	else {
-		return true;
-	}
+	return true;
 }
 
 bool CBackground::getClosestUnblocked(int x_start, int y_start, Point* buffer)

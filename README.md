@@ -122,6 +122,29 @@ Adds some functions to the python API, and try to inject a script.py from the cu
   - UnblockAttackPackets()<br>
     Unblocks all attack packets.<br>
 
+  - SkipRenderer()<br>
+    Instruct the client to skip the drawing process, this can save CPU.<br>
+
+  - UnskipRenderer()<br>
+    Instruct the client to start drawing again.<br>
+
+  - SyncPlayerPosition(\<list\>victims)<br>
+    This is part of an exploit that allows to teleport other players.<br>
+    The argument victims is a list of lists, each row containing vid victim, x coordinates and y coordinates.<br>
+    As far as analyzed, for this to work, a special state packet need to be sent with the following arguments ```eXLib.SendStatePacket(mx,my,0,3,17)```
+    where mx and my are the mob coordinates.<br>
+
+  - SetRecvChatCallback(\<function\>callbackFunction)<br>
+    Sets a callback function that will be called with the following arguments: ```int vid,int type,int empire,string msg,string locale```.<br>
+    This function will be called whenever the client recives a chat message or command from the server.
+    vid is the vid that send the message or 0 if is a command message.
+    type is the type of message and can take the following values ``` CHAT_TYPE_TALKING,CHAT_TYPE_INFO,CHAT_TYPE_NOTICE,CHAT_TYPE_PARTY,CHAT_TYPE_GUILD,CHAT_TYPE_COMMAND,CHAT_TYPE_SHOUT,CHAT_TYPE_WHISPER``` that can be found on the chat module. 
+    msg is the message content.
+    empire is the empire of the player.
+    locale is the region from the player that send the message or empty if was not a player.
+
+
+
 ### Remote Communication
 Communication with the outside world.
 All functions are asynchronous.

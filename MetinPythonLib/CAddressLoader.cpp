@@ -60,12 +60,12 @@ bool CAddressLoader::setAddress(HMODULE hDll)
 void* CAddressLoader::GetAddress(int id)
 {
 	if (memoryAddress.find(id) == memoryAddress.end()) {
-		DEBUG_INFO_LEVEL_1("Error getting address by id %d", id);
+		//DEBUG_INFO_LEVEL_1("Error getting address by id %d", id);
 		return 0;
 	}
 	else {
 		void* result = (void*)memoryAddress.at(id);
-		DEBUG_INFO_LEVEL_1("Address ID:%d with address -> %#x", id, result);
+		//DEBUG_INFO_LEVEL_1("Address ID:%d with address -> %#x", id, result);
 		return result;
 	}
 }

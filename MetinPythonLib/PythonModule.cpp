@@ -93,10 +93,6 @@ PyObject* pyIsPathBlocked(PyObject* poSelf, PyObject* poArgs)
 	if (!PyTuple_GetInteger(poArgs, 3, &y2))
 		return Py_BuildException();
 
-	x1 /= 100;
-	y1 /= 100;
-	x2 /= 100;
-	y2 /= 100;
 	CBackground& bck = CBackground::Instance();
 
 	return Py_BuildValue("i", bck.isPathBlocked(x1, y1,x2,y2));
@@ -645,6 +641,95 @@ PyObject* pyGetItemGrndID(PyObject* poSelf, PyObject* poArgs)
 	return Py_BuildValue("i", id);
 }
 
+PyObject* pySkipRenderer(PyObject* poSelf, PyObject* poArgs)
+{
+	CApp& app = CApp::Instance();
+	app.setSkipRenderer();
+	return Py_BuildNone();
+}
+
+PyObject* pyUnSkipRenderer(PyObject* poSelf, PyObject* poArgs)
+{
+	CApp& app = CApp::Instance();
+	app.unsetSkipRenderer();
+	return Py_BuildNone();
+}
+
+PyObject* pySyncPlayerPosition(PyObject* poSelf, PyObject* poArgs)
+{
+	CNetworkStream& net = CNetworkStream::Instance();
+	std::vector<InstanceLocalPosition> resultList;
+
+	PyObject* InstanceLst = 0;
+	if (!PyTuple_GetObject(poArgs, 0, &InstanceLst))
+		return Py_BuildException();
+
+	PyObject *iterator = PyObject_GetIter(InstanceLst);
+	PyObject* item;
+
+	if (iterator == NULL) {
+		Py_DECREF(InstanceLst);
+		return Py_BuildNone();
+		//return Py_BuildException("Argument provided is not an list");
+	}
+
+	int size = PyList_Size(InstanceLst);
+	resultList.reserve(size);
+
+	//Loop through all lists
+	while ((item = PyIter_Next(iterator))) {
+		InstanceLocalPosition pos;
+		if (!PyList_Check(item)) {
+			Py_DECREF(InstanceLst);
+			Py_DECREF(iterator);
+			Py_DECREF(item);
+			DEBUG_INFO_LEVEL_2("pySyncPlayerPosition:Argument provided must be a list of lists");
+			return Py_BuildNone();
+		}
+		if (PyList_Size(item) < 3) {
+			Py_DECREF(InstanceLst);
+			Py_DECREF(iterator);
+			Py_DECREF(item);
+			DEBUG_INFO_LEVEL_2("pySyncPlayerPosition: To few values on each row, the values of each row must be vid,x,y");
+			return Py_BuildNone();
+		}
+		PyObject* vid_py = PyList_GetItem(item, 0);
+		PyObject* x_py = PyList_GetItem(item, 1);
+		PyObject* y_py = PyList_GetItem(item, 2);
+		pos.vid = PyLong_AsLong(vid_py);
+		pos.x = PyFloat_AsDouble(x_py);
+		pos.y = PyFloat_AsDouble(y_py);
+		DEBUG_INFO_LEVEL_3("pySyncPlayerPosition: vid=%d, x=%f, y=%f", pos.vid,pos.x,pos.y);
+
+		resultList.push_back(pos);
+		Py_DECREF(item);
+	}
+	Py_DECREF(iterator);
+	Py_DECREF(InstanceLst);
+
+	DEBUG_INFO_LEVEL_3("Calling SyncPacket");
+	int result = net.SendSyncPacket(resultList);
+	return Py_BuildValue("(i)", result);
+}
+
+PyObject* pySetRecvChatCallback(PyObject* poSelf, PyObject* poArgs)
+{
+	PyObject* obj;
+	if (!PyTuple_GetObject(poArgs, 0, &obj)) {
+		return Py_BuildException();
+	}
+
+	CNetworkStream& net = CNetworkStream::Instance();
+	bool val = net.setChatCallback(obj);
+	if (val)
+		return Py_BuildNone();
+	else
+		return Py_BuildException("Fail to set chat callback");
+
+
+	return Py_BuildNone();
+}
+
 PyObject* pySendUseSkillPacket(PyObject* poSelf, PyObject* poArgs) {
 	int vid = 0;
 	int dwSkillIndex = 0;
@@ -748,6 +833,8 @@ PyObject* pyCloseWebsocket(PyObject* poSelf, PyObject* poArgs)
 }
 
 
+
+
 static PyMethodDef s_methods[] =
 {
 	{ "Get",					GetEterPacket,		METH_VARARGS },
@@ -818,10 +905,14 @@ static PyMethodDef s_methods[] =
 	{ "SetMoveSpeedMultiplier",	pySetMoveSpeed,		METH_VARARGS},
 //#endif
 
-	{ "GetRequest",	pyGetRequest,		METH_VARARGS},
-	{ "OpenWebsocket",	pyOpenWebsocket,		METH_VARARGS},
-	{ "SendWebsocket",	pySendWebsocket,		METH_VARARGS},
-	{ "CloseWebsocket",	pyCloseWebsocket,		METH_VARARGS},
+	{ "GetRequest",			pyGetRequest,			METH_VARARGS},
+	{ "OpenWebsocket",		pyOpenWebsocket,		METH_VARARGS},
+	{ "SendWebsocket",		pySendWebsocket,		METH_VARARGS},
+	{ "CloseWebsocket",		pyCloseWebsocket,		METH_VARARGS},
+	{ "SkipRenderer",		pySkipRenderer ,		METH_VARARGS},
+	{ "UnskipRenderer",		pyUnSkipRenderer ,		METH_VARARGS},
+	{ "SyncPlayerPosition", pySyncPlayerPosition ,	METH_VARARGS},
+	{ "SetRecvChatCallback", pySetRecvChatCallback ,	METH_VARARGS},
 
 
 	{ NULL, NULL }

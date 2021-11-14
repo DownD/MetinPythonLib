@@ -21,7 +21,7 @@ public:
 	BYTE getAttrByte(int x, int y);
 	bool findPath(int x_start, int y_start, int x_end, int y_end, std::vector<Point>& path);
 
-	bool isPathBlocked(int x_start, int y_start, int x_end, int y_end);
+	bool isPathBlocked(int x_start, int y_start, int x_end, int y_end); //USE GAME COORDS
 	bool getClosestUnblocked(int x_start, int y_start, Point* buffer);
 private:
 

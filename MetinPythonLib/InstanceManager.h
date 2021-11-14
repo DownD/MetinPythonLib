@@ -41,7 +41,7 @@ public:
 	DWORD getItemGrndID(DWORD vid);
 	void setPickItemFirst(bool val);
 	void setPickupRange(float range);
-	void setIgnoreBlockedPath(bool val){ignoreBlockedPath = val;}
+	void setIgnoreBlockedPath(bool val){this->ignoreBlockedPath = val;}
 
 private:
 	PyObject* pyVIDList;

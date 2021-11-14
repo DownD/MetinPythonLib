@@ -137,6 +137,7 @@ CMemory::~CMemory()
 	delete setMoveToDirectionHook;
 	delete getEtherPacketHook;
 	delete processHook;
+	delete graphicPatch;
 }
 
 bool CMemory::setupPatterns(HMODULE hDll)
@@ -166,6 +167,7 @@ bool CMemory::setupPatterns(HMODULE hDll)
 	processAddr = addrLoader.GetAddress(PYTHONAPP_PROCESS);
 	checkPacketAddr = addrLoader.GetAddress(CHECK_PACKET_FUNCTION);
 	sendAttackPacketAddr = addrLoader.GetAddress(SENDATTACK_FUNCTION);
+	skipGraphicsAddr = addrLoader.GetAddress(RENDER_MID_FUNCTION);
 
 	//sendAttackPacketFunc = (tSendAttackPacket)addrLoader.GetAddress(SENDATTACK_FUNCTION);
 	sendUseSkillBySlotFunc = (tSendUseSkillBySlot)addrLoader.GetAddress(PYTHONPLAYER_SENDUSESKILL);
@@ -212,6 +214,9 @@ bool CMemory::setupHooks()
 
 	traceFHook = new DetoursHook<tTracef>((tTracef)traceFFuncAddr, __Tracef);
 	tracenFHook = new DetoursHook<tTracef>((tTracef)tracenFFuncAddr, __Tracenf);
+
+	BYTE patch[] = { 0x90,0x90,0x0,0x0,0x0,0x0,0x0,0x0,0x1 }; //Patch for skip graphics
+	graphicPatch = new CMemoryPatch(patch, "xx??????x", 9, skipGraphicsAddr);
 #ifdef _DEBUG
 	traceFHook->HookFunction();
 	tracenFHook->HookFunction();
@@ -240,4 +245,14 @@ bool CMemory::setupProcessHook()
 {
 	processHook = new DetoursHook<tProcess>((tProcess)processAddr, __Process);
 	return processHook->HookFunction();
+}
+
+void CMemory::setSkipRenderer()
+{
+	graphicPatch->patchMemory();
+}
+
+void CMemory::unsetSkipRenderer()
+{
+	graphicPatch->unPatchMemory();
 }

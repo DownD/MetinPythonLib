@@ -5,6 +5,7 @@
 #include "ReturnHook.h"
 #include "defines.h"
 #include "Singleton.h"
+#include "MemoryPatch.h"
 
 
 
@@ -46,6 +47,9 @@ public:
 	inline void callSendUseSkillBySlot(DWORD dwSkillSlotIndex, DWORD dwTargetVID) { return sendUseSkillBySlotFunc(getPythonPlayer(), dwSkillSlotIndex, dwTargetVID); }
 	inline bool callPeek(int len, void*buffer) { return peekFunc(getNetworkStream(),len,buffer); }
 
+	void setSkipRenderer();
+	void unsetSkipRenderer();
+
 	DetoursHook<tTracef>* traceFHook;
 	DetoursHook<tTracef>* tracenFHook;
 
@@ -71,6 +75,9 @@ private:
 	DetoursHook<tCheckPacket>* checkPacketHook;
 	DetoursHook<tSendAttackPacket>* sendAttackPacketHook;
 
+	//Memory patches
+	CMemoryPatch* graphicPatch;
+
 	//Pointers
 	void* recvAddr;
 	void* sendAddr;
@@ -89,6 +96,7 @@ private:
 	void* processAddr;
 	void* checkPacketAddr;
 	void* sendAttackPacketAddr;
+	void* skipGraphicsAddr;
 
 	tLocalToGlobalPosition	localToGlobalFunc;
 	tGlobalToLocalPosition	globalToLocalFunc;

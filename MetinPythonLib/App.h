@@ -17,6 +17,8 @@ public:
 
 	void init();
 	void exit();
+	void setSkipRenderer();
+	void unsetSkipRenderer();
 
 	bool __AppProcess(ClassPointer p);
 

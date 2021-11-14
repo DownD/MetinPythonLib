@@ -206,7 +206,7 @@ bool MapCollision::constructMapFromClient()
 		}else{ map[i] = 1; }
 	}
 
-	//addObjectsCollisions(); //Need to know if it is bypassable
+
 	increaseBlockedArea();
 	return true;
 

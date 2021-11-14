@@ -81,6 +81,9 @@
     <ClCompile Include="..\common\Patterns.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="MemoryPatch.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="PythonUtils.h">
@@ -153,6 +156,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\common\Patterns.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="MemoryPatch.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

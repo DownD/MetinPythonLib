@@ -52,6 +52,13 @@ PyObject* pyGetCloseItemGround(PyObject* poSelf, PyObject* poArgs);
 PyObject* pySendPickupItem(PyObject* poSelf, PyObject* poArgs);
 PyObject* pyGetItemGrndID(PyObject* poSelf, PyObject* poArgs);
 
+PyObject* pySkipRenderer(PyObject* poSelf, PyObject* poArgs);
+PyObject* pyUnSkipRenderer(PyObject* poSelf, PyObject* poArgs);
+PyObject* pySyncPlayerPosition(PyObject* poSelf, PyObject* poArgs);
+PyObject* pySetRecvChatCallback(PyObject* poSelf, PyObject* poArgs);
+
+
+
 //PyObject* pySetKeyState(PyObject* poSelf, PyObject* poArgs); //There is a similar function, OnKeyUp or OnKeyDown
 
 

@@ -37,8 +37,8 @@ void SetupConsole()
 
 
 int get_api_key(std::string* key) {
-	//*key = "s3msAiwKABfS0+8KxztaZUKhisC/F7PPJB8SiLOvalk=";
-	*key = "dsfdsf";
+	*key = "s3msAiwKABfS0+8KxztaZUKhisC/F7PPJB8SiLOvalk=";
+//*key = "dsfdsf";
 	return 1;
 }
 
@@ -56,7 +56,7 @@ DWORD WINAPI ThreadProc(LPVOID lpParameter)
 	Patterns* patternFinder = 0;
 	Pattern global("GLOBAL_PATTERN", GLOBAL_PATTERN_OFFSET, GLOBAL_PATTERN, GLOBAL_PATTERN_MASK);
 	try {
-		patternFinder = new Patterns(hDll, &global);
+		patternFinder = new Patterns(hDll);
 	}
 	catch (std::exception& e) {
 		MessageBox(NULL, e.what(), "Critical Error", MB_OK);
