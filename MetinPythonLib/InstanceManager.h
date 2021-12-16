@@ -15,10 +15,17 @@ public:
 
 	void importPython();
 public:
+
+	//Python callbacks
+	PyObject* pySetRecvAddGrndItem(PyObject* poSelf, PyObject* poArgs);
+	PyObject* pySetRecvChangeOwnershipGrndItem(PyObject* poSelf, PyObject* poArgs);
+	PyObject* pySetRecvDelGrndItem(PyObject* poSelf, PyObject* poArgs);
+
 	void changeInstancePosition(SRcv_CharacterMovePacket& packet_move);
 	void appendNewInstance(SRcv_PlayerCreatePacket& player);
 	void deleteInstance(DWORD vid);
 	void changeInstanceIsDead(DWORD vid, BYTE isDead);
+
 	void addItemGround(SRcv_GroundItemAddPacket& item);
 	void delItemGround(SRcv_GroundItemDeletePacket& item);
 	void clearInstances();

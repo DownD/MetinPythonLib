@@ -352,6 +352,58 @@ PyObject* setOutFilterMode(PyObject* poSelf, PyObject* poArgs)
 	return Py_BuildNone();
 }
 
+PyObject* pySetRecvAddGrndItem(PyObject* poSelf, PyObject* poArgs)
+{
+	PyObject* obj;
+	if (!PyTuple_GetObject(poArgs, 0, &obj)) {
+		return Py_BuildException();
+	}
+
+	CNetworkStream& net = CNetworkStream::Instance();
+	bool val = net.setRecvAddGrndItemCallback(obj);
+	if (val)
+		return Py_BuildNone();
+	else {
+		Py_XDECREF(obj);
+		return Py_BuildException("Fail to set recvAddGrndItem callback");
+	}
+
+}
+
+PyObject* pySetRecvChangeOwnershipGrndItem(PyObject* poSelf, PyObject* poArgs)
+{
+	PyObject* obj;
+	if (!PyTuple_GetObject(poArgs, 0, &obj)) {
+		return Py_BuildException();
+	}
+
+	CNetworkStream& net = CNetworkStream::Instance();
+	bool val = net.setRecvChangeOwnershipGrndItemCallback(obj);
+	if (val)
+		return Py_BuildNone();
+	else {
+		Py_XDECREF(obj);
+		return Py_BuildException("Fail to set recvChangeOwnershipGrndItemCallback callback");
+	}
+}
+
+PyObject* pySetRecvDelGrndItem(PyObject* poSelf, PyObject* poArgs)
+{
+	PyObject* obj;
+	if (!PyTuple_GetObject(poArgs, 0, &obj)) {
+		return Py_BuildException();
+	}
+
+	CNetworkStream& net = CNetworkStream::Instance();
+	bool val = net.setRecvDelGrndItemCallback(obj);
+	if (val)
+		return Py_BuildNone();
+	else {
+		Py_XDECREF(obj);
+		return Py_BuildException("Fail to set recvDelGrndItemCallback callback");
+	}
+}
+
 PyObject* pyIsDead(PyObject* poSelf, PyObject* poArgs)
 {
 	int vid;
@@ -457,8 +509,10 @@ PyObject* pyRegisterNewShopCallback(PyObject* poSelf, PyObject* poArgs)
 	bool val = net.setNewShopCallback(obj);
 	if(val)
 		return Py_BuildNone();
-	else
+	else {
+		Py_XDECREF(obj);
 		return Py_BuildException();
+	}
 
 
 	return Py_BuildNone();
@@ -475,8 +529,10 @@ PyObject* pyRecvDigMotionCallback(PyObject* poSelf, PyObject* poArgs)
 	bool val = net.setDigMotionCallback(obj);
 	if (val)
 		return Py_BuildNone();
-	else
+	else {
+		Py_XDECREF(obj);
 		return Py_BuildException();
+	}
 
 
 	return Py_BuildNone();
@@ -493,8 +549,10 @@ PyObject* pyRecvStartFishCallback(PyObject* poSelf, PyObject* poArgs)
 	bool val = net.setStartFishCallback(obj);
 	if (val)
 		return Py_BuildNone();
-	else
+	else {
+		Py_XDECREF(obj);
 		return Py_BuildException();
+	}
 }
 
 PyObject* pyBlockAttackPackets(PyObject* poSelf, PyObject* poArgs)
@@ -723,8 +781,10 @@ PyObject* pySetRecvChatCallback(PyObject* poSelf, PyObject* poArgs)
 	bool val = net.setChatCallback(obj);
 	if (val)
 		return Py_BuildNone();
-	else
+	else {
+		Py_XDECREF(obj);
 		return Py_BuildException("Fail to set chat callback");
+	}
 
 
 	return Py_BuildNone();
@@ -772,6 +832,9 @@ PyObject* pyGetRequest(PyObject* poSelf, PyObject* poArgs)
 		CCommunication& c = CCommunication::Instance();
 		int id = c.GetRequest(url, ComCallbackFunction(callback));
 		return Py_BuildValue("(i)", id);
+	}
+	else {
+		Py_XDECREF(callback);
 	}
 
 	return Py_BuildValue("(i)", -1);
@@ -848,7 +911,7 @@ static PyMethodDef s_methods[] =
 	{ "SendStatePacket",		pySendStatePacket,	METH_VARARGS },
 	{ "IsDead",					pyIsDead,			METH_VARARGS },
 
-#ifdef _DEBUG
+#ifdef _DEBUG 
 	{ "LaunchPacketFilter",		launchPacketFilter,	METH_VARARGS },
 	{ "ClosePacketFilter",		closePacketFilter,	METH_VARARGS },
 	{ "StartPacketFilter",		startPacketFilter,	METH_VARARGS },
@@ -863,6 +926,10 @@ static PyMethodDef s_methods[] =
 	{ "SetOutFilterMode",		setOutFilterMode,	METH_VARARGS },
 	{ "SetInFilterMode",		setInFilterMode,	METH_VARARGS },
 #endif
+	{ "SetRecvAddGrndItemCallback",		pySetRecvAddGrndItem,METH_VARARGS },
+	{ "SetRecvChangeOwnershipGrndItemCallback",		pySetRecvChangeOwnershipGrndItem,METH_VARARGS },
+	{ "SetRecvDelGrndItemCallback",		pySetRecvDelGrndItem,METH_VARARGS },
+
 	{ "SendAddFlyTarget",		pySendAddFlyTarget,	METH_VARARGS },
 	{ "SendShoot",				pySendShoot,		METH_VARARGS },
 	{ "EnableCollisions",		pyEnableCollisions,	METH_VARARGS },
@@ -870,6 +937,7 @@ static PyMethodDef s_methods[] =
 	{ "RegisterNewShopCallback",pyRegisterNewShopCallback,METH_VARARGS },
 	{ "SendUseSkillPacket",		pySendUseSkillPacket,METH_VARARGS },
 	{ "SendUseSkillPacketBySlot",pySendUseSkillPacketBySlot,METH_VARARGS },
+
 
 	//PICKUP
 	{ "ItemGrndFilterClear",	pyItemGrndFilterClear,	METH_VARARGS },

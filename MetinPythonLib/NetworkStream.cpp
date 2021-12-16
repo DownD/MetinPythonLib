@@ -21,6 +21,9 @@ CNetworkStream::CNetworkStream() : lastPoint(0,0)
 	shopRegisterCallback = 0;
 	recvStartFishCallback = 0;
 	chatCallback = 0;
+	recvAddGrndItemCallback = 0;
+	recvChangeOwnershipGrndItemCallback = 0;
+	recvDelGrndItemCallback = 0;
 
 	filterInboundOnlyIncluded = false;
 	filterOutboundOnlyIncluded = false;
@@ -189,13 +192,6 @@ bool CNetworkStream::__RecvPacket(int size, void* buffer)
 	}
 
 	return val;
-	/*if (return_value && size>0) {
-		BYTE header = getPacketHeader(buffer, size);
-		if (header == HEADER_GC_FISHING) {
-			printPacket(0, (BYTE*)buffer, size, INBOUND);
-		}
-	}
-	return return_value;*/
 }
 
 bool CNetworkStream::__SendPacket(int size, void* buffer)
@@ -209,17 +205,6 @@ bool CNetworkStream::__SendPacket(int size, void* buffer)
 			printPacket(0, byte_buffer, size, OUTBOUND);
 
 		}
-	}
-
-	switch (header) {
-	case HEADER_CG_FISHING: { //SEQUENCE IS NOT SENT
-		/*if (blockFishingPackets) {
-			DEBUG_INFO_LEVEL_2("Blocking Fishing Packet");
-			block_next_sequence = 1; //Also block sequence packet
-			return 1;			//Block fishing packets
-		}*/
-		break;
-	}
 	}
 
 	CMemory& mem = CMemory::Instance();
@@ -431,8 +416,9 @@ void CNetworkStream::callDigMotionCallback(DWORD target_player, DWORD target_vei
 	if (recvDigMotionCallback && PyCallable_Check(recvDigMotionCallback)) {
 		DEBUG_INFO_LEVEL_3("Calling python DigMotionCallback");
 		PyObject* val = Py_BuildValue("(iii)", target_player, target_vein, n);
-		PyObject_CallObject(recvDigMotionCallback, val);
+		PyObject* result = PyObject_CallObject(recvDigMotionCallback, val);
 		Py_DECREF(val);
+		Py_XDECREF(result);
 	}
 }
 
@@ -443,8 +429,44 @@ void CNetworkStream::callStartFishCallback()
 	if (recvStartFishCallback && PyCallable_Check(recvStartFishCallback)) {
 		DEBUG_INFO_LEVEL_3("Calling python StartFishCallback");
 		PyObject* val = Py_BuildValue("()");
-		PyObject_CallObject(recvStartFishCallback, val);
+		PyObject* result = PyObject_CallObject(recvStartFishCallback, val);
 		Py_DECREF(val);
+		Py_XDECREF(result);
+	}
+}
+
+void CNetworkStream::callRecvAddGrndItemCallback(DWORD vid, DWORD index, long x, long y, std::string owner)
+{
+	if (recvAddGrndItemCallback) {
+		if (PyCallable_Check(recvAddGrndItemCallback)) {
+			DEBUG_INFO_LEVEL_3("Calling python recvAddGrndItemCallback vid=%d,index=%d,x=%d,y=%d,owner=%s",vid, index, x,y,owner.data());
+			PyObject* val = Py_BuildValue("(iiiis)", vid, index, x, y, owner.data());
+			PyObject* result = PyObject_CallObject(recvAddGrndItemCallback, val);
+			Py_DECREF(val);
+			Py_XDECREF(result);
+		}
+	}
+}
+
+void CNetworkStream::callRecvChangeOwnershipGrndItemCallback(DWORD vid, std::string owner)
+{
+	if (recvChangeOwnershipGrndItemCallback && PyCallable_Check(recvChangeOwnershipGrndItemCallback)) {
+		DEBUG_INFO_LEVEL_3("Calling python recvChangeOwnershipGrndItemCallback vid=%d,owner=%s", vid, owner.data());
+		PyObject* val = Py_BuildValue("(is)", vid, owner.data());
+		PyObject* result = PyObject_CallObject(recvChangeOwnershipGrndItemCallback, val);
+		Py_DECREF(val);
+		Py_XDECREF(result);
+	}
+}
+
+void CNetworkStream::callRecvDelGrndItemCallback(DWORD vid)
+{
+	if (recvDelGrndItemCallback && PyCallable_Check(recvDelGrndItemCallback)) {
+		DEBUG_INFO_LEVEL_3("Calling python recvChangeOwnershipGrndItemCallback vid=%d", vid);
+		PyObject* val = Py_BuildValue("(i)", vid);
+		PyObject* result = PyObject_CallObject(recvDelGrndItemCallback, val);
+		Py_DECREF(val);
+		Py_XDECREF(result);
 	}
 }
 
@@ -454,7 +476,7 @@ bool CNetworkStream::setDigMotionCallback(PyObject* func)
 	if (PyCallable_Check(func)) {
 		DEBUG_INFO_LEVEL_2("RecvDigMotionCallback function set sucessfully");
 		if(recvDigMotionCallback)
-			Py_DECREF(recvDigMotionCallback);
+			Py_XDECREF(recvDigMotionCallback);
 		recvDigMotionCallback = func;
 		return true;
 	}
@@ -512,7 +534,9 @@ void CNetworkStream::callNewInstanceShop(DWORD player)
 	if (shopRegisterCallback && PyCallable_Check(shopRegisterCallback)) {
 		DEBUG_INFO_LEVEL_3("Calling python RegisterShopCallback");
 		PyObject* val = Py_BuildValue("(i)", player);
-		PyObject_CallObject(shopRegisterCallback, val);
+		PyObject* result = PyObject_CallObject(shopRegisterCallback, val);
+		Py_DECREF(val);
+		Py_DECREF(result);
 	}
 }
 
@@ -534,10 +558,18 @@ bool CNetworkStream::setChatCallback(PyObject* func)
 
 void CNetworkStream::callRecvChatCallback(DWORD vid, const char* msg, BYTE type, BYTE empire, const char* locale)
 {
-	if (chatCallback && PyCallable_Check(chatCallback)) {
-		DEBUG_INFO_LEVEL_3("Calling python chatCallback message=%s,locale=%s",msg,locale);
-		PyObject* val = Py_BuildValue("iiiss", vid,type,empire,msg,locale);
-		PyObject_CallObject(chatCallback, val);
+	if (chatCallback) {
+		if (PyCallable_Check(chatCallback)) {
+			DEBUG_INFO_LEVEL_3("Calling python chatCallback message=%s,locale=%s", msg, locale);
+			PyObject* val = Py_BuildValue("iiiss", vid, type, empire, msg, locale);
+			PyObject* result = PyObject_CallObject(chatCallback, val);
+			Py_DECREF(val);
+			Py_DECREF(result);
+		}
+		else {
+			Py_XDECREF(chatCallback);
+			chatCallback = 0;
+		}
 	}
 }
 
@@ -659,6 +691,54 @@ std::set<BYTE>* CNetworkStream::getPacketFilter(PACKET_TYPE t)
 		return &outbound_header_filter;
 }
 
+bool CNetworkStream::setRecvAddGrndItemCallback(PyObject* func)
+{
+	if (!PyCallable_Check(func)) {
+		DEBUG_INFO_LEVEL_1("RecvAddGrndItemCallback argument is not a function");
+		return false;
+	}
+
+	if (recvAddGrndItemCallback)
+		Py_DECREF(recvAddGrndItemCallback);
+	recvAddGrndItemCallback = func;
+
+	DEBUG_INFO_LEVEL_2("RecvAddGrndItemCallback function set sucessfully");
+
+	return true;
+}
+
+bool CNetworkStream::setRecvChangeOwnershipGrndItemCallback(PyObject* func)
+{
+	if (!PyCallable_Check(func)) {
+		DEBUG_INFO_LEVEL_1("RecvChangeOwnershipGrndItemCallback argument is not a function");
+		return false;
+	}
+
+	if (recvChangeOwnershipGrndItemCallback)
+		Py_DECREF(recvChangeOwnershipGrndItemCallback);
+	recvChangeOwnershipGrndItemCallback = func;
+
+	DEBUG_INFO_LEVEL_2("RecvChangeOwnershipGrndItemCallback function set sucessfully");
+
+	return true;
+}
+
+bool CNetworkStream::setRecvDelGrndItemCallback(PyObject* func)
+{
+	if (!PyCallable_Check(func)) {
+		DEBUG_INFO_LEVEL_1("RecvDelGrndItemCallback argument is not a function");
+		return false;
+	}
+
+	if (recvDelGrndItemCallback)
+		Py_DECREF(recvDelGrndItemCallback);
+	recvDelGrndItemCallback = func;
+
+	DEBUG_INFO_LEVEL_2("RecvDelGrndItemCallback function set sucessfully");
+
+	return true;
+}
+
 void CNetworkStream::blockAttackPackets()
 {
 	m_blockAttackPackets = true;
@@ -744,143 +824,40 @@ BYTE CNetworkStream::getPacketHeader(void* buffer, int size)
 bool CNetworkStream::RecvGamePhase(BYTE* header)
 {
 	switch (*header) {
-	case HEADER_GC_FISHING: {
-		SRecvHeaderFishingPacket instancePacket;
-		if (peekNetworkStream(sizeof(SRecvHeaderFishingPacket), &instancePacket)) {
-			if (blockFishingPackets && instancePacket.fishingHeader !=5 ) {
+	case HEADER_GC_FISHING:
+		return RecvFishPacket();
 
-				CMemory& mem = CMemory::Instance();
-				BYTE tmp[0x21];
-				if(!mem.callRecvPacket(getFishingPacketSize(instancePacket.fishingHeader), tmp)) {
-					DEBUG_INFO_LEVEL_2("Could not block fishing packet!");
-				}
+	case HEADER_GC_CHAT:
+		return RecvChatPacket();
 
-				if (instancePacket.fishingHeader == 2) {
-					callStartFishCallback();
-				}
-				return false;
-			}
-		}
-		else {
-			DEBUG_INFO_LEVEL_2("Could not parse fishing packet!");
-		}
-		break;
-	}
-	case HEADER_GC_CHAT: {
-		SRcv_ChatPacket chatPacket;
-		if (peekNetworkStream(sizeof(SRcv_ChatPacket), &chatPacket)) {
-			handleChatPacket(chatPacket);
-		}
-		else {
-			DEBUG_INFO_LEVEL_2("Could not parse chat packet!");
-		}
-		break;
-	}
-	case HEADER_GC_ITEM_GROUND_ADD: {
-		SRcv_GroundItemAddPacket instance;
-		if (peekNetworkStream(sizeof(SRcv_GroundItemAddPacket), &instance)) {
-			GlobalToLocalPosition(instance.x, instance.y);
-			CInstanceManager& mgr = CInstanceManager::Instance();
-			mgr.addItemGround(instance);
-		}
-		else {
-			DEBUG_INFO_LEVEL_2("Could not parse item ground add packet!");
-		}
-		break;
-	}
-	case HEADER_GC_ITEM_GROUND_DEL: {
-		SRcv_GroundItemDeletePacket instance;
-		if (peekNetworkStream(sizeof(SRcv_GroundItemDeletePacket), &instance)) {
-			CInstanceManager& mgr = CInstanceManager::Instance();
-			mgr.delItemGround(instance);
-		}
-		else {
-			DEBUG_INFO_LEVEL_2("Could not parse item ground delete packet!");
-		}
-		break;
-	}
-	case HEADER_GC_CHARACTER_ADD: {
-		SRcv_PlayerCreatePacket instance;
-		if (peekNetworkStream(sizeof(SRcv_PlayerCreatePacket), &instance)) {
-			GlobalToLocalPosition(instance.x, instance.y);
-			CInstanceManager& mgr = CInstanceManager::Instance();
-			mgr.appendNewInstance(instance);
-		}else {
-			DEBUG_INFO_LEVEL_2("Could not parse character add packet!");
-		}
-		break;
-	}
-	case HEADER_GC_CHARACTER_MOVE: {
+	case HEADER_GC_ITEM_GROUND_ADD:
+		return RecvAddItemGrnd();
 
-		SRcv_CharacterMovePacket instance;
-		if (peekNetworkStream(sizeof(SRcv_CharacterMovePacket), &instance)) {
-			GlobalToLocalPosition(instance.lX, instance.lY);
-			CInstanceManager& mgr = CInstanceManager::Instance();
-			mgr.changeInstancePosition(instance);
-		}
-		else {
-			DEBUG_INFO_LEVEL_2("Could not parse character move packet!");
-		}
-		break;
-	}
-	case HEADER_GC_CHARACTER_DEL: {
+	case HEADER_GC_ITEM_GROUND_DEL:
+		return RecvDelItemGrnd();
 
-		SRcv_DeletePlayerPacket instance_;
-		if (peekNetworkStream(sizeof(SRcv_DeletePlayerPacket), &instance_)) {
-			CInstanceManager& mgr = CInstanceManager::Instance();
-			mgr.deleteInstance(instance_.dwVID);
-		}
-		else {
-			DEBUG_INFO_LEVEL_2("Could not parse character delete packet!");
-		}
-		break;
-	}
-	case HEADER_GC_ITEM_OWNERSHIP: {
-		SRcv_PacketOwnership instance;
-		if (peekNetworkStream(sizeof(SRcv_PacketOwnership), &instance)) {
-			CInstanceManager& mgr = CInstanceManager::Instance();
-			mgr.changeItemOwnership(instance);
-		}
-		else {
-			DEBUG_INFO_LEVEL_2("Could not parse item ownership packet!");
-		}
-		break;
-	}
-	case HEADER_GC_PHASE: {
-		SRcv_ChangePhasePacket phase;
-		if (peekNetworkStream(sizeof(SRcv_ChangePhasePacket), &phase)) {
-			if (phase.phase != 1 && phase.phase != 2)
-				setPhase(phase);
-		}
-		else {
-			DEBUG_INFO_LEVEL_2("Could not parse phase packet!");
-		}
-		break;
-	}
-	case HEADER_CG_DIG_MOTION: {
-		SRcv_DigMotionPacket instance_;
-		if (peekNetworkStream(sizeof(SRcv_DigMotionPacket), &instance_)) {
-			callDigMotionCallback(instance_.vid, instance_.target_vid, instance_.count);
-		}
-		else {
-			DEBUG_INFO_LEVEL_2("Could not parse dig motion packet!");
-		}
-		break;
-	}
+	case HEADER_GC_CHARACTER_ADD:
+		return RecvAddCharacter();
 
-	case HEADER_GC_DEAD: {
-		SRcvDeadPacket dead;
-		if (peekNetworkStream(sizeof(SRcvDeadPacket), &dead)) {
-			CInstanceManager& mgr = CInstanceManager::Instance();
-			mgr.changeInstanceIsDead(dead.vid, 1);
-		}
-		else {
-			DEBUG_INFO_LEVEL_2("Could not parse dead packet!");
-		}
-		break;
-	}
-	}
+	case HEADER_GC_CHARACTER_MOVE:
+		return RecvMoveCharacter();
 
+	case HEADER_GC_CHARACTER_DEL:
+		return RecvDelCharacter();
+
+	case HEADER_GC_ITEM_OWNERSHIP:
+		return RecvChangeOwnership();
+
+	case HEADER_GC_PHASE:
+		return RecvPhaseChange();
+
+	case HEADER_CG_DIG_MOTION:
+		return RecvDigMotion();
+
+	case HEADER_GC_DEAD:
+		return RecvDeadPacket();
+	}
+	
 	return true;
 }
 
@@ -888,64 +865,22 @@ bool CNetworkStream::RecvGamePhase(BYTE* header)
 bool CNetworkStream::RecvLoadingPhase( BYTE* header)
 {
 	switch (*header) {
-	case HEADER_GC_CHARACTER_ADD: {
-		SRcv_PlayerCreatePacket instance;
-		if (peekNetworkStream(sizeof(SRcv_PlayerCreatePacket), &instance)) {
-			GlobalToLocalPosition(instance.x, instance.y);
-			CInstanceManager& mgr = CInstanceManager::Instance();
-			mgr.appendNewInstance(instance);
-		}
-		else {
-			DEBUG_INFO_LEVEL_2("Could not parse character add packet!");
-		}
-		break;
+	case HEADER_GC_CHARACTER_ADD:
+		return RecvAddCharacter();
+
+	case HEADER_GC_MAIN_CHARACTER:
+		return RecvMainCharacter();
+
+	case HEADER_GC_ITEM_OWNERSHIP:
+		return RecvChangeOwnership();
+
+	case HEADER_GC_ITEM_GROUND_ADD:
+		return RecvAddItemGrnd();
+
+	case HEADER_GC_PHASE:
+		return RecvPhaseChange();
 	}
-	case HEADER_GC_MAIN_CHARACTER: {
-		SRcv_MainCharacterPacket m;
-		if (peekNetworkStream(sizeof(SRcv_MainCharacterPacket), &m)) {
-			DEBUG_INFO_LEVEL_2("MAIN VID: %d", m.dwVID);
-			mainCharacterVID = m.dwVID;
-		}
-		else {
-			DEBUG_INFO_LEVEL_2("Could not parse main character packet!");
-		}
-		break;
-	}
-	case HEADER_GC_ITEM_OWNERSHIP: {
-		SRcv_PacketOwnership instance;
-		if (peekNetworkStream(sizeof(SRcv_PacketOwnership), &instance)) {
-			CInstanceManager& mgr = CInstanceManager::Instance();
-			mgr.changeItemOwnership(instance);
-		}
-		else {
-			DEBUG_INFO_LEVEL_2("Could not parse item ownership packet!");
-		}
-		break;
-	}
-	case HEADER_GC_ITEM_GROUND_ADD: {
-		SRcv_GroundItemAddPacket instance;
-		if (peekNetworkStream(sizeof(SRcv_GroundItemAddPacket), &instance)) {
-			GlobalToLocalPosition(instance.x, instance.y);
-			CInstanceManager& mgr = CInstanceManager::Instance();
-			mgr.addItemGround(instance);
-		}
-		else {
-			DEBUG_INFO_LEVEL_2("Could not parse item ground add packet!");
-		}
-		break;
-	}
-	case HEADER_GC_PHASE: {
-		SRcv_ChangePhasePacket phase;
-		if (peekNetworkStream(sizeof(SRcv_ChangePhasePacket), &phase)) {
-			if (phase.phase != 1 && phase.phase != 2)
-				setPhase(phase);
-		}
-		else {
-			DEBUG_INFO_LEVEL_2("Could not parse phase packet!");
-		}
-		break;
-	}
-	}
+	
 
 	return true;
 }

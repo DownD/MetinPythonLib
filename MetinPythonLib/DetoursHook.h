@@ -12,6 +12,7 @@ public:
 	}
 
 	bool HookFunction(){
+		DEBUG_INFO_LEVEL_2("Hooking %#x", originalFunction);
 		if (isHooked)
 			return true;
 		DetourTransactionBegin();

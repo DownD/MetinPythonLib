@@ -32,13 +32,6 @@ bool __fastcall __SendPacket(ClassPointer classPointer,DWORD edx, int size, void
 	mem.setNetworkStream(classPointer);
 	return net.__SendPacket(size, buffer);
 }
-/*bool __declspec(naked) __SendPacketJMP(int size, void* buffer) {
-	__asm {
-		PUSH ECX		//this_call
-		PUSH[ESP + 8] //Return address
-		JMP __SendPacket
-	}
-}*/
 
 bool __fastcall __SendAttackPacket(ClassPointer classPointer, DWORD EDX, BYTE type, DWORD vid) {
 	CNetworkStream& net = CNetworkStream::Instance();

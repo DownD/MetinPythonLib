@@ -255,6 +255,8 @@
     <ClCompile Include="Communication.cpp" />
     <ClCompile Include="InstanceManager.cpp" />
     <ClCompile Include="MemoryPatch.cpp" />
+    <ClCompile Include="NetworkStreamPhaseGame.cpp" />
+    <ClCompile Include="NetworkStreamPhaseLoading.cpp" />
     <ClCompile Include="Player.cpp" />
     <ClCompile Include="NetworkStream.cpp" />
     <ClCompile Include="Hook.cpp" />

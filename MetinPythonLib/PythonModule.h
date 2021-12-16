@@ -77,6 +77,11 @@ PyObject* clearOutFilter(PyObject* poSelf, PyObject* poArgs);
 PyObject* setInFilterMode(PyObject* poSelf, PyObject* poArgs);
 PyObject* setOutFilterMode(PyObject* poSelf, PyObject* poArgs);
 
+//PICKUP
+PyObject* pySetRecvAddGrndItem(PyObject* poSelf, PyObject* poArgs);
+PyObject* pySetRecvChangeOwnershipGrndItem(PyObject* poSelf, PyObject* poArgs);
+PyObject* pySetRecvDelGrndItem(PyObject* poSelf, PyObject* poArgs);
+
 //NETOWORKING RELATED
 PyObject* pyGetRequest(PyObject* poSelf, PyObject* poArgs);
 PyObject* pyOpenWebsocket(PyObject* poSelf, PyObject* poArgs);

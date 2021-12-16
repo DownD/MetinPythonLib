@@ -69,6 +69,8 @@ void CApp::init() {
 #else
 	//Sleep(1000);
 #endif
+
+	DEBUG_INFO_LEVEL_1("Patterns have been set sucessfully");
 	if (memory.setupProcessHook()) {
 		DEBUG_INFO_LEVEL_1("Process Hook sucessfull");
 	}
