@@ -77,43 +77,14 @@ public:
 	void printPacket(DWORD calling_function, BYTE* buffer , int size, bool type);
 	std::set<BYTE>* getPacketFilter(PACKET_TYPE t);
 
-	//ItemGround set callbacks
-	bool setRecvAddGrndItemCallback(PyObject* func);
-	bool setRecvChangeOwnershipGrndItemCallback(PyObject* func);
-	bool setRecvDelGrndItemCallback(PyObject* func);
-
 
 	//Block attack packets
 	void blockAttackPackets();
 	void unblockAttackPackets();
 
 private:
-	//GamePhase Handlers
-	bool RecvFishPacket();
-	bool RecvChatPacket();
-	bool RecvAddItemGrnd();
-	bool RecvDelItemGrnd();
-	bool RecvAddCharacter();
-	bool RecvDelCharacter();
-	bool RecvMoveCharacter();
-	bool RecvChangeOwnership();
-	bool RecvPhaseChange();
-	bool RecvDigMotion();
-	bool RecvDeadPacket();
-
-	//LoadingPhase Handlers
-
-	bool RecvMainCharacter();
-
-
-
 
 	void callStartFishCallback();
-
-	//ItemGround call callbacks
-	void callRecvAddGrndItemCallback(DWORD vid, DWORD index, long x, long y,std::string owner="");
-	void callRecvChangeOwnershipGrndItemCallback(DWORD vid, std::string owner);
-	void callRecvDelGrndItemCallback(DWORD vid);
 
 	BYTE getPacketHeader(void* buffer, int size);
 	bool RecvGamePhase(BYTE* header);
@@ -146,9 +117,6 @@ private:
 	PyObject* shopRegisterCallback;
 	PyObject* recvStartFishCallback;
 	PyObject* chatCallback;
-	PyObject* recvAddGrndItemCallback;
-	PyObject* recvChangeOwnershipGrndItemCallback;
-	PyObject* recvDelGrndItemCallback;
 
 	//Packet filter
 	bool filterInboundOnlyIncluded;

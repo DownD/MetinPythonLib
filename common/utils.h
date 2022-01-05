@@ -8,6 +8,8 @@
 #include <ctime>
 #include <math.h>
 #include <stdarg.h>
+#include <chrono>
+
 
 bool isDebugEnable();
 void setDebugOn();
@@ -18,13 +20,13 @@ void setDebugOff();
 #define ADRESS_FILE_NAME "addresses.csv"
 
 #if defined(_DEBUG) || defined(_DEBUG_FILE)
-#define DEBUG_INFO_LEVEL_1(...); {if(isDebugEnable()){printf(__VA_ARGS__); printf("\n");fflush(stdout);}}
+#define DEBUG_INFO_LEVEL_1(...); {if(isDebugEnable()){printf("[%s] - ",serializeTimePoint(std::chrono::system_clock::now(),"%H:%M:%S").c_str()); printf(__VA_ARGS__); printf("\n");fflush(stdout);}}
 #define DEBUG_INFO_LEVEL_2(...); {DEBUG_INFO_LEVEL_1(__VA_ARGS__); }
 #define DEBUG_INFO_LEVEL_3(...); {DEBUG_INFO_LEVEL_1(__VA_ARGS__); }
 #define DEBUG_INFO_LEVEL_4(...); {DEBUG_INFO_LEVEL_1(__VA_ARGS__);}
 #define DEBUG_INFO_LEVEL_5(...); {DEBUG_INFO_LEVEL_1(__VA_ARGS__);}
 #else
-#define DEBUG_INFO_LEVEL_1(...); {printf(__VA_ARGS__); printf("\n");fflush(stdout);}
+#define DEBUG_INFO_LEVEL_1(...); {}
 #define DEBUG_INFO_LEVEL_2(...); {}
 #define DEBUG_INFO_LEVEL_3(...); {}
 #define DEBUG_INFO_LEVEL_4(...); {}
@@ -51,8 +53,10 @@ void stripFileFromPath(char* dllPath, int size);
 const char* getDllPath();
 const char* getMapsPath();
 
-HRESULT getKeyPath(std::string* path);
-DWORD getHWID();
+//Related to server	
+void getJWTToken(std::string* buffer);
+std::string getHWID();
+
 
 void setDllPath(char* file);
 void setDebugStreamFiles();
@@ -64,6 +68,7 @@ void Tracef(bool val, const char* c_szFormat, ...);
 //There are bugs here that migh crash the process
 void setTimerFunction(tTimerFunction func,float sec);
 void executeTimerFunctions();
+std::string serializeTimePoint(const std::chrono::system_clock::time_point& time, const std::string& format);
 
 
 inline void* getRelativeCallAddress(void* startCallAddr) {

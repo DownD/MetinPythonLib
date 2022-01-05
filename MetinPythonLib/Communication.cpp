@@ -10,6 +10,14 @@ CCommunication::CCommunication() {
 	curl_global_init(CURL_GLOBAL_ALL);
 	curlMulti = curl_multi_init();
 	maxID = 0;
+
+	sslCert.data = (void*)SSL_CERTIFICATE;
+	sslCert.len = strlen(SSL_CERTIFICATE);
+	sslCert.flags = CURL_BLOB_COPY;
+
+	sslKey.data = (void*)SSL_CERTIFICATE_KEY;
+	sslKey.len = strlen(SSL_CERTIFICATE_KEY);
+	sslKey.flags = CURL_BLOB_COPY;
 }
 
 CCommunication::~CCommunication()
@@ -122,84 +130,11 @@ bool CCommunication::CloseWebsocket(int id)
 
 int CCommunication::MainServerSetAuthKey()
 {
-	std::string path;
-	auto val = getKeyPath(&path);
-	if (val == S_OK) {
-		//Open file and check for key
-		std::ifstream in_f(path.c_str());
-		if (in_f.good()) {
-			std::string line;
-			std::getline(in_f, line);
-			authKey = line;
-			in_f.close();
-
-		}
-
-		//Write a default key if it does not exist yet
-		else {
-			std::string key_write = DEFAULT_API_KEY;
-			authKey = DEFAULT_API_KEY;
-			std::ofstream f(path.c_str());
-			if (f.good()) {
-				f.write(key_write.data(), key_write.size());
-				f.close();
-			}
-			else {
-				DEBUG_INFO_LEVEL_1("Error opening api_key file");
-				return 0;
-			}
-		}
-
-		//Check if api_key is valid
-		std::string url = WEB_SERVER_ADDRESS;
-		url += TEST_AUTH_ENDPOINT;
-
-		Json::Value tmp;
-		if (MainServerPreformRequest(url, &tmp)) {
-			DEBUG_INFO_LEVEL_2("Api key is set and accepted");
-			return 1;
-		}
-		else {
-			DEBUG_INFO_LEVEL_2("Current Api key is not accepted");
-		}
-
-		//PRESENT KEY IS NOT ELIGIBLE REQUEST A NEW ONE
-
-		//Get request code
-		std::string code = "";
-		if (!MainServerRequestCode(&code)) {
-			DEBUG_INFO_LEVEL_1("Unable to request auth code");
-			return 0;
-		}
-
-		//Show login page on browser
-		url = WEB_SERVER_ADDRESS;
-		url += GET_LOGIN_ENDPOINT;
-		url += "&auth_code=" + code;
-
-		ShellExecute(0, 0, url.c_str() , 0, 0, SW_SHOW);
-
-		DEBUG_INFO_LEVEL_1("Waiting for user to login...");
-		//Request api key
-		if (!MainServerRequestAuthKey(code, &authKey)) {
-			DEBUG_INFO_LEVEL_1("Unable to request auth key");
-			return 0;
-		}
-		
-		DEBUG_INFO_LEVEL_1("Setting api_key at %s", path.c_str());
-		std::ofstream f(path.c_str());
-		f.write(authKey.data(),authKey.size());
-		f.close();
-	}
-	else {
-		DEBUG_INFO_LEVEL_1("Unable to get auth key path");
-		return 0;
-	}
-
+	getJWTToken(&authKey);
 	return 1;
 }
 
-int CCommunication::MainServerGetOffsets(std::map<int, DWORD>* bufferOffsets)
+int CCommunication::MainServerGetOffsets(std::map<int, DWORD>* bufferOffsets, const char* server)
 {
 	if (authKey.size() < 1) {
 		DEBUG_INFO_LEVEL_1("Missing auth key!");
@@ -207,10 +142,16 @@ int CCommunication::MainServerGetOffsets(std::map<int, DWORD>* bufferOffsets)
 	}
 
 	Json::Value json_root;
+	
+	Json::Value json_post;
+	json_post["hwid"] = getHWID();
+	json_post["server"] = server;
+	
 	std::string url = WEB_SERVER_ADDRESS;
 	url += OFFSETS_ENDPOINT;
+
 	DEBUG_INFO_LEVEL_2("Requesting offsets from server");
-	int val = MainServerPreformRequest(url, &json_root);
+	int val = MainServerPreformRequest(url, &json_root,json_post);
 	if (!val) {
 		DEBUG_INFO_LEVEL_1("Error performing Get offsets request!");
 		return 0;
@@ -222,16 +163,17 @@ int CCommunication::MainServerGetOffsets(std::map<int, DWORD>* bufferOffsets)
 	DEBUG_INFO_LEVEL_2("Server offsets retrieved\n%s", str.c_str());
 #endif
 
-	auto content = json_root["content"];
-	for (std::string & key : content.getMemberNames()) {
-		int ikey = 0;
+	auto content = json_root;
+	for (Json::Value::ArrayIndex i = 0; i != json_root.size(); i++) {
+		auto object = json_root[i];
+		DWORD ikey = 0;
 		DWORD address_num = 0;
 		try{
-			ikey = std::stoi(key);
-			address_num = std::stoul(content[key].asString(), nullptr, 16);
+			ikey = object["id"].asInt();
+			address_num = object["address"].asInt();
 		}
 		catch (std::exception& e) {
-			DEBUG_INFO_LEVEL_1("Key %s of Json file is not a number, proceding",key.c_str());
+			DEBUG_INFO_LEVEL_1("Error parsing server json offset at index %d",i);
 			continue;
 		}
 		bufferOffsets->insert({ ikey,address_num });
@@ -239,55 +181,43 @@ int CCommunication::MainServerGetOffsets(std::map<int, DWORD>* bufferOffsets)
 	return 1;
 }
 
-int CCommunication::MainServerRequestCode(std::string* code)
+bool CCommunication::IsPremiumUser()
 {
 	Json::Value json_root;
+	
 	std::string url = WEB_SERVER_ADDRESS;
-	url += REQUEST_AUTH_ENDPOINT;
-	int val = MainServerPreformRequest(url, &json_root);
-	if (!val) {
-		DEBUG_INFO_LEVEL_1("Error performing auth code request!");
-		return val;
+	url += USER_ENDPOINT;
+
+	if (!MainServerPreformGetRequest(url, &json_root)) {
+		DEBUG_INFO_LEVEL_1("Error performing Getting user information");
+		return false;
 	}
 
-	std::string content = json_root.get("content", "error").asString();
-	if (content == "error") {
-		DEBUG_INFO_LEVEL_1("Error no content in request!");
-		return 0;
+	try {
+		auto json_premium = json_root.get("isPremium", 0);
+		if (json_premium.asInt() == 1) {
+			DEBUG_INFO_LEVEL_1("User is premium!");
+			return true;
+		}
+		else {
+			DEBUG_INFO_LEVEL_1("User is not premium!");
+			return false;
+		}
 	}
+	catch (std::exception& e) {
+		DEBUG_INFO_LEVEL_1("Error getting premium status");
+		return false;
+	}
+}
 
-	*code = content;
 
+int CCommunication::MainServerRequestAuthKey(std::string* key)
+{
+	getJWTToken(key);
 	return 1;
 }
 
-int CCommunication::MainServerRequestAuthKey(std::string& code,std::string* key)
-{
-	Json::Value json_root;
-	std::string url = WEB_SERVER_ADDRESS;
-	url += REQUEST_API_KEY_ENDPOINT;
-
-	Json::Value args;
-	args["auth_code"] = code;
-
-	int val = MainServerPreformRequest(url, &json_root, args);
-	if (!val) {
-		DEBUG_INFO_LEVEL_1("Error performing auth key request!");
-		return val;
-	}
-
-	Json::Value content = json_root.get("content", "error");
-	if (content == "error") {
-		DEBUG_INFO_LEVEL_1("Error no content in request!");
-		return 0;
-	}
-
-	*key = content.get("apiKey","0").asString();
-
-	return 1;
-}
-
-int CCommunication::MainServerPreformRequest(std::string& url, Json::Value* json_root, Json::Value& post_fields, bool use_api_key)
+int CCommunication::MainServerPreformRequest(std::string& url, Json::Value* json_root, Json::Value& post_fields, bool use_api_key, bool use_https)
 {
 	CURL* curl = curl_easy_init();
 	CURLcode res;
@@ -296,7 +226,7 @@ int CCommunication::MainServerPreformRequest(std::string& url, Json::Value* json
 	struct curl_slist* headers = nullptr;
 	if (use_api_key) {
 		std::string header_fields;
-		header_fields += "api_key: ";
+		header_fields += "Authorization: Bearer ";
 		header_fields += authKey;
 		headers = curl_slist_append(headers, header_fields.c_str());
 	}
@@ -311,6 +241,14 @@ int CCommunication::MainServerPreformRequest(std::string& url, Json::Value* json
 	curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
 	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteSingleThreadback);
 	curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
+	curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, FALSE);
+
+	if (use_https) {
+		curl_easy_setopt(curl, CURLOPT_SSLCERT_BLOB, &sslCert);
+		curl_easy_setopt(curl, CURLOPT_SSLKEY_BLOB, &sslKey);
+		curl_easy_setopt(curl, CURLOPT_KEYPASSWD, SSL_PASSWORD);
+		//curl_easy_setopt(curl, CURLOPT_SSLCERTTYPE, "PEM");
+	}
 
 	std::string post_request;
 	if (post_fields.size() > 0) {
@@ -329,27 +267,44 @@ int CCommunication::MainServerPreformRequest(std::string& url, Json::Value* json
 		curl_easy_cleanup(curl);
 		return 0;
 	}
+
+	long answer_code;
+
+	//Check status code
+	curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &answer_code);
+
+	//Cleanup
 	curl_easy_cleanup(curl);
+
+	//Parse response to json object
 	Json::CharReaderBuilder builder;
 	Json::CharReader* json_reader = builder.newCharReader();
-	std::string errors{};
+	std::string errors = "";
+
 	bool val = json_reader->parse(readBuffer.data(), readBuffer.data() + readBuffer.length(), json_root, &errors);
-	if (!val) {
-		DEBUG_INFO_LEVEL_1("Error doing parse of response, errors:%s", errors.data());
-		return 0;
+	if (val) {
+		//Check error code and print errors
+		Json::StreamWriterBuilder builders;
+
+		if (answer_code != 200) {
+			std::string message = Json::writeString(builders, json_root);
+			DEBUG_INFO_LEVEL_1("Error performing request, error_code: %d, message: \n%s", answer_code, message.c_str());
+			return 0;
+		}
+	}
+	else {
+		std::string answer(readBuffer.data(), readBuffer.length());
+		if (answer_code != 200) {
+			DEBUG_INFO_LEVEL_1("Error performing request, error_code: %d, message: \n%s", answer_code, answer.c_str());
+			return 0;
+		}
 	}
 
-	std::string value = json_root->get("status", "error").asString();
-	if (value == "error") {
-		std::string message = json_root->get("message", "Uknown error.").asString();
-		DEBUG_INFO_LEVEL_1("Error performing request, message: %s", message.data());
-		return 0;
-	}
 
 	return 1;
 }
 
-int CCommunication::MainServerPreformRequest(std::string& url, Json::Value* response, bool use_api_key)
+int CCommunication::MainServerPreformGetRequest(std::string& url, Json::Value* response, bool use_api_key)
 {
 	Json::Value post_fields;
 	return MainServerPreformRequest(url, response, post_fields, use_api_key);

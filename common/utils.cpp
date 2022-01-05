@@ -2,10 +2,17 @@
 #include <map>
 #include <iomanip>
 #include <shlobj.h>
+#include <fstream>
+#include "SimpleIni.h"
+#include "Config.h"
 
 static std::map<tTimePoint, tTimerFunction> timer_functions;
+using namespace std::chrono;
+
+
 char DLLPATH[256] = { 0 };
 char MAP_PATH[256] = { 0 };
+char INI_FILE_PATH[256] = { 0 };
 bool debug_print = 1;
 
 FILE* traceFile;
@@ -86,6 +93,7 @@ void Stack::printDebug()
 		printf("%#02x ", b);
 	}
 }
+
 
 bool isDebugEnable()
 {
@@ -255,26 +263,28 @@ const char* getMapsPath()
 	return MAP_PATH;
 }
 
-//Simple enciding of disk serial number
-HRESULT getKeyPath(std::string* path)
+
+void getJWTToken(std::string* buffer)
 {
-	CHAR my_documents[MAX_PATH];
-	auto result = SHGetFolderPath(NULL, CSIDL_MYDOCUMENTS, NULL, SHGFP_TYPE_CURRENT, my_documents);
-	if (result != S_OK) {
-		return result;
+	CSimpleIniA ini;
+
+	ini.SetUnicode();
+	SI_Error rc = ini.LoadFile(INI_FILE_PATH);
+	if (rc >= 0) {
+		*buffer = ini.GetValue("Config", JWT_INI_VALUE_NAME, DEFAULT_API_KEY);		
 	}
-	*path = std::string(my_documents);
-	DWORD val = getHWID();
-	*path += "\\";
-	*path += encrypt(std::to_string(val));
-	return S_OK;
+	else {
+		*buffer = DEFAULT_API_KEY;
+		ini.SetValue("Config", JWT_INI_VALUE_NAME, DEFAULT_API_KEY);
+		ini.SaveFile(INI_FILE_PATH);
+	}
 }
 
-DWORD getHWID()
+std::string getHWID()
 {
 	DWORD VolumeSerialNumber = 0;
 	GetVolumeInformation("c:\\", NULL, NULL, &VolumeSerialNumber, NULL, NULL, NULL, NULL);
-	return VolumeSerialNumber;
+	return std::to_string(VolumeSerialNumber);
 }
 
 void setDllPath(char* file)
@@ -282,7 +292,10 @@ void setDllPath(char* file)
 	strcpy(DLLPATH, file);
 	stripFileFromPath(DLLPATH,256);
 	strcpy(MAP_PATH, DLLPATH);
+	strcpy(INI_FILE_PATH, DLLPATH);
 	strcat(MAP_PATH, SUBPATH_MAPS);
+	strcat(INI_FILE_PATH, CONFIG_INI_PATH);
+
 }
 
 void setDebugStreamFiles()
@@ -359,6 +372,16 @@ void executeTimerFunctions()
 		}
 		++it;
 	}
+}
+
+std::string serializeTimePoint(const std::chrono::system_clock::time_point& time, const std::string& format)
+{
+	std::time_t tt = system_clock::to_time_t(time);
+	std::tm tm = *std::gmtime(&tt); //GMT (UTC)
+	//std::tm tm = *std::localtime(&tt); //Locale time-zone, usually UTC by default.
+	std::stringstream ss;
+	ss << std::put_time(&tm, format.c_str());
+	return ss.str();
 }
 
 

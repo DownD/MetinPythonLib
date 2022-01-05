@@ -352,58 +352,6 @@ PyObject* setOutFilterMode(PyObject* poSelf, PyObject* poArgs)
 	return Py_BuildNone();
 }
 
-PyObject* pySetRecvAddGrndItem(PyObject* poSelf, PyObject* poArgs)
-{
-	PyObject* obj;
-	if (!PyTuple_GetObject(poArgs, 0, &obj)) {
-		return Py_BuildException();
-	}
-
-	CNetworkStream& net = CNetworkStream::Instance();
-	bool val = net.setRecvAddGrndItemCallback(obj);
-	if (val)
-		return Py_BuildNone();
-	else {
-		Py_XDECREF(obj);
-		return Py_BuildException("Fail to set recvAddGrndItem callback");
-	}
-
-}
-
-PyObject* pySetRecvChangeOwnershipGrndItem(PyObject* poSelf, PyObject* poArgs)
-{
-	PyObject* obj;
-	if (!PyTuple_GetObject(poArgs, 0, &obj)) {
-		return Py_BuildException();
-	}
-
-	CNetworkStream& net = CNetworkStream::Instance();
-	bool val = net.setRecvChangeOwnershipGrndItemCallback(obj);
-	if (val)
-		return Py_BuildNone();
-	else {
-		Py_XDECREF(obj);
-		return Py_BuildException("Fail to set recvChangeOwnershipGrndItemCallback callback");
-	}
-}
-
-PyObject* pySetRecvDelGrndItem(PyObject* poSelf, PyObject* poArgs)
-{
-	PyObject* obj;
-	if (!PyTuple_GetObject(poArgs, 0, &obj)) {
-		return Py_BuildException();
-	}
-
-	CNetworkStream& net = CNetworkStream::Instance();
-	bool val = net.setRecvDelGrndItemCallback(obj);
-	if (val)
-		return Py_BuildNone();
-	else {
-		Py_XDECREF(obj);
-		return Py_BuildException("Fail to set recvDelGrndItemCallback callback");
-	}
-}
-
 PyObject* pyIsDead(PyObject* poSelf, PyObject* poArgs)
 {
 	int vid;
@@ -509,10 +457,8 @@ PyObject* pyRegisterNewShopCallback(PyObject* poSelf, PyObject* poArgs)
 	bool val = net.setNewShopCallback(obj);
 	if(val)
 		return Py_BuildNone();
-	else {
-		Py_XDECREF(obj);
+	else
 		return Py_BuildException();
-	}
 
 
 	return Py_BuildNone();
@@ -529,10 +475,8 @@ PyObject* pyRecvDigMotionCallback(PyObject* poSelf, PyObject* poArgs)
 	bool val = net.setDigMotionCallback(obj);
 	if (val)
 		return Py_BuildNone();
-	else {
-		Py_XDECREF(obj);
+	else
 		return Py_BuildException();
-	}
 
 
 	return Py_BuildNone();
@@ -549,10 +493,8 @@ PyObject* pyRecvStartFishCallback(PyObject* poSelf, PyObject* poArgs)
 	bool val = net.setStartFishCallback(obj);
 	if (val)
 		return Py_BuildNone();
-	else {
-		Py_XDECREF(obj);
+	else
 		return Py_BuildException();
-	}
 }
 
 PyObject* pyBlockAttackPackets(PyObject* poSelf, PyObject* poArgs)
@@ -781,10 +723,8 @@ PyObject* pySetRecvChatCallback(PyObject* poSelf, PyObject* poArgs)
 	bool val = net.setChatCallback(obj);
 	if (val)
 		return Py_BuildNone();
-	else {
-		Py_XDECREF(obj);
+	else
 		return Py_BuildException("Fail to set chat callback");
-	}
 
 
 	return Py_BuildNone();
@@ -832,9 +772,6 @@ PyObject* pyGetRequest(PyObject* poSelf, PyObject* poArgs)
 		CCommunication& c = CCommunication::Instance();
 		int id = c.GetRequest(url, ComCallbackFunction(callback));
 		return Py_BuildValue("(i)", id);
-	}
-	else {
-		Py_XDECREF(callback);
 	}
 
 	return Py_BuildValue("(i)", -1);
@@ -897,6 +834,16 @@ PyObject* pyCloseWebsocket(PyObject* poSelf, PyObject* poArgs)
 
 
 
+//This methods must be the last ones on the s_methods variable
+static std::set<std::string> premium_methods = 
+{
+	std::string("GetRequest"),
+	std::string("OpenWebsocket"),
+	std::string("SendWebsocket"),
+	std::string("CloseWebsocket"),
+	std::string("SkipRenderer"),
+	std::string("UnskipRenderer")
+};
 
 static PyMethodDef s_methods[] =
 {
@@ -911,7 +858,7 @@ static PyMethodDef s_methods[] =
 	{ "SendStatePacket",		pySendStatePacket,	METH_VARARGS },
 	{ "IsDead",					pyIsDead,			METH_VARARGS },
 
-#ifdef _DEBUG 
+#ifdef _DEBUG
 	{ "LaunchPacketFilter",		launchPacketFilter,	METH_VARARGS },
 	{ "ClosePacketFilter",		closePacketFilter,	METH_VARARGS },
 	{ "StartPacketFilter",		startPacketFilter,	METH_VARARGS },
@@ -926,10 +873,6 @@ static PyMethodDef s_methods[] =
 	{ "SetOutFilterMode",		setOutFilterMode,	METH_VARARGS },
 	{ "SetInFilterMode",		setInFilterMode,	METH_VARARGS },
 #endif
-	{ "SetRecvAddGrndItemCallback",		pySetRecvAddGrndItem,METH_VARARGS },
-	{ "SetRecvChangeOwnershipGrndItemCallback",		pySetRecvChangeOwnershipGrndItem,METH_VARARGS },
-	{ "SetRecvDelGrndItemCallback",		pySetRecvDelGrndItem,METH_VARARGS },
-
 	{ "SendAddFlyTarget",		pySendAddFlyTarget,	METH_VARARGS },
 	{ "SendShoot",				pySendShoot,		METH_VARARGS },
 	{ "EnableCollisions",		pyEnableCollisions,	METH_VARARGS },
@@ -937,7 +880,6 @@ static PyMethodDef s_methods[] =
 	{ "RegisterNewShopCallback",pyRegisterNewShopCallback,METH_VARARGS },
 	{ "SendUseSkillPacket",		pySendUseSkillPacket,METH_VARARGS },
 	{ "SendUseSkillPacketBySlot",pySendUseSkillPacketBySlot,METH_VARARGS },
-
 
 	//PICKUP
 	{ "ItemGrndFilterClear",	pyItemGrndFilterClear,	METH_VARARGS },
@@ -973,21 +915,36 @@ static PyMethodDef s_methods[] =
 	{ "SetMoveSpeedMultiplier",	pySetMoveSpeed,		METH_VARARGS},
 //#endif
 
+	{ "SyncPlayerPosition", pySyncPlayerPosition ,	METH_VARARGS},
+	{ "SetRecvChatCallback", pySetRecvChatCallback ,	METH_VARARGS},
+
+	//Premium
 	{ "GetRequest",			pyGetRequest,			METH_VARARGS},
 	{ "OpenWebsocket",		pyOpenWebsocket,		METH_VARARGS},
 	{ "SendWebsocket",		pySendWebsocket,		METH_VARARGS},
 	{ "CloseWebsocket",		pyCloseWebsocket,		METH_VARARGS},
 	{ "SkipRenderer",		pySkipRenderer ,		METH_VARARGS},
 	{ "UnskipRenderer",		pyUnSkipRenderer ,		METH_VARARGS},
-	{ "SyncPlayerPosition", pySyncPlayerPosition ,	METH_VARARGS},
-	{ "SetRecvChatCallback", pySetRecvChatCallback ,	METH_VARARGS},
 
 
 	{ NULL, NULL }
 };
 
 void initModule() {
+	
+	CCommunication& c = CCommunication::Instance();
+	bool is_premium = c.IsPremiumUser();
+	if (!is_premium) {
+		for (int i = 0; s_methods[i].ml_name != 0; i++) {
+			if (premium_methods.find(std::string(s_methods[i].ml_name)) != premium_methods.end()) { //is premium function, remove
+				DEBUG_INFO_LEVEL_1("Removing premium function %s", s_methods[i].ml_name);
+				s_methods[i] = { NULL, NULL };
+			}
+		}
+	}
+	DEBUG_INFO_LEVEL_1("Premium setup ended");
 	packet_mod = Py_InitModule("eXLib", s_methods);
+	DEBUG_INFO_LEVEL_1("eXLib module created");
 
 	PyModule_AddObject(packet_mod, "InstancesList", CInstanceManager::Instance().getVIDList());
 	PyModule_AddStringConstant(packet_mod, "PATH", getDllPath());
@@ -1025,6 +982,7 @@ void initModule() {
 		i.exit();
 		return;
 	}
+
 	executePythonFile("init.py");
 }
 

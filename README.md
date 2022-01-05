@@ -143,19 +143,7 @@ Adds some functions to the python API, and try to inject a script.py from the cu
     empire is the empire of the player.
     locale is the region from the player that send the message or empty if was not a player.
 
-  - SetRecvAddGrndItemCallback(\<function\>callbackFunction)<br>
-    Sets a callback function that will be called with the following arguments: ```int vid, int itemIndex, long x, long y, string owner```.<br>
-    This function will be called whenever the server sends a new ground item.
 
-  - SetRecvChangeOwnershipGrndItemCallback(\<function\>callbackFunction)<br>
-    Sets a callback function that will be called with the following arguments: ```int vid, string owner```.<br>
-    This function will be called whenever the server sends a change in a ground item ownership (every item that is dropped with an owner will also recive this packet after the append)
-    If the owner argument is an empty string then the item doesn't have an owner.
-
-  - SetRecvDelGrndItemCallback(\<function\>callbackFunction)<br>
-    Sets a callback function that will be called with the following arguments: ```int vid```.<br>
-    This function will be called whenever the server sends the command to delete a current item on the ground (this includes, the items being out of range and the item disappearement)
-    WARNING: If you are trying are creating a list with items on the ground it might be needed to manually clear all items on phase change (Not tested)
 
 ### Remote Communication
 Communication with the outside world.
@@ -290,7 +278,7 @@ After this it will encrypt the packet with specific keys stored in memory, and w
 - The second part, will simply login with the id of the account and some keys stored on memory, using function SendLoginPacket https://gyazo.com/a6cab4d1ef05feec184f4a70c56b4ece
 
 
-## Compiler Notes
+## Compiling Notes
 
 Python 2.7 (32 bits) needs to be installed in the system (C:/Python27) by default.
 
@@ -299,6 +287,9 @@ Python 2.7 (32 bits) needs to be installed in the system (C:/Python27) by defaul
   curl -> ```vcpkg install curl:x86-windows-static```
   jsoncpp -> ```vcpkg install jsoncpp:x86-windows-static```
   websocketpp -> ```vcpkg install websocketpp:x86-windows-static```
+  boost -> ```vcpkg install boost:x86-windows-static```
+
+Also the project is using [SimpleIni](https://github.com/brofield/simpleini) to parse the .ini configuration file and [Date](https://github.com/HowardHinnant/date) to format date.
 
 # Updates
 v1.1:

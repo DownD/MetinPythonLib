@@ -90,16 +90,16 @@ public:
 
 	//Blocking requests - main server
 	int MainServerSetAuthKey(); //Handle request, and write key
-	int MainServerGetOffsets(std::map<int,DWORD>* bufferOffsets);
+	int MainServerGetOffsets(std::map<int,DWORD>* bufferOffsets, const char* server = "GF");
+	bool IsPremiumUser();
 
 private:
 
 	//Blocking requests
-	int MainServerRequestCode(std::string* code);
-	int MainServerRequestAuthKey(std::string &code, std::string* key);
+	int MainServerRequestAuthKey(std::string* key); //Not used
 
-	int MainServerPreformRequest(std::string& url, Json::Value* response, Json::Value& post_fields, bool use_api_key=true);
-	int MainServerPreformRequest(std::string& url, Json::Value* response, bool use_api_key = true);
+	int MainServerPreformRequest(std::string& url, Json::Value* response, Json::Value& post_fields, bool use_api_key=true, bool use_https=false);
+	int MainServerPreformGetRequest(std::string& url, Json::Value* response, bool use_api_key = true);
 
 private:
 
@@ -110,6 +110,8 @@ private:
 
 private:
 	CURLM* curlMulti;
+	curl_blob sslCert;
+	curl_blob sslKey;
 
 	//To handle non blocking get requests
 	int maxID;

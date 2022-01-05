@@ -198,7 +198,6 @@ struct SRcv_GroundItemAddPacket {
 
 	DWORD VID;
 	DWORD itemIndex;
-	DWORD uknown;
 };
 
 struct SRcv_GroundItemDeletePacket {
@@ -398,7 +397,5 @@ struct SGroundItem {
 	long x, y;
 	DWORD index;
 	DWORD vid;
-	bool can_pick;
-	std::string owner;
-	//DWORD owner;//-1 if owner is other player, 0 if is own item or doesn't have an owner 
+	DWORD owner;//-1 if owner is other player, 0 if is own item or doesn't have an owner 
 };

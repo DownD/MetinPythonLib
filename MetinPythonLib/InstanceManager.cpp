@@ -97,7 +97,7 @@ void CInstanceManager::addItemGround(SRcv_GroundItemAddPacket& itemPacket)
 {
 	SGroundItem item;
 	item.index = itemPacket.itemIndex;
-	item.can_pick = true;
+	item.owner = 0;
 	item.x = itemPacket.x;
 	item.y = itemPacket.y;
 	item.vid = itemPacket.VID;
@@ -106,7 +106,7 @@ void CInstanceManager::addItemGround(SRcv_GroundItemAddPacket& itemPacket)
 		return;
 	}
 
-	DEBUG_INFO_LEVEL_3("Adding item ground with index=%d vid=%d at position x=%d,y=%d, ownerVID=%d", item.index, item.vid, item.x, item.y, item.can_pick);
+	DEBUG_INFO_LEVEL_3("Adding item ground with index=%d vid=%d at position x=%d,y=%d, ownerVID=%d", item.index, item.vid, item.x, item.y, item.owner);
 
 	groundItems.insert(std::pair<DWORD, SGroundItem>(item.vid, item));
 }
@@ -138,14 +138,13 @@ void CInstanceManager::changeItemOwnership(SRcv_PacketOwnership& ownership)
 		std::string mainPlayerName = player.getPlayerName();
 		auto& item = iter->second;
 		if (mainPlayerName.compare(ownership.szName) == 0) {
-			item.can_pick = true;
+			item.owner= 0;
 		}
 		else if (mainPlayerName.compare("") == 0) {
-			DEBUG_INFO_LEVEL_4("Ground Item is now without ownership!", ownership.dwVID);
-			item.can_pick = true;
+			item.owner = 0;
 		}
 		else {
-			item.can_pick = false;
+			item.owner  = -1;
 		}
 		
 	}
@@ -194,12 +193,13 @@ bool CInstanceManager::getCloseItemGround(int x, int y, SGroundItem* buffer)
 
 	CBackground& background = CBackground::Instance();
 
+
 	for (auto iter = groundItems.begin(); iter != groundItems.end(); iter++) {
 		DWORD vid = iter->first;
 		SGroundItem& item = iter->second;
 		if (vid == 0)
 			continue;
-		if (item.can_pick == false) {
+		if (item.owner != 0) {
 			continue;
 		}
 		float dist = distance(x, y, item.x, item.y);
@@ -212,7 +212,7 @@ bool CInstanceManager::getCloseItemGround(int x, int y, SGroundItem* buffer)
 				continue;
 			}
 		}
-		DEBUG_INFO_LEVEL_4("Item Arround itemVID=%d ID=%d can_pick=%d | X:%d  Y:%d", item.vid, item.index, item.can_pick, item.x, item.y);
+		DEBUG_INFO_LEVEL_4("Item Arround itemVID=%d ID=%d ownerVID=%d | X:%d  Y:%d", item.vid, item.index, item.owner, item.x, item.y);
 		bool is_in = pickupFilter.find(item.index) != pickupFilter.end();
 
 		if (pickOnFilter && is_in) {
@@ -246,7 +246,7 @@ bool CInstanceManager::getCloseItemGround(int x, int y, SGroundItem* buffer)
 	}
 	if (pickItemFirst && selItemVID) {
 		SGroundItem& selItem = groundItems.at(selItemVID);
-		DEBUG_INFO_LEVEL_4("Close Item itemVID=%d ID=%d can_pick=%d | X:%d  Y:%d", selItem.vid, selItem.index, selItem.can_pick, selItem.x, selItem.y);
+		DEBUG_INFO_LEVEL_4("Close Item itemVID=%d ID=%d ownerVID=%d | X:%d  Y:%d", selItem.vid, selItem.index, selItem.owner, selItem.x, selItem.y);
 		*buffer = selItem;
 		return true;
 	}
@@ -254,13 +254,13 @@ bool CInstanceManager::getCloseItemGround(int x, int y, SGroundItem* buffer)
 	if (selItemVID || selYangVID) {
 		if (minItemDist < minYangDist) {
 			SGroundItem& selItem = groundItems.at(selItemVID);
-			DEBUG_INFO_LEVEL_4("Close Item itemVID=%d ID=%d can_pick =%d  | X:%d  Y:%d", selItem.vid,  selItem.index, selItem.can_pick, selItem.x, selItem.y);
+			DEBUG_INFO_LEVEL_4("Close Item itemVID=%d ID=%d ownerVID=%d  | X:%d  Y:%d", selItem.vid,  selItem.index, selItem.owner, selItem.x, selItem.y);
 			*buffer = selItem;
 			return true;
 		}
 		else {
 			SGroundItem& selItem = groundItems.at(selYangVID);
-			DEBUG_INFO_LEVEL_4("Close Yang yangVID=%d ID=%d can_pick=%d  | X:%d  Y:%d", selItem.vid, selItem.index,selItem.can_pick, selItem.x, selItem.y);
+			DEBUG_INFO_LEVEL_4("Close Item itemVID=%d ID=%d ownerVID=%d  | X:%d  Y:%d", selItem.vid, selItem.index,selItem.owner, selItem.x, selItem.y);
 			*buffer = selItem;
 			return true;
 		}

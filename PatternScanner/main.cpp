@@ -15,6 +15,10 @@
 #define CURL_STATICLIB
 #define PRINT(...); {{printf(__VA_ARGS__); printf("\n");fflush(stdout);}}
 
+
+//eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJiek9aaXVieE5TUWFQcU5VQUppQndHZ1lWS2R4TXoifQ.IOZCK89TO7b6MgwUt7NR9CHi0hdFitnXvLBSD5pbQZo
+
+
 HANDLE threadID;
 HMODULE hDll;
 
@@ -36,10 +40,8 @@ void SetupConsole()
 
 
 
-int get_api_key(std::string* key) {
-	*key = "s3msAiwKABfS0+8KxztaZUKhisC/F7PPJB8SiLOvalk=";
-//*key = "dsfdsf";
-	return 1;
+void get_api_key(std::string* key) {
+	getJWTToken(key);
 }
 
 size_t WriteSingleThreadback(void* contents, size_t size, size_t nmemb, void* userp)
@@ -84,19 +86,26 @@ DWORD WINAPI ThreadProc(LPVOID lpParameter)
 #endif
 
 #ifdef SEND_TO_SERVER
+
+	//Create Json
 	Json::Value root;
 	for (auto& x : addresses) {
-		std::stringstream address;
-		address << "0x" << std::hex << std::setfill('0') << std::setw(6) << x.second.first;
+		Json::Value offset;
+		offset["name"] = x.second.second;
+		offset["id"] = x.first;
+		offset["address"] = x.second.first;
+		offset["server"] = "GF";
 
-		root[std::to_string(x.first)] = address.str();
+		root.append(offset);
 	}
 	PRINT("JSON created");
 
 	Json::StreamWriterBuilder builders;
 	const std::string post_request = Json::writeString(builders, root);
+	PRINT("Request:\n %s", post_request.c_str());
 	
 
+	//Prepare curl to send data
 	CURLcode ret;
 	CURL* hnd;
 	struct curl_slist* slist1;
@@ -106,18 +115,16 @@ DWORD WINAPI ThreadProc(LPVOID lpParameter)
 
 	slist1 = NULL;
 	slist1 = curl_slist_append(slist1, "Content-Type: application/json");
+	slist1 = curl_slist_append(slist1, "accept: application/json");
 	std::string auth_header;
 	std::string key;
+	get_api_key(&key);
 
-	if (get_api_key(&key)) {
-		auth_header += "api_key: ";
-		auth_header += key;
-		slist1 = curl_slist_append(slist1, auth_header.c_str());
-	}
-	else {
-		PRINT("API key not set");
-		return 0;
-	}
+	PRINT("JWToken= %s", key.c_str());
+
+	auth_header += "Authorization: Bearer ";
+	auth_header += key;
+	slist1 = curl_slist_append(slist1, auth_header.c_str());
 
 	PRINT("Sending information to server");
 
@@ -132,31 +139,47 @@ DWORD WINAPI ThreadProc(LPVOID lpParameter)
 	curl_easy_setopt(hnd, CURLOPT_WRITEFUNCTION, WriteSingleThreadback);
 	curl_easy_setopt(hnd, CURLOPT_WRITEDATA, &readBuffer);
 
+
 	ret = curl_easy_perform(hnd);
+	PRINT("Message Sent");
 	if (ret != CURLE_OK) {
 		PRINT("Error on curl_easy_perform, error_code=%d, url=%s", ret, url.c_str());
 		curl_easy_cleanup(hnd);
 		return 0;
 	}
+
+	long answer_code;
+
+	//Check status code
+	curl_easy_getinfo(hnd, CURLINFO_RESPONSE_CODE, &answer_code);
+
 	curl_easy_cleanup(hnd);
 	curl_slist_free_all(slist1);
+	PRINT("Curl cleaned");
 
 	Json::CharReaderBuilder builder;
 	Json::CharReader* json_reader = builder.newCharReader();
-	std::string errors;
+	std::string errors = "";
 
 	bool val = json_reader->parse(readBuffer.data(), readBuffer.data() + readBuffer.length(), &json_root, &errors);
-	if (!val) {
-		PRINT("Error doing parse of response, errors:%s", errors.c_str());
-		return 0;
+	if (val) {
+		//Check error code and print errors
+		Json::StreamWriterBuilder builders2;
+
+		if (answer_code != 200) {
+			std::string message = Json::writeString(builders2, json_root);
+			PRINT("Error performing request, error_code: %d, message: \n%s", answer_code, message.c_str());
+			return 0;
+		}
+	}
+	else {
+		std::string answer(readBuffer.data(), readBuffer.length());
+		if (answer_code != 200) {
+			PRINT("Error performing request, error_code: %d, message: \n%s", answer_code, answer.c_str());
+			return 0;
+		}
 	}
 
-	std::string value = json_root.get("status", "error").asString();
-	if (value == "error") {
-		std::string message = json_root.get("message", "Uknown error.").asString();
-		PRINT("Error performing request, message: %s", message.c_str());
-		return 0;
-	}
 
 	PRINT("Server adresses updated!");
 #endif
