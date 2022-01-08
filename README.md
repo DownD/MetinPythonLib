@@ -284,7 +284,7 @@ Python 2.7 (32 bits) needs to be installed in the system (C:/Python27) by defaul
 
 - Dependencies using vcpkg:
   cpprestsdk -> ```vcpkg install --recurse cpprestsdk[default-features,websockets]:x86-windows-static```
-  curl -> ```vcpkg install curl:x86-windows-static```
+  curl -> ```vcpkg install curl[core,openssl]:x86-windows-static```
   jsoncpp -> ```vcpkg install jsoncpp:x86-windows-static```
   websocketpp -> ```vcpkg install websocketpp:x86-windows-static```
   boost -> ```vcpkg install boost:x86-windows-static```

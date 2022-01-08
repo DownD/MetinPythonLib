@@ -110,6 +110,18 @@ DWORD WINAPI ThreadProc(LPVOID lpParameter)
 	CURL* hnd;
 	struct curl_slist* slist1;
 
+	curl_blob sslCert;
+	curl_blob sslKey;
+
+	sslCert.data = (void*)SSL_CERTIFICATE;
+	sslCert.len = strlen(SSL_CERTIFICATE);
+	sslCert.flags = CURL_BLOB_COPY;
+
+	sslKey.data = (void*)SSL_CERTIFICATE_KEY;
+	sslKey.len = strlen(SSL_CERTIFICATE_KEY);
+	sslKey.flags = CURL_BLOB_COPY;
+
+
 	std::string readBuffer;
 	Json::Value json_root;//Answer
 
@@ -138,6 +150,12 @@ DWORD WINAPI ThreadProc(LPVOID lpParameter)
 	curl_easy_setopt(hnd, CURLOPT_CUSTOMREQUEST, "POST");
 	curl_easy_setopt(hnd, CURLOPT_WRITEFUNCTION, WriteSingleThreadback);
 	curl_easy_setopt(hnd, CURLOPT_WRITEDATA, &readBuffer);
+
+	curl_easy_setopt(hnd, CURLOPT_SSL_VERIFYPEER, FALSE);
+	curl_easy_setopt(hnd, CURLOPT_SSL_VERIFYHOST, FALSE);
+
+	curl_easy_setopt(hnd, CURLOPT_SSLCERT_BLOB, &sslCert);
+	curl_easy_setopt(hnd, CURLOPT_SSLKEY_BLOB, &sslKey);
 
 
 	ret = curl_easy_perform(hnd);

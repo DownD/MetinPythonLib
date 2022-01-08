@@ -2,6 +2,7 @@
 #include "Communication.h"
 #include "../common/Config.h"
 #include <fstream>
+#include "VMProtectSDK.h"
 
 
 std::map<int, CCommunication::GetInstance> CCommunication::getRecvBuffer;
@@ -11,18 +12,23 @@ CCommunication::CCommunication() {
 	curlMulti = curl_multi_init();
 	maxID = 0;
 
-	sslCert.data = (void*)SSL_CERTIFICATE;
-	sslCert.len = strlen(SSL_CERTIFICATE);
+	const char* cert = SSL_CERTIFICATE;
+	const char* cert_key = SSL_CERTIFICATE_KEY;
+
+	sslCert.data = (void*)cert;
+	sslCert.len = strlen(cert);
 	sslCert.flags = CURL_BLOB_COPY;
 
-	sslKey.data = (void*)SSL_CERTIFICATE_KEY;
-	sslKey.len = strlen(SSL_CERTIFICATE_KEY);
+	sslKey.data = (void*)cert_key;
+	sslKey.len = strlen(cert_key);
 	sslKey.flags = CURL_BLOB_COPY;
+
+	/*VMProtectFreeString(cert);
+	VMProtectFreeString(cert_key);*/
 }
 
 CCommunication::~CCommunication()
 {
-
 	curl_multi_cleanup(curlMulti);
 }
 
@@ -136,6 +142,7 @@ int CCommunication::MainServerSetAuthKey()
 
 int CCommunication::MainServerGetOffsets(std::map<int, DWORD>* bufferOffsets, const char* server)
 {
+	VMProtectBeginUltra("GetOffsets");
 	if (authKey.size() < 1) {
 		DEBUG_INFO_LEVEL_1("Missing auth key!");
 		return 0;
@@ -151,7 +158,7 @@ int CCommunication::MainServerGetOffsets(std::map<int, DWORD>* bufferOffsets, co
 	url += OFFSETS_ENDPOINT;
 
 	DEBUG_INFO_LEVEL_2("Requesting offsets from server");
-	int val = MainServerPreformRequest(url, &json_root,json_post);
+	int val = MainServerPreformRequest(url, &json_root,json_post,1,1);
 	if (!val) {
 		DEBUG_INFO_LEVEL_1("Error performing Get offsets request!");
 		return 0;
@@ -183,12 +190,13 @@ int CCommunication::MainServerGetOffsets(std::map<int, DWORD>* bufferOffsets, co
 
 bool CCommunication::IsPremiumUser()
 {
+	VMProtectBeginUltra("Premium");
 	Json::Value json_root;
 	
 	std::string url = WEB_SERVER_ADDRESS;
 	url += USER_ENDPOINT;
 
-	if (!MainServerPreformGetRequest(url, &json_root)) {
+	if (!MainServerPreformGetRequest(url, &json_root,1)) {
 		DEBUG_INFO_LEVEL_1("Error performing Getting user information");
 		return false;
 	}
@@ -210,6 +218,12 @@ bool CCommunication::IsPremiumUser()
 	}
 }
 
+void CCommunication::clearMemoryCertificates()
+{
+	sslKey = { 0 };
+	sslCert = { 0 };
+}
+
 
 int CCommunication::MainServerRequestAuthKey(std::string* key)
 {
@@ -219,8 +233,10 @@ int CCommunication::MainServerRequestAuthKey(std::string* key)
 
 int CCommunication::MainServerPreformRequest(std::string& url, Json::Value* json_root, Json::Value& post_fields, bool use_api_key, bool use_https)
 {
+	VMProtectBeginUltra("PreformRequest");
 	CURL* curl = curl_easy_init();
 	CURLcode res;
+
 
 	std::string readBuffer;
 	struct curl_slist* headers = nullptr;
@@ -242,12 +258,12 @@ int CCommunication::MainServerPreformRequest(std::string& url, Json::Value* json
 	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteSingleThreadback);
 	curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
 	curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, FALSE);
+	curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, FALSE);
 
 	if (use_https) {
 		curl_easy_setopt(curl, CURLOPT_SSLCERT_BLOB, &sslCert);
 		curl_easy_setopt(curl, CURLOPT_SSLKEY_BLOB, &sslKey);
-		curl_easy_setopt(curl, CURLOPT_KEYPASSWD, SSL_PASSWORD);
-		//curl_easy_setopt(curl, CURLOPT_SSLCERTTYPE, "PEM");
+		curl_easy_setopt(curl, CURLOPT_SSLCERTTYPE, "PEM");
 	}
 
 	std::string post_request;
@@ -257,6 +273,8 @@ int CCommunication::MainServerPreformRequest(std::string& url, Json::Value* json
 		curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "POST");
 		curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post_request.c_str());
 	}
+
+	curl_easy_setopt(curl, CURLOPT_STDERR, stdout);
 
 	res = curl_easy_perform(curl);
 	if (headers != nullptr) {
@@ -300,14 +318,13 @@ int CCommunication::MainServerPreformRequest(std::string& url, Json::Value* json
 		}
 	}
 
-
 	return 1;
 }
 
 int CCommunication::MainServerPreformGetRequest(std::string& url, Json::Value* response, bool use_api_key)
 {
 	Json::Value post_fields;
-	return MainServerPreformRequest(url, response, post_fields, use_api_key);
+	return MainServerPreformRequest(url, response, post_fields,1, use_api_key);
 }
 
 

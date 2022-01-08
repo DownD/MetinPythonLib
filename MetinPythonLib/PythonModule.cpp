@@ -6,6 +6,7 @@
 #include "Background.h"
 #include "Player.h"
 #include "Communication.h"
+#include "VMProtectSDK.h"
 
 /* PyObject* playerModule;
 PyObject* getMainPlayerPosition;*/
@@ -932,6 +933,7 @@ static PyMethodDef s_methods[] =
 
 void initModule() {
 	
+	VMProtectBeginUltra("PythonModule");
 	CCommunication& c = CCommunication::Instance();
 	bool is_premium = c.IsPremiumUser();
 	if (!is_premium) {
@@ -945,6 +947,7 @@ void initModule() {
 	DEBUG_INFO_LEVEL_1("Premium setup ended");
 	packet_mod = Py_InitModule("eXLib", s_methods);
 	DEBUG_INFO_LEVEL_1("eXLib module created");
+	VMProtectEnd();
 
 	PyModule_AddObject(packet_mod, "InstancesList", CInstanceManager::Instance().getVIDList());
 	PyModule_AddStringConstant(packet_mod, "PATH", getDllPath());

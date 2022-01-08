@@ -93,6 +93,9 @@ public:
 	int MainServerGetOffsets(std::map<int,DWORD>* bufferOffsets, const char* server = "GF");
 	bool IsPremiumUser();
 
+	//Once called the certificates cannot be setup again
+	void clearMemoryCertificates();
+
 private:
 
 	//Blocking requests
@@ -112,6 +115,7 @@ private:
 	CURLM* curlMulti;
 	curl_blob sslCert;
 	curl_blob sslKey;
+
 
 	//To handle non blocking get requests
 	int maxID;
