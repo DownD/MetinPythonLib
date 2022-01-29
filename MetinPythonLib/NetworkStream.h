@@ -78,6 +78,12 @@ public:
 	std::set<BYTE>* getPacketFilter(PACKET_TYPE t);
 
 
+	//ItemGround set callbacks
+	bool setRecvAddGrndItemCallback(PyObject* func);
+	bool setRecvChangeOwnershipGrndItemCallback(PyObject* func);
+	bool setRecvDelGrndItemCallback(PyObject* func);
+
+
 	//Block attack packets
 	void blockAttackPackets();
 	void unblockAttackPackets();
@@ -85,6 +91,11 @@ public:
 private:
 
 	void callStartFishCallback();
+
+	//ItemGround call callbacks
+	void callRecvAddGrndItemCallback(DWORD vid, DWORD index, long x, long y, std::string owner = "");
+	void callRecvChangeOwnershipGrndItemCallback(DWORD vid, std::string owner);
+	void callRecvDelGrndItemCallback(DWORD vid);
 
 	BYTE getPacketHeader(void* buffer, int size);
 	bool RecvGamePhase(BYTE* header);
@@ -117,6 +128,9 @@ private:
 	PyObject* shopRegisterCallback;
 	PyObject* recvStartFishCallback;
 	PyObject* chatCallback;
+	PyObject* recvAddGrndItemCallback;
+	PyObject* recvChangeOwnershipGrndItemCallback;
+	PyObject* recvDelGrndItemCallback;
 
 	//Packet filter
 	bool filterInboundOnlyIncluded;

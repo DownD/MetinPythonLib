@@ -58,6 +58,12 @@ PyObject* pySyncPlayerPosition(PyObject* poSelf, PyObject* poArgs);
 PyObject* pySetRecvChatCallback(PyObject* poSelf, PyObject* poArgs);
 
 
+//Python callbacks
+PyObject* pySetRecvAddGrndItem(PyObject* poSelf, PyObject* poArgs);
+PyObject* pySetRecvChangeOwnershipGrndItem(PyObject* poSelf, PyObject* poArgs);
+PyObject* pySetRecvDelGrndItem(PyObject* poSelf, PyObject* poArgs);
+
+
 
 //PyObject* pySetKeyState(PyObject* poSelf, PyObject* poArgs); //There is a similar function, OnKeyUp or OnKeyDown
 

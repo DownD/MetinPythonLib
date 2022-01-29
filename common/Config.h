@@ -6,7 +6,7 @@
 //#define USE_BUILTIN_PATTERNS
 //#define GET_ADDRESS_FROM_FILE
 
-#define WEB_SERVER_ADDRESS "http://136.244.118.103:8080/"
+#define WEB_SERVER_ADDRESS "https://136.244.118.103/"
 //#define WEB_SERVER_ADDRESS "https://127.0.0.1/"
 #define OFFSETS_ENDPOINT "api/private/offsets"
 #define USER_ENDPOINT "api/private/premium"

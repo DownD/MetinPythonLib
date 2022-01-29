@@ -541,6 +541,54 @@ void CNetworkStream::callRecvChatCallback(DWORD vid, const char* msg, BYTE type,
 	}
 }
 
+bool CNetworkStream::setRecvAddGrndItemCallback(PyObject* func)
+{
+	if (!PyCallable_Check(func)) {
+		DEBUG_INFO_LEVEL_1("RecvAddGrndItemCallback argument is not a function");
+		return false;
+	}
+
+	if (recvAddGrndItemCallback)
+		Py_DECREF(recvAddGrndItemCallback);
+	recvAddGrndItemCallback = func;
+
+	DEBUG_INFO_LEVEL_2("RecvAddGrndItemCallback function set sucessfully");
+
+	return true;
+}
+
+bool CNetworkStream::setRecvChangeOwnershipGrndItemCallback(PyObject* func)
+{
+	if (!PyCallable_Check(func)) {
+		DEBUG_INFO_LEVEL_1("RecvChangeOwnershipGrndItemCallback argument is not a function");
+		return false;
+	}
+
+	if (recvChangeOwnershipGrndItemCallback)
+		Py_DECREF(recvChangeOwnershipGrndItemCallback);
+	recvChangeOwnershipGrndItemCallback = func;
+
+	DEBUG_INFO_LEVEL_2("RecvChangeOwnershipGrndItemCallback function set sucessfully");
+
+	return true;
+}
+
+bool CNetworkStream::setRecvDelGrndItemCallback(PyObject* func)
+{
+	if (!PyCallable_Check(func)) {
+		DEBUG_INFO_LEVEL_1("RecvDelGrndItemCallback argument is not a function");
+		return false;
+	}
+
+	if (recvDelGrndItemCallback)
+		Py_DECREF(recvDelGrndItemCallback);
+	recvDelGrndItemCallback = func;
+
+	DEBUG_INFO_LEVEL_2("RecvDelGrndItemCallback function set sucessfully");
+
+	return true;
+}
+
 void CNetworkStream::openConsole()
 {
 	filterInboundOnlyIncluded = false;

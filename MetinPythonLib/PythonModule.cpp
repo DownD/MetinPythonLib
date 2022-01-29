@@ -833,6 +833,58 @@ PyObject* pyCloseWebsocket(PyObject* poSelf, PyObject* poArgs)
 	return Py_BuildValue("i", c.CloseWebsocket(id));
 }
 
+PyObject* pySetRecvAddGrndItem(PyObject* poSelf, PyObject* poArgs)
+{
+	PyObject* obj;
+	if (!PyTuple_GetObject(poArgs, 0, &obj)) {
+		return Py_BuildException();
+	}
+
+	CNetworkStream& net = CNetworkStream::Instance();
+	bool val = net.setRecvAddGrndItemCallback(obj);
+	if (val)
+		return Py_BuildNone();
+	else {
+		Py_XDECREF(obj);
+		return Py_BuildException("Fail to set recvAddGrndItem callback");
+	}
+
+}
+
+PyObject* pySetRecvChangeOwnershipGrndItem(PyObject* poSelf, PyObject* poArgs)
+{
+	PyObject* obj;
+	if (!PyTuple_GetObject(poArgs, 0, &obj)) {
+		return Py_BuildException();
+	}
+
+	CNetworkStream& net = CNetworkStream::Instance();
+	bool val = net.setRecvChangeOwnershipGrndItemCallback(obj);
+	if (val)
+		return Py_BuildNone();
+	else {
+		Py_XDECREF(obj);
+		return Py_BuildException("Fail to set recvChangeOwnershipGrndItemCallback callback");
+	}
+}
+
+PyObject* pySetRecvDelGrndItem(PyObject* poSelf, PyObject* poArgs)
+{
+	PyObject* obj;
+	if (!PyTuple_GetObject(poArgs, 0, &obj)) {
+		return Py_BuildException();
+	}
+
+	CNetworkStream& net = CNetworkStream::Instance();
+	bool val = net.setRecvDelGrndItemCallback(obj);
+	if (val)
+		return Py_BuildNone();
+	else {
+		Py_XDECREF(obj);
+		return Py_BuildException("Fail to set recvDelGrndItemCallback callback");
+	}
+}
+
 
 
 //This methods must be the last ones on the s_methods variable
@@ -896,6 +948,9 @@ static PyMethodDef s_methods[] =
 	{ "ItemGrndItemFirst",		pyItemGrndItemFirst,	METH_VARARGS},
 	{ "ItemGrndInBlockedPath",		pyItemGrndIgnoreBlockedPath,	METH_VARARGS},
 	{ "ItemGrndNotInBlockedPath",		pyItemGrndNoIgnoreBlockedPath,	METH_VARARGS},
+	{ "SetRecvAddGrndItemCallback",		pySetRecvAddGrndItem,METH_VARARGS },
+	{ "SetRecvChangeOwnershipGrndItemCallback",		pySetRecvChangeOwnershipGrndItem,METH_VARARGS },
+	{ "SetRecvDelGrndItemCallback",		pySetRecvDelGrndItem,METH_VARARGS },
 
 	{ "RegisterDigMotionCallback",	pyRecvDigMotionCallback,METH_VARARGS },
 

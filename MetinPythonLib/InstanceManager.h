@@ -15,6 +15,7 @@ public:
 
 	void importPython();
 public:
+
 	void changeInstancePosition(SRcv_CharacterMovePacket& packet_move);
 	void appendNewInstance(SRcv_PlayerCreatePacket& player);
 	void deleteInstance(DWORD vid);

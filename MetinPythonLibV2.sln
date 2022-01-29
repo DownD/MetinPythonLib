@@ -7,6 +7,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MetinPythonLibV2", "MetinPy
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PatternScanner", "PatternScanner\PatternScanner.vcxproj", "{2120F642-4F10-4621-B8FB-569BFDBFBB61}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PacketSniffer", "PacketSniffer\PacketSniffer.vcxproj", "{9C3B1FDA-687E-4530-AFCD-939B9863BCF0}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		CriticalDebug|x64 = CriticalDebug|x64
@@ -46,6 +48,22 @@ Global
 		{2120F642-4F10-4621-B8FB-569BFDBFBB61}.ReleaseLog|x64.ActiveCfg = Debug|Win32
 		{2120F642-4F10-4621-B8FB-569BFDBFBB61}.ReleaseLog|x86.ActiveCfg = Release|Win32
 		{2120F642-4F10-4621-B8FB-569BFDBFBB61}.ReleaseLog|x86.Build.0 = Release|Win32
+		{9C3B1FDA-687E-4530-AFCD-939B9863BCF0}.CriticalDebug|x64.ActiveCfg = Debug|x64
+		{9C3B1FDA-687E-4530-AFCD-939B9863BCF0}.CriticalDebug|x64.Build.0 = Debug|x64
+		{9C3B1FDA-687E-4530-AFCD-939B9863BCF0}.CriticalDebug|x86.ActiveCfg = Debug|Win32
+		{9C3B1FDA-687E-4530-AFCD-939B9863BCF0}.CriticalDebug|x86.Build.0 = Debug|Win32
+		{9C3B1FDA-687E-4530-AFCD-939B9863BCF0}.Debug|x64.ActiveCfg = Debug|x64
+		{9C3B1FDA-687E-4530-AFCD-939B9863BCF0}.Debug|x64.Build.0 = Debug|x64
+		{9C3B1FDA-687E-4530-AFCD-939B9863BCF0}.Debug|x86.ActiveCfg = Debug|Win32
+		{9C3B1FDA-687E-4530-AFCD-939B9863BCF0}.Debug|x86.Build.0 = Debug|Win32
+		{9C3B1FDA-687E-4530-AFCD-939B9863BCF0}.Release|x64.ActiveCfg = Release|x64
+		{9C3B1FDA-687E-4530-AFCD-939B9863BCF0}.Release|x64.Build.0 = Release|x64
+		{9C3B1FDA-687E-4530-AFCD-939B9863BCF0}.Release|x86.ActiveCfg = Release|Win32
+		{9C3B1FDA-687E-4530-AFCD-939B9863BCF0}.Release|x86.Build.0 = Release|Win32
+		{9C3B1FDA-687E-4530-AFCD-939B9863BCF0}.ReleaseLog|x64.ActiveCfg = Release|x64
+		{9C3B1FDA-687E-4530-AFCD-939B9863BCF0}.ReleaseLog|x64.Build.0 = Release|x64
+		{9C3B1FDA-687E-4530-AFCD-939B9863BCF0}.ReleaseLog|x86.ActiveCfg = Release|Win32
+		{9C3B1FDA-687E-4530-AFCD-939B9863BCF0}.ReleaseLog|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

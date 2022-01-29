@@ -41,7 +41,7 @@ void SetupConsole()
 
 
 void get_api_key(std::string* key) {
-	getJWTToken(key);
+	*key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJmWUFoaFJxUlRQd0dReFhVeFhYc1dtTHFHY3d3bHUifQ.rBa1hVwli9uwSNQ0b0MryndrM13T0P0iXOZBkRw3GVY";
 }
 
 size_t WriteSingleThreadback(void* contents, size_t size, size_t nmemb, void* userp)
@@ -56,7 +56,6 @@ DWORD WINAPI ThreadProc(LPVOID lpParameter)
 	SetupConsole();
 	//MessageBox(NULL, "Success Loading", "SUCCESS", MB_OK);
 	Patterns* patternFinder = 0;
-	Pattern global("GLOBAL_PATTERN", GLOBAL_PATTERN_OFFSET, GLOBAL_PATTERN, GLOBAL_PATTERN_MASK);
 	try {
 		patternFinder = new Patterns(hDll);
 	}

@@ -7,7 +7,7 @@
 
 #define OFFSET_CLIENT_INSTANCE_PTR_1 0x4
 #define OFFSET_CLIENT_INSTANCE_PTR_2 0x8
-#define OFFSET_CLIENT_CHARACTER_POS 0x7C0
+#define OFFSET_CLIENT_CHARACTER_POS 0x7C4
 
 //Private Shops Race 
 #define MIN_RACE_SHOP 30000
@@ -397,5 +397,6 @@ struct SGroundItem {
 	long x, y;
 	DWORD index;
 	DWORD vid;
-	DWORD owner;//-1 if owner is other player, 0 if is own item or doesn't have an owner 
+	bool can_pick;
+	std::string owner;
 };

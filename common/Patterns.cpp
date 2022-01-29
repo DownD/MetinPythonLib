@@ -144,7 +144,7 @@ bool Patterns::setModuleInfo()
 	if (hModule == 0)
 		return false;
 
-	printf("Scanning Module: %S\n", buffer);
+	printf("Scanning Module: %s\n", buffer);
 	GetModuleInformation(psHandle, hModule, &mInfo, sizeof(MODULEINFO));
 	mInfo.SizeOfImage = getModuleSize(mInfo.lpBaseOfDll);
 	return true;
