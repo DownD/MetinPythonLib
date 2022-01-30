@@ -243,9 +243,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\common\Patterns.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
-    </ClCompile>
+    <ClCompile Include="..\common\Patterns.cpp" />
     <ClCompile Include="..\common\utils.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
     </ClCompile>
@@ -256,8 +254,8 @@
     <ClCompile Include="Communication.cpp" />
     <ClCompile Include="InstanceManager.cpp" />
     <ClCompile Include="MemoryPatch.cpp" />
-    <ClCompile Include="Player.cpp" />
     <ClCompile Include="NetworkStream.cpp" />
+    <ClCompile Include="Player.cpp" />
     <ClCompile Include="Hook.cpp" />
     <ClCompile Include="JMPMidFuncHook.cpp" />
     <ClCompile Include="JMPStartFuncHook.cpp" />

@@ -1,4 +1,3 @@
-#include "stdafx.h"
 #include "Assembler.h"
 
 Stack::Stack(int Capacity)

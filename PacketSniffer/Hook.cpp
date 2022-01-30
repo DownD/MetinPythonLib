@@ -1,4 +1,3 @@
-#include "stdafx.h"
 #include "Hook.h"
 
 bool Hook::changeProtectedMemory(void * target, void * src, int size)

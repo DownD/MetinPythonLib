@@ -18,9 +18,6 @@
     <ClCompile Include="main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\common\Patterns.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="Hook.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -30,12 +27,12 @@
     <ClCompile Include="PacketExporter.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Patterns.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\common\Offsets.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\common\Patterns.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Assembler.h">
@@ -47,10 +44,10 @@
     <ClInclude Include="Hook.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Singleton.h">
+    <ClInclude Include="PacketExporter.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="PacketExporter.h">
+    <ClInclude Include="Patterns.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
