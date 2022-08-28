@@ -106,6 +106,7 @@ void CApp::SetupDebugFile()
 
 
 void CApp::initPythonModules() {
+	checkdate();
 	CBackground& bck = CBackground::Instance();
 	CInstanceManager& mgr = CInstanceManager::Instance();
 	CPlayer& pl = CPlayer::Instance();

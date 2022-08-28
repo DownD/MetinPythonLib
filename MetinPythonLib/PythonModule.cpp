@@ -114,6 +114,8 @@ PyObject* FindPath(PyObject* poSelf, PyObject* poArgs)
 	x_end /= 100;
 	y_end /= 100;
 
+	DEBUG_INFO_LEVEL_3("Finding path from (%d,%d) to (%d,%d)", x_start, y_start, x_end, y_end);
+
 	int x_start_unblocked = -1;
 	int y_start_unblocked = -1;
 
