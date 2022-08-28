@@ -1,163 +1,18 @@
+#include "stdafx.h"
 #include "PythonModule.h"
 #include "App.h"
-#include "Network.h"
-#include "MapCollision.h"
-#include <unordered_map>
-#include <map>
-#include <set>
+#include "NetworkStream.h"
+#include "InstanceManager.h"
+#include "Background.h"
+#include "Player.h"
+#include "Communication.h"
 
-static std::string fileName;
 
-/* PyObject* playerModule;
-PyObject* getMainPlayerPosition;*/
-
-//Client Functions
-typedef void*(__thiscall* tGetInstancePointer)(DWORD classPointer, DWORD vid);
-
-tGetInstancePointer fGetInstancePointer;
-
-//Hooks
-DetoursHook<tMoveToDestPosition>* moveToDestPositionHook = 0;
-DetoursHook<tMoveToDirection>* moveToDirectionHook = 0;
-
-//If sets this variable according to the last type of movement
-BYTE lastMovement = MOVE_WALK;
-fPoint lastDestPos = { 0,0 };
-
-//Movement speed stuff
-float speedMultiplier = 1;
-
-//Client characterManager stuff
-std::map<DWORD, void*>* clientInstanceMap; //Not working
-DWORD* characterManagerClassPointer;
-DWORD characterManagerSubClass;
-
-//CallBacks Functions
-PyObject* shopRegisterCallback = 0;
-PyObject* recvDigMotionCallback = 0;
-
-//SYNCRONIZATION
-static bool executeFile = false;
-
-Hook* hook;
 PyObject* packet_mod;
-PyObject* pyVIDList;
-
-//Python Modules
-PyObject* chr_mod;
-PyObject* player_mod;
-
-//File Related
-bool getTrigger = false;
-EterFile eterFile = { 0 };
-
-struct Instance {
-	DWORD	vid;
-	BYTE	isDead;
-	float	angle;
-	long	x, y;
-	BYTE	bType;
-	WORD	wRaceNum;
-	BYTE	bMovingSpeed;
-	BYTE	bAttackSpeed;
-	BYTE	bStateFlag;
-};
-
-struct GroundItem {
-	long x, y;
-	DWORD index;
-	DWORD vid;
-	DWORD ownerVID;
-
-};
-
-bool pickOnFilter = false;
-
-std::set<DWORD> pickupFilter;
-std::map<DWORD, GroundItem> groundItems;
-std::unordered_map<DWORD, Instance> instances;
-
-
-bool addPathToInterpreter(const char* path) {
-	PyObject* sys = PyImport_ImportModule("sys");
-	if (!sys) {
-		return false;
-	}
-	PyObject* py_path = PyObject_GetAttrString(sys, "path");
-	if (!py_path) {
-		Py_DECREF(sys);
-		return false;
-	}
-	PyList_Append(py_path, PyString_FromString(path));
-	Py_DECREF(sys);
-	Py_DECREF(py_path);
-	return true;
-}
-
-//The file name will be appended to the path of the dll
-bool executePythonFile(char* file) {
-	int result = 0;
-	char path[256] = { 0 };
-	strcpy(path,getDllPath());
-	//char del = '\';
-	//strncat(path, &del, 1);
-	strcat(path, file);
-	DEBUG_INFO_LEVEL_1("Executing Python file: %s", path);
-	PyObject* PyFileObject = PyFile_FromString(path, (char*)"r");
-	if (PyFileObject == NULL) {
-		DEBUG_INFO_LEVEL_1("%s  is not a File!",path);
-		goto error_code;
-	}
-	result = PyRun_SimpleFileEx(PyFile_AsFile(PyFileObject), "MyFile", 1);
-	if (result == -1) {
-		DEBUG_INFO_LEVEL_1("Error executing python script!");
-		goto error_code;
-	}
-	else {
-		DEBUG_INFO_LEVEL_1("Python script execution complete!");
-		return true;
-	}
-
-error_code:
-	/*int message = MessageBoxA(NULL, "Fail To Inject Script!\nEither script failed or does not exist.\nDo you want to try again?", "Error", MB_ICONWARNING | MB_YESNO);
-	switch (message)
-	{
-	case IDYES:
-		return executePythonFile(file);
-		break;
-	case IDNO:
-		return 0;
-		break;
-	default:
-		return 0;
-	}*/
-	return 0;
-}
 
 
 
-//setup to run from main thread
-void executeScriptFromMainThread(const char* name) {
-	fileName = std::string(name);
 
-
-#ifdef USE_INJECTION_SLEEP_HOOK
-	//hook = SleepFunctionHook::setupHook(functionHook);
-	//hook->HookFunction();
-#endif
-#ifdef USE_INJECTION_RECV_HOOK
-	executeFile = true;
-#endif
-	Sleep(50);
-	while (executeFile) {
-		
-	}
-
-#ifdef USE_INJECTION_SLEEP_HOOK
-	hook->UnHookFunction();
-	delete hook;
-#endif
-}
 
 PyObject* GetPixelPosition(PyObject* poSelf, PyObject* poArgs)
 {
@@ -167,29 +22,9 @@ PyObject* GetPixelPosition(PyObject* poSelf, PyObject* poArgs)
 		return Py_BuildException();
 
 	fPoint3D pos = { 0 };
-	getCharacterPosition(vid, &pos);
+	CInstanceManager& mgr = CInstanceManager::Instance();
+	mgr.getCharacterPosition(vid, &pos);
 	return Py_BuildValue("fff", (float)pos.x, (float)pos.y, (float)pos.z);
-
-
-	/*int vid = 0;
-	int main_vid = getMainCharacterVID();
-
-	if (!PyTuple_GetInteger(poArgs, 0, &vid))
-		return Py_BuildException();
-
-	if (vid == main_vid)
-		return PyObject_CallObject(getMainPlayerPosition, NULL);
-
-
-
-	if (instances.find(vid) != instances.end()) {
-		auto &instance = instances[vid];
-
-		return Py_BuildValue("fff", (float)instance.x, (float)instance.y, (float)0);
-	}*/
-
-
-	return Py_BuildValue("fff", 0, 0, 0);
 }
 
 PyObject* moveToDestPosition(PyObject* poSelf, PyObject* poArgs)
@@ -203,47 +38,14 @@ PyObject* moveToDestPosition(PyObject* poSelf, PyObject* poArgs)
 	if (!PyTuple_GetFloat(poArgs, 2, &y))
 		return Py_BuildException();
 
-	fPoint pos(x,y);
+	fPoint pos(x, y);
 
-	moveToDestPosition(vid, pos);
+	CPlayer& player = CPlayer::Instance();
+	player.moveToDestPosition(vid, pos);
 	return Py_BuildNone();
 }
 
-long getCurrentSpeed() {
-	PyObject* poArgs = Py_BuildValue("(i)", STATUS_MOVEMENT_SPEED);
-	long ret = 0;
 
-	if (PyCallClassMemberFunc(player_mod, "GetStatus", poArgs, &ret)) {
-		Py_DECREF(poArgs);
-		return ret / 100;
-	}
-	Py_DECREF(poArgs);
-	return ret;
-}
-
-void setPixelPosition(fPoint fPos)
-{
-
-	PyObject* poArgs = Py_BuildValue("(ii)",(int)fPos.x, (int)fPos.y);
-	long ret = 0;
-	DEBUG_INFO_LEVEL_3("SetPixelPosition x->%d, y->%d", (int)fPos.x, (int)fPos.y);
-	if (PyCallClassMemberFunc(chr_mod, "SetPixelPosition", poArgs, &ret)) {
-		Py_DECREF(poArgs);
-		return;
-	}
-
-	Py_DECREF(poArgs);
-}
-
-BYTE getLastMovementType()
-{
-	return lastMovement;
-}
-
-fPoint getLastDestPosition()
-{
-	return lastDestPos;
-}
 
 PyObject* pySetMoveSpeed(PyObject* poSelf, PyObject* poArgs)
 {
@@ -251,245 +53,18 @@ PyObject* pySetMoveSpeed(PyObject* poSelf, PyObject* poArgs)
 	if (!PyTuple_GetFloat(poArgs, 0, &speed))
 		return Py_BuildException();
 
-	SetSpeedMultiplier(speed);
+	CNetworkStream& net = CNetworkStream::Instance();
+	net.SetSpeedMultiplier(speed);
 	return Py_BuildNone();
 }
 
-DWORD __stdcall _GetEter(DWORD return_value, CMappedFile* file, const char* fileName, void** buffer) {
 
-
-	if (getTrigger && strcmp(eterFile.name.c_str(), fileName) == 0) {
-
-		if (eterFile.data != 0) {
-			free(eterFile.data);
-		}
-		eterFile.data = malloc(file->m_dwSize);
-		memcpy(eterFile.data, *buffer, file->m_dwSize);
-		eterFile.name = std::string(fileName);
-		eterFile.size = file->m_dwSize;
-	}
-
-	return return_value;
+PyObject* GetEterPacket(PyObject* poSelf, PyObject* poArgs) {
+	CPlayer& player = CPlayer::Instance();
+	return player.GetEterPacket(poSelf, poArgs);
 }
 
-void _RecvRoutine(){
-	if (executeFile) {
-		DEBUG_INFO_LEVEL_1("Executing Python file from Recv Hook");
-		executePythonFile((char*)fileName.c_str());
-		executeFile = 0;
-	}
-}
-
-bool __fastcall __MoveToDestPosition(void* classPointer, DWORD EDX, fPoint& pos)
-{
-	lastMovement = MOVE_POSITION;
-	lastDestPos = pos;
-	//DEBUG_INFO_LEVEL_4("__MoveToDestPosition Called");
-	return moveToDestPositionHook->originalFunction(classPointer, pos);
-}
-
-bool __fastcall __MoveToDirection(void* classPointer, DWORD EDX, float rot)
-{
-	lastMovement = MOVE_WALK;
-	//DEBUG_INFO_LEVEL_4("__MoveToDirection Called");
-	return moveToDirectionHook->originalFunction(classPointer, rot);
-}
-
-//C Wrapper
-EterFile* CGetEter(const char* name) {
-	PyObject* obj = Py_BuildValue("(si)", name, 1);
-	GetEterPacket(0, obj);
-	Py_DECREF(obj);
-	return &eterFile;
-}
-
-
-void changeInstancePosition(CharacterMovePacket& packet_move)
-{
-	if (instances.find(packet_move.dwVID) == instances.end()) {
-		DEBUG_INFO_LEVEL_3("No instance vid %d found, creating new one",packet_move.dwVID);
-		PlayerCreatePacket player = { 0 };
-		player.dwVID = packet_move.dwVID;
-		player.x = packet_move.lX;
-		player.y = packet_move.lY;
-		appendNewInstance(player);
-		return;
-	}
-	DEBUG_INFO_LEVEL_4("VID %d-> X:%d Y:%d", packet_move.dwVID, packet_move.lX, packet_move.lY);
-	auto& instance = instances[packet_move.dwVID];
-	instance.x = packet_move.lX;
-	instance.y = packet_move.lY;
-	//DEBUG_INFO("VID %d-> X:%d Y:%d", packet_move.dwVID, packet_move.lX, packet_move.lY);
-}
-
-void registerNewInstanceShop(DWORD player)
-{
-	//call python callback
-	DEBUG_INFO_LEVEL_3("Checking Callback VID->", player);
-	if (shopRegisterCallback && PyCallable_Check(shopRegisterCallback)) {
-		DEBUG_INFO_LEVEL_3("Calling python RegisterShopCallback");
-		PyObject* val = Py_BuildValue("(i)", player);
-		PyObject_CallObject(shopRegisterCallback, val);
-		Py_XDECREF(val);
-	}
-
-	/* Appears that there is always an character append packet after shop creation
-	* So append to instances is not needed
-	if (instances.find(player) != instances.end()) {
-		DEBUG_INFO_LEVEL_3("On adding instance shop with vid=%d, already exists, ignoring packet", player);
-		return;
-	}
-	DEBUG_INFO_LEVEL_3("Success Adding instance shop vid=%d", player);
-
-	Instance i = { 0 };
-	i.vid = player;
-
-	instances[player] = i;
-
-	PyObject* pVid = PyLong_FromLong(player);
-	PyDict_SetItem(pyVIDList, pVid, pVid);*/
-}
-
-void callDigMotionCallback(DWORD target_player,DWORD target_vein,DWORD n)
-{
-	//call python callback
-	DEBUG_INFO_LEVEL_3("Mining packet recived");
-	if (recvDigMotionCallback && PyCallable_Check(recvDigMotionCallback)) {
-		DEBUG_INFO_LEVEL_3("Calling python DigMotionCallback");
-		PyObject* val = Py_BuildValue("(iii)", target_player, target_vein, n);
-		PyObject_CallObject(recvDigMotionCallback, val);
-		Py_XDECREF(val);
-	}
-
-}
-
-
-void appendNewInstance(PlayerCreatePacket & player)
-{
-	if (instances.find(player.dwVID) != instances.end()){
-		DEBUG_INFO_LEVEL_4("On adding instance with vid=%d, already exists, ignoring packet", player.dwVID);
-		return;
-	}
-	DEBUG_INFO_LEVEL_4("Success Adding instance vid=%d", player.dwVID);
-
-	Instance i = { 0 };
-	i.vid = player.dwVID;
-	i.angle = player.angle;
-	i.x = player.x;
-	i.y = player.y;
-	i.bAttackSpeed = player.bAttackSpeed;
-	i.bMovingSpeed = player.bMovingSpeed;
-	i.wRaceNum = player.wRaceNum;
-	i.bStateFlag = player.bStateFlag;
-
-	if (i.wRaceNum >= MIN_RACE_SHOP && i.wRaceNum <= MAX_RACE_SHOP) {
-		registerNewInstanceShop(player.dwVID);
-	}
-
-	instances[player.dwVID] = i;
-
-	PyObject* pVid = PyLong_FromLong(player.dwVID);
-	PyDict_SetItem(pyVIDList, pVid, pVid);
-
-}
-
-
-void deleteInstance(DWORD vid)
-{
-	if (instances.find(vid) == instances.end()) {
-		DEBUG_INFO_LEVEL_3("On deleting instance with vid=%d doesn't exists, ignoring packet!", vid);
-		return;
-	}
-	PyObject* pVid = PyLong_FromLong(vid);
-	PyDict_DelItem(pyVIDList, pVid);
-	instances.erase(vid);
-}
-
-void changeInstanceIsDead(DWORD vid, BYTE isDead)
-{
-	if (instances.find(vid) != instances.end()) {
-		instances[vid].isDead = 1;
-	}
-}
-
-void addItemGround(GroundItemAddPacket& itemPacket)
-{
-	GroundItem item;
-	item.index = itemPacket.itemIndex;
-	item.ownerVID = itemPacket.playerVID;
-	item.x = itemPacket.x;
-	item.y = itemPacket.y;
-	item.vid = itemPacket.VID;
-
-	DEBUG_INFO_LEVEL_3("Adding item ground with vid=%d at position x=%d,y=%d", item.vid, item.x, item.y);
-
-
-	groundItems[item.vid] = item;
-}
-
-void delItemGround(GroundItemDeletePacket& item)
-{
-	if (groundItems.find(item.vid) == groundItems.end()) {
-		DEBUG_INFO_LEVEL_3("On deleting item with vid=%d doesn't exists, ignoring packet!", item.vid);
-		return;
-	}
-	DEBUG_INFO_LEVEL_4("Deleting item ground with vid=%d",item.vid);
-	groundItems.erase(item.vid);
-}
-
-void clearInstances()
-{
-	DEBUG_INFO_LEVEL_2("Instances Cleared");
-	instances.clear();
-	groundItems.clear();
-	PyDict_Clear(pyVIDList);
-}
-
-bool getCharacterPosition(DWORD vid, fPoint3D* pos)
-{
-	void* instanceBase = getInstancePtr(vid);
-	if (instanceBase) {
-		fPoint3D* iPos = (fPoint3D*)(reinterpret_cast<DWORD>(instanceBase) + OFFSET_CLIENT_CHARACTER_POS);
-		pos->x = iPos->x;
-		pos->y = -iPos->y;
-		pos->z = iPos->z;
-		return true;
-	}
-	return false;
-}
-
-
-
-//NEEDS TO BE CALLED AFTER SCRIPT EXECUTION
-//TEST FOR MEMORY LEAKS
-PyObject* GetEterPacket(PyObject * poSelf, PyObject * poArgs) {
-	char * szFileName;
-	int val = 0;
-
-	if (!PyTuple_GetString(poArgs, 0, &szFileName))
-		return Py_BuildException();
-
-	PyTuple_GetInteger(poArgs, 1, &val);
-
-	PyObject * mod = PyImport_ImportModule("app");
-	eterFile.name = std::string(szFileName);
-
-	getTrigger = true;
-	PyCallClassMemberFunc(mod, "OpenTextFile", poArgs);
-	getTrigger = false;
-
-	Py_DECREF(poArgs);
-	Py_DECREF(mod);
-
-	//PyObject * obj = PyString_FromStringAndSize((const char*)eterFile.data, eterFile.size);
-	if (val == 0) {
-		PyObject* buffer = PyBuffer_FromMemory(eterFile.data, eterFile.size);
-		return Py_BuildValue("O", buffer);
-	}
-	return Py_BuildValue("");
-}
-
-PyObject * IsPositionBlocked(PyObject * poSelf, PyObject * poArgs)
+PyObject* IsPositionBlocked(PyObject* poSelf, PyObject* poArgs)
 {
 	int x, y;
 	if (!PyTuple_GetInteger(poArgs, 0, &x))
@@ -499,99 +74,32 @@ PyObject * IsPositionBlocked(PyObject * poSelf, PyObject * poArgs)
 
 	x /= 100;
 	y /= 100;
+	CBackground& bck = CBackground::Instance();
 
-	return Py_BuildValue("i", isBlockedPosition(x, y));
+	return Py_BuildValue("i", bck.isBlockedPosition(x, y));
 }
 
-//Get closest unblocked cell
-bool getClosestUnblocked(int x_start, int y_start, Point* buffer) {
-	Point closestPoints[8];
-
-	//Initalize all coords
-	for (int i = 0; i < 8; i++) {
-		closestPoints[i] = { x_start,y_start };
-	}
-
-	while (true){
-		closestPoints[0].x++;
-
-		closestPoints[1].x++;
-		closestPoints[1].y++;
-
-		closestPoints[2].x++;
-		closestPoints[2].y--;
-
-		closestPoints[3].x--;
-		closestPoints[3].y++;
-
-		closestPoints[4].x--;
-
-		closestPoints[5].x--;
-		closestPoints[5].y--;
-
-		closestPoints[6].y++;
-
-		closestPoints[7].y--;
-
-		for (int i = 0; i < 8; i++) {
-			if (!isBlockedPosition(closestPoints[i].x, closestPoints[i].y)) {
-				*buffer = closestPoints[i];
-				return true;
-			}
-		}
-	}
-	return false;
-}
-
-bool getUnblockedAdjacentBlock(int x_start, int y_start , Point* adjPoint) {
-	if (!isBlockedPosition(x_start + 1, y_start)) {
-		adjPoint->x = x_start + 1;
-		adjPoint->y = y_start;
-		return true;
-	}
-	else if (!isBlockedPosition(x_start + 1, y_start + 1)) {
-		adjPoint->x = x_start + 1;
-		adjPoint->y = y_start + 1;
-		return true;
-	}
-
-	else if (!isBlockedPosition(x_start + 1, y_start - 1)) {
-		adjPoint->x = x_start + 1;
-		adjPoint->y = y_start - 1;
-		return true;
-	}
-	else if (!isBlockedPosition(x_start - 1, y_start + 1)) {
-		adjPoint->x = x_start - 1;
-		adjPoint->y = y_start + 1;
-		return true;
-	}
-	else if (!isBlockedPosition(x_start - 1, y_start)) {
-		adjPoint->x = x_start - 1;
-		adjPoint->y = y_start;
-		return true;
-	}
-	else if (!isBlockedPosition(x_start - 1, y_start - 1)) {
-		adjPoint->x = x_start - 1;
-		adjPoint->y = y_start - 1;
-		return true;
-	}
-	else if (!isBlockedPosition(x_start, y_start + 1)) {
-		adjPoint->x = x_start;
-		adjPoint->y = y_start + 1;
-		return true;
-	}
-	else if (!isBlockedPosition(x_start, y_start - 1)) {
-		adjPoint->x = x_start;
-		adjPoint->y = y_start - 1;
-		return true;
-	}
-
-	return false;
-}
-
-PyObject * FindPath(PyObject * poSelf, PyObject * poArgs)
+PyObject* pyIsPathBlocked(PyObject* poSelf, PyObject* poArgs)
 {
-	int x_start, y_start, x_end,y_end;
+	int x1, y1,x2,y2;
+	if (!PyTuple_GetInteger(poArgs, 0, &x1))
+		return Py_BuildException();
+	if (!PyTuple_GetInteger(poArgs, 1, &y1))
+		return Py_BuildException();
+	if (!PyTuple_GetInteger(poArgs, 2, &x2))
+		return Py_BuildException();
+	if (!PyTuple_GetInteger(poArgs, 3, &y2))
+		return Py_BuildException();
+
+	CBackground& bck = CBackground::Instance();
+
+	return Py_BuildValue("i", bck.isPathBlocked(x1, y1,x2,y2));
+}
+
+
+PyObject* FindPath(PyObject* poSelf, PyObject* poArgs)
+{
+	int x_start, y_start, x_end, y_end;
 	if (!PyTuple_GetInteger(poArgs, 0, &x_start))
 		return Py_BuildException();
 	if (!PyTuple_GetInteger(poArgs, 1, &y_start))
@@ -609,21 +117,30 @@ PyObject * FindPath(PyObject * poSelf, PyObject * poArgs)
 	int x_start_unblocked = -1;
 	int y_start_unblocked = -1;
 
-	if (isBlockedPosition(x_start, y_start)) {
+	CBackground& bck = CBackground::Instance();
+	if (bck.isBlockedPosition(x_start, y_start)) {
 		Point a = { 0,0 };
-		if (getClosestUnblocked(x_start, y_start,&a)) {
+		if (bck.getClosestUnblocked(x_start, y_start, &a)) {
 			x_start_unblocked = a.x;
 			y_start_unblocked = a.y;
 			DEBUG_INFO_LEVEL_3("[PATH-FIDING] Start Position blocked, new position X:%d  Y:%d", x_start_unblocked, y_start_unblocked);
 		}
+		else {
+			DEBUG_INFO_LEVEL_3("[PATH-FIDING] Cannot get closest unblocked position");
+			return PyList_New(0);
+		}
 	}
 
-	if (isBlockedPosition(x_end, y_end)) {
+	if (bck.isBlockedPosition(x_end, y_end)) {
 		Point a = { 0,0 };
-		if (getClosestUnblocked(x_end, y_end, &a)) {
+		if (bck.getClosestUnblocked(x_end, y_end, &a)) {
 			x_end = a.x;
 			y_end = a.y;
 			DEBUG_INFO_LEVEL_3("[PATH-FIDING] End Position blocked, new position X:%d  Y:%d", x_end, y_end);
+		}
+		else {
+			DEBUG_INFO_LEVEL_3("[PATH-FIDING] Cannot get closest unblocked position");
+			return PyList_New(0);
 		}
 	}
 
@@ -633,14 +150,14 @@ PyObject * FindPath(PyObject * poSelf, PyObject * poArgs)
 	PyObject* pList = PyList_New(0);
 	bool val = false;
 	if (x_start_unblocked != -1) {
-		val = findPath(x_start_unblocked, y_start_unblocked, x_end, y_end, path);
+		val = bck.findPath(x_start_unblocked, y_start_unblocked, x_end, y_end, path);
 		if (val)
 			PyList_Append(pList, Py_BuildValue("ii", x_start_unblocked * 100, y_start_unblocked * 100));
 		else
 			return pList;
 	}
 	else {
-		val = findPath(x_start, y_start, x_end, y_end, path);
+		val = bck.findPath(x_start, y_start, x_end, y_end, path);
 	}
 
 
@@ -649,71 +166,22 @@ PyObject * FindPath(PyObject * poSelf, PyObject * poArgs)
 	}
 	int i = 0;
 	for (Point& p : path) {
-		PyObject* obj = Py_BuildValue("ii", p.x*100, p.y*100);
+		PyObject* obj = Py_BuildValue("ii", p.x * 100, p.y * 100);
 		PyList_Append(pList, obj);
 	}
 
 	return pList;
-
-
 }
-/*
-PyObject* pySetKeyState(PyObject* poSelf, PyObject* poArgs) {
-	int key, state;
-	int numArgs = PyTuple_Size(poArgs);
 
-	KEYBDINPUT keyboardI = { 0 };
-	keyboardI.wVk = VK_SPACE;
-	keyboardI.wScan = 0;
-	keyboardI.time = NULL;
-	keyboardI.dwFlags = NULL;
-	keyboardI.dwExtraInfo = GetMessageExtraInfo();
 
-	INPUT input = { 0 };
-	input.type = INPUT_KEYBOARD;
-	input.ki = keyboardI;
-
-	switch(PyTuple_Size(poArgs)) {
-	case 1:
-		if (!PyTuple_GetInteger(poArgs, 0, &state)) {
-			if (state) {
-				input.ki.dwFlags = KEYEVENTF_KEYUP;
-			}
-			else {
-				input.ki.dwFlags = 0;
-			}
-		}
-		break;
-	case 2:
-		if (!PyTuple_GetInteger(poArgs, 0, &key)) {
-			input.ki.wVk = key;
-		}
-		if (!PyTuple_GetInteger(poArgs, 1, &state)) {
-			if (state) {
-				input.ki.dwFlags = KEYEVENTF_KEYUP;
-			}
-			else {
-				input.ki.dwFlags = 0;
-			}
-		}
-		break;
-
-	default:
-		return Py_BuildException();
-		break;
-	}
-
-	SendInput(1, &input, sizeof(input));
-	return Py_BuildNone();
-}*/
-
-PyObject * pyGetCurrentPhase(PyObject * poSelf, PyObject * poArgs)
+PyObject* pyGetCurrentPhase(PyObject* poSelf, PyObject* poArgs)
 {
-	int phase = getCurrentPhase();
+	CNetworkStream& net = CNetworkStream::Instance();
+	int phase = net.GetCurrentPhase();
 	return Py_BuildValue("i", phase);
 }
 
-PyObject * GetAttrByte(PyObject * poSelf, PyObject * poArgs)
+PyObject* GetAttrByte(PyObject* poSelf, PyObject* poArgs)
 {
 	int x, y;
 	if (!PyTuple_GetInteger(poArgs, 0, &x))
@@ -723,11 +191,12 @@ PyObject * GetAttrByte(PyObject * poSelf, PyObject * poArgs)
 	x /= 100;
 	y /= 100;
 
-	BYTE b = getAttrByte(x, y);
+	CBackground& bck = CBackground::Instance();
+	BYTE b = bck.getAttrByte(x, y);
 	return Py_BuildValue("i", b);
 }
 
-PyObject * pySendAttackPacket(PyObject * poSelf, PyObject * poArgs)
+PyObject* pySendAttackPacket(PyObject* poSelf, PyObject* poArgs)
 {
 	int vid;
 	BYTE type;
@@ -736,12 +205,13 @@ PyObject * pySendAttackPacket(PyObject * poSelf, PyObject * poArgs)
 	if (!PyTuple_GetByte(poArgs, 1, &type))
 		return Py_BuildException();
 
-	SendBattlePacket(vid, type);
-	
+	CNetworkStream& net = CNetworkStream::Instance();
+	net.SendBattlePacket(vid, type);
+
 	return Py_BuildNone();
 }
 
-PyObject * pySendStatePacket(PyObject * poSelf, PyObject * poArgs)
+PyObject* pySendStatePacket(PyObject* poSelf, PyObject* poArgs)
 {
 	float x, y;
 	float rot;
@@ -759,12 +229,13 @@ PyObject * pySendStatePacket(PyObject * poSelf, PyObject * poArgs)
 		return Py_BuildException();
 
 	fPoint p(x, y);
-	SendStatePacket(p, rot, eFunc, uArg);
+	CNetworkStream& net = CNetworkStream::Instance();
+	net.SendStatePacket(p, rot, eFunc, uArg);
 
 	return Py_BuildNone();
 }
 
-PyObject * pySendPacket(PyObject * poSelf, PyObject * poArgs)
+PyObject* pySendPacket(PyObject* poSelf, PyObject* poArgs)
 {
 	int size;
 	BYTE* arr;
@@ -773,24 +244,29 @@ PyObject * pySendPacket(PyObject * poSelf, PyObject * poArgs)
 	if (!PyTuple_GetByteArray(poArgs, 1, &arr))
 		return Py_BuildException();
 
-	SendPacket(size, arr);
+	CNetworkStream& net = CNetworkStream::Instance();
+	net.SendPacket(size, arr);
 	return Py_BuildNone();
 }
 
 PyObject* launchPacketFilter(PyObject* poSelf, PyObject* poArgs) {
-	openConsole();
+	CNetworkStream& net = CNetworkStream::Instance();
+	net.openConsole();
 	return Py_BuildNone();
 }
 PyObject* closePacketFilter(PyObject* poSelf, PyObject* poArgs) {
-	closeConsole();
+	CNetworkStream& net = CNetworkStream::Instance();
+	net.closeConsole();
 	return Py_BuildNone();
 }
 PyObject* startPacketFilter(PyObject* poSelf, PyObject* poArgs) {
-	startFilterPacket();
+	CNetworkStream& net = CNetworkStream::Instance();
+	net.startFilterPacket();
 	return Py_BuildNone();
 }
 PyObject* stopPacketFilter(PyObject* poSelf, PyObject* poArgs) {
-	stopFilterPacket();
+	CNetworkStream& net = CNetworkStream::Instance();
+	net.stopFilterPacket();
 	return Py_BuildNone();
 }
 PyObject* skipInHeader(PyObject* poSelf, PyObject* poArgs) {
@@ -799,7 +275,8 @@ PyObject* skipInHeader(PyObject* poSelf, PyObject* poArgs) {
 		return Py_BuildException();
 
 	if (header <= 256 && header >= 0) {
-		addHeaderFilter((BYTE)header, INBOUND);
+		CNetworkStream& net = CNetworkStream::Instance();
+		net.addHeaderFilter((BYTE)header, INBOUND);
 	}
 	return Py_BuildNone();
 }
@@ -810,7 +287,8 @@ PyObject* skipOutHeader(PyObject* poSelf, PyObject* poArgs) {
 		return Py_BuildException();
 
 	if (header <= 256 && header >= 0) {
-		addHeaderFilter((BYTE)header, OUTBOUND);
+		CNetworkStream& net = CNetworkStream::Instance();
+		net.addHeaderFilter((BYTE)header, OUTBOUND);
 	}
 	return Py_BuildNone();
 }
@@ -819,7 +297,8 @@ PyObject* doNotSkipInHeader(PyObject* poSelf, PyObject* poArgs) {
 	if (!PyTuple_GetInteger(poArgs, 0, &header))
 		return Py_BuildException();
 
-	removeHeaderFilter((BYTE)header, INBOUND);
+	CNetworkStream& net = CNetworkStream::Instance();
+	net.removeHeaderFilter((BYTE)header, INBOUND);
 	return Py_BuildNone();
 }
 PyObject* doNotSkipOutHeader(PyObject* poSelf, PyObject* poArgs) {
@@ -827,7 +306,8 @@ PyObject* doNotSkipOutHeader(PyObject* poSelf, PyObject* poArgs) {
 	if (!PyTuple_GetInteger(poArgs, 0, &header))
 		return Py_BuildException();
 
-	addHeaderFilter((BYTE)header, OUTBOUND);
+	CNetworkStream& net = CNetworkStream::Instance();
+	net.addHeaderFilter((BYTE)header, OUTBOUND);
 	return Py_BuildNone();
 }
 
@@ -837,12 +317,14 @@ PyObject* clearOutput(PyObject* poSelf, PyObject* poArgs) {
 }
 
 PyObject* clearInFilter(PyObject* poSelf, PyObject* poArgs) {
-	clearPacketFilter(INBOUND);
+	CNetworkStream& net = CNetworkStream::Instance();
+	net.clearPacketFilter(INBOUND);
 	return Py_BuildNone();
 }
 
 PyObject* clearOutFilter(PyObject* poSelf, PyObject* poArgs) {
-	clearPacketFilter(OUTBOUND);
+	CNetworkStream& net = CNetworkStream::Instance();
+	net.clearPacketFilter(OUTBOUND);
 	return Py_BuildNone();
 }
 
@@ -852,7 +334,8 @@ PyObject* setInFilterMode(PyObject* poSelf, PyObject* poArgs)
 	if (!PyTuple_GetInteger(poArgs, 0, &mode))
 		return Py_BuildException();
 
-	setFilterMode(INBOUND, (bool)mode);
+	CNetworkStream& net = CNetworkStream::Instance();
+	net.setFilterMode(INBOUND, (bool)mode);
 	return Py_BuildNone();
 }
 
@@ -862,28 +345,19 @@ PyObject* setOutFilterMode(PyObject* poSelf, PyObject* poArgs)
 	if (!PyTuple_GetInteger(poArgs, 0, &mode))
 		return Py_BuildException();
 
-	setFilterMode(OUTBOUND, (bool)mode);
+	CNetworkStream& net = CNetworkStream::Instance();
+	net.setFilterMode(OUTBOUND, (bool)mode);
 	return Py_BuildNone();
 }
 
-void* getInstancePtr(DWORD vid)
-{
-
-
-	return fGetInstancePointer(characterManagerSubClass,vid);
-
-}
-
-PyObject * pyIsDead(PyObject * poSelf, PyObject * poArgs)
+PyObject* pyIsDead(PyObject* poSelf, PyObject* poArgs)
 {
 	int vid;
 	if (!PyTuple_GetInteger(poArgs, 0, &vid))
 		return Py_BuildException();
 
-	if (instances.find(vid) != instances.end()) {
-		return Py_BuildValue("i",instances[vid].isDead);
-	}
-	return Py_BuildValue("i", 1);
+	CInstanceManager& mgr = CInstanceManager::Instance();
+	return Py_BuildValue("i", mgr.isInstanceDead(vid));
 }
 
 
@@ -892,7 +366,8 @@ PyObject* pySendStartFishing(PyObject* poSelf, PyObject* poArgs) {
 	if (!PyTuple_GetInteger(poArgs, 0, &direction))
 		return Py_BuildException();
 
-	bool val = SendStartFishing((WORD)direction);
+	CNetworkStream& net = CNetworkStream::Instance();
+	bool val = net.SendStartFishing((WORD)direction);
 
 	return Py_BuildValue("i", val);
 }
@@ -905,15 +380,15 @@ PyObject* pySendStopFishing(PyObject* poSelf, PyObject* poArgs) {
 	if (!PyTuple_GetFloat(poArgs, 1, &timeLeft))
 		return Py_BuildException();
 
-
-	bool val = SendStopFishing(type,timeLeft);
+	CNetworkStream& net = CNetworkStream::Instance();
+	bool val = net.SendStopFishing(type, timeLeft);
 	return Py_BuildValue("i", val);
 }
 
 
 PyObject* pySendAddFlyTarget(PyObject* poSelf, PyObject* poArgs) {
 	int vid;
-	float x,y;
+	float x, y;
 	if (!PyTuple_GetInteger(poArgs, 0, &vid))
 		return Py_BuildException();
 
@@ -923,7 +398,9 @@ PyObject* pySendAddFlyTarget(PyObject* poSelf, PyObject* poArgs) {
 	if (!PyTuple_GetFloat(poArgs, 2, &y))
 		return Py_BuildException();
 
-	bool val = SendAddFlyTargetingPacket(vid, x, y);
+	CNetworkStream& net = CNetworkStream::Instance();
+	bool val = net.SendAddFlyTargetingPacket(vid, x, y);
+
 	return Py_BuildValue("i", val);
 }
 PyObject* pySendShoot(PyObject* poSelf, PyObject* poArgs) {
@@ -931,73 +408,104 @@ PyObject* pySendShoot(PyObject* poSelf, PyObject* poArgs) {
 	if (!PyTuple_GetInteger(poArgs, 0, &type))
 		return Py_BuildException();
 
-	bool val = SendShootPacket(type);
+	CNetworkStream& net = CNetworkStream::Instance();
+	bool val = net.SendShootPacket(type);
 	return Py_BuildValue("i", val);
 
 }
 
 PyObject* pyBlockFishingPackets(PyObject* poSelf, PyObject* poArgs)
 {
-	SetFishingPacketsBlock(1);
+	CNetworkStream& net = CNetworkStream::Instance();
+	net.SetFishingPacketsBlock(1);
 	return Py_BuildNone();
 }
 
 PyObject* pyUnblockFishingPackets(PyObject* poSelf, PyObject* poArgs)
 {
-	SetFishingPacketsBlock(0);
+	CNetworkStream& net = CNetworkStream::Instance();
+	net.SetFishingPacketsBlock(0);
 	return Py_BuildNone();
 }
 
 PyObject* pyDisableCollisions(PyObject* poSelf, PyObject* poArgs)
 {
-	SetBuildingWallHack(1);
-	SetMonsterTerrainWallHack(1);
+	CPlayer& player = CPlayer::Instance();
+	player.SetBuildingWallHack(1);
+	player.SetMonsterTerrainWallHack(1);
 	return Py_BuildNone();
 }
 
 PyObject* pyEnableCollisions(PyObject* poSelf, PyObject* poArgs)
 {
-	SetBuildingWallHack(0);
-	SetMonsterTerrainWallHack(0);
+	CPlayer& player = CPlayer::Instance();
+	player.SetBuildingWallHack(0);
+	player.SetMonsterTerrainWallHack(0);
 	return Py_BuildNone();
 }
 
 PyObject* pyRegisterNewShopCallback(PyObject* poSelf, PyObject* poArgs)
 {
-	if (!PyTuple_GetObject(poArgs, 0, &shopRegisterCallback)) {
-		shopRegisterCallback = 0;
+	PyObject* obj;
+	if (!PyTuple_GetObject(poArgs, 0, &obj)) {
 		return Py_BuildException();
 	}
 
-	if (!PyCallable_Check(shopRegisterCallback)) {
-		DEBUG_INFO_LEVEL_1("RegisterNewShopCallback argument is not a function");
-		Py_DECREF(shopRegisterCallback);
-		shopRegisterCallback = 0;
+	CNetworkStream& net = CNetworkStream::Instance();
+	bool val = net.setNewShopCallback(obj);
+	if(val)
+		return Py_BuildNone();
+	else
 		return Py_BuildException();
-	}
 
-	DEBUG_INFO_LEVEL_2("RegisterNewShopCallback function set sucessfully");
 
 	return Py_BuildNone();
-	
 }
 
 PyObject* pyRecvDigMotionCallback(PyObject* poSelf, PyObject* poArgs)
 {
-	if (!PyTuple_GetObject(poArgs, 0, &recvDigMotionCallback)) {
-		recvDigMotionCallback = 0;
+	PyObject* obj;
+	if (!PyTuple_GetObject(poArgs, 0, &obj)) {
 		return Py_BuildException();
 	}
 
-	if (!PyCallable_Check(recvDigMotionCallback)) {
-		DEBUG_INFO_LEVEL_1("RegisterNewDigMotionCallback argument is not a function");
-		Py_DECREF(recvDigMotionCallback);
-		recvDigMotionCallback = 0;
+	CNetworkStream& net = CNetworkStream::Instance();
+	bool val = net.setDigMotionCallback(obj);
+	if (val)
+		return Py_BuildNone();
+	else
+		return Py_BuildException();
+
+
+	return Py_BuildNone();
+}
+
+PyObject* pyRecvStartFishCallback(PyObject* poSelf, PyObject* poArgs)
+{
+	PyObject* obj;
+	if (!PyTuple_GetObject(poArgs, 0, &obj)) {
 		return Py_BuildException();
 	}
 
-	DEBUG_INFO_LEVEL_2("RecvDigMotionCallback function set sucessfully");
+	CNetworkStream& net = CNetworkStream::Instance();
+	bool val = net.setStartFishCallback(obj);
+	if (val)
+		return Py_BuildNone();
+	else
+		return Py_BuildException();
+}
 
+PyObject* pyBlockAttackPackets(PyObject* poSelf, PyObject* poArgs)
+{
+	CNetworkStream& net = CNetworkStream::Instance();
+	net.blockAttackPackets();
+	return Py_BuildNone();
+}
+
+PyObject* pyUnblockAttackPackets(PyObject* poSelf, PyObject* poArgs)
+{
+	CNetworkStream& net = CNetworkStream::Instance();
+	net.unblockAttackPackets();
 	return Py_BuildNone();
 }
 
@@ -1005,20 +513,23 @@ PyObject* pyRecvDigMotionCallback(PyObject* poSelf, PyObject* poArgs)
 
 PyObject* pyItemGrndFilterClear(PyObject* poSelf, PyObject* poArgs)
 {
-	pickupFilter.clear();
-	return nullptr;
+	CInstanceManager& mgr = CInstanceManager::Instance();
+	mgr.clearFilter();
+	return Py_BuildNone();
 }
 
 //PICKUP STUFF
 PyObject* pyItemGrndNotOnFilter(PyObject* poSelf, PyObject* poArgs)
 {
-	pickOnFilter = false;
+	CInstanceManager& mgr = CInstanceManager::Instance();
+	mgr.setModeFilter(false);
 	return Py_BuildNone();
 }
 
 PyObject* pyItemGrndOnFilter(PyObject* poSelf, PyObject* poArgs)
 {
-	pickOnFilter = true;
+	CInstanceManager& mgr = CInstanceManager::Instance();
+	mgr.setModeFilter(true);
 	return Py_BuildNone();
 }
 
@@ -1028,7 +539,22 @@ PyObject* pyItemGrndAddFilter(PyObject* poSelf, PyObject* poArgs)
 	if (!PyTuple_GetInteger(poArgs, 0, &index))
 		return Py_BuildException();
 
-	pickupFilter.insert(index);
+	CInstanceManager& mgr = CInstanceManager::Instance();
+	mgr.addItemFilter(index);
+	return Py_BuildNone();
+}
+
+PyObject* pyItemGrndItemFirst(PyObject* poSelf, PyObject* poArgs)
+{
+	CInstanceManager& mgr = CInstanceManager::Instance();
+	mgr.setPickItemFirst(true);
+	return Py_BuildNone();
+}
+
+PyObject* pyItemGrndNoItemFirst(PyObject* poSelf, PyObject* poArgs)
+{
+	CInstanceManager& mgr = CInstanceManager::Instance();
+	mgr.setPickItemFirst(false);
 	return Py_BuildNone();
 }
 
@@ -1038,48 +564,49 @@ PyObject* pyItemGrndDelFilter(PyObject* poSelf, PyObject* poArgs)
 	if (!PyTuple_GetInteger(poArgs, 0, &index))
 		return Py_BuildException();
 
-	pickupFilter.erase(index);
+	CInstanceManager& mgr = CInstanceManager::Instance();
+	mgr.deleteItemFilter(index);
+	return Py_BuildNone();
+}
+
+PyObject* pyItemGrndSelectRange(PyObject* poSelf, PyObject* poArgs)
+{
+	float range = 0;
+	if (!PyTuple_GetFloat(poArgs, 0, &range))
+		return Py_BuildException();
+
+	CInstanceManager& mgr = CInstanceManager::Instance();
+	mgr.setPickupRange(range);
+	return Py_BuildNone();
+}
+
+PyObject* pyItemGrndIgnoreBlockedPath(PyObject* poSelf, PyObject* poArgs)
+{
+	CInstanceManager& mgr = CInstanceManager::Instance();
+	mgr.setIgnoreBlockedPath(true);
+	return Py_BuildNone();
+}
+
+PyObject* pyItemGrndNoIgnoreBlockedPath(PyObject* poSelf, PyObject* poArgs)
+{
+	CInstanceManager& mgr = CInstanceManager::Instance();
+	mgr.setIgnoreBlockedPath(false);
 	return Py_BuildNone();
 }
 
 PyObject* pyGetCloseItemGround(PyObject* poSelf, PyObject* poArgs)
 {
-	int x,y;
+	int x, y;
+	SGroundItem item;
 	if (!PyTuple_GetInteger(poArgs, 0, &x))
 		return Py_BuildException();
 	if (!PyTuple_GetInteger(poArgs, 1, &y))
 		return Py_BuildException();
 
-	DEBUG_INFO_LEVEL_4("Number of items in filter %d", pickupFilter.size())
+	CInstanceManager& mgr = CInstanceManager::Instance();
 
-	float minDist = std::numeric_limits<float>::max();
-	DWORD selVID = 0;
-	for (auto iter = groundItems.begin(); iter != groundItems.end();iter++) {
-		DWORD vid = iter->first;
-		GroundItem item = iter->second;
-
-		if (item.ownerVID != getMainCharacterVID() && item.ownerVID != 0) {
-			continue;
-		}
-
-		bool is_in = pickupFilter.find(item.index) != pickupFilter.end();
-		if (pickOnFilter && is_in) {
-			float dist = distance(x, y, item.x, item.y);
-			if (dist<minDist) {
-				minDist = dist;
-				selVID = vid;
-			}
-		}
-		if (!pickOnFilter && !is_in) {
-			float dist = distance(x, y, item.x, item.y);
-			if (dist < minDist) {
-				minDist = dist;
-				selVID = vid;
-			}
-		}
-	}
-	if (selVID != 0) {
-		return Py_BuildValue("(iii)", selVID, groundItems[selVID].x, groundItems[selVID].y);
+	if (mgr.getCloseItemGround(x, y, &item)) {
+		return Py_BuildValue("(iii)", item.vid, item.x, item.y);
 	}
 	else {
 		return Py_BuildValue("(iii)", 0, 0, 0);
@@ -1093,7 +620,111 @@ PyObject* pySendPickupItem(PyObject* poSelf, PyObject* poArgs)
 		return Py_BuildException();
 	if (vid == 0)
 		return Py_BuildNone();
-	SendPickupItemPacket(vid);
+
+	CNetworkStream& net = CNetworkStream::Instance();
+	net.SendPickupItemPacket(vid);
+	return Py_BuildNone();
+}
+
+PyObject* pyGetItemGrndID(PyObject* poSelf, PyObject* poArgs)
+{
+	int vnum;
+	if (!PyTuple_GetInteger(poArgs, 0, &vnum))
+		return Py_BuildException();
+
+	CInstanceManager& mgr = CInstanceManager::Instance();
+
+	int id = mgr.getItemGrndID(vnum);
+
+	return Py_BuildValue("i", id);
+}
+
+PyObject* pySkipRenderer(PyObject* poSelf, PyObject* poArgs)
+{
+	CApp& app = CApp::Instance();
+	app.setSkipRenderer();
+	return Py_BuildNone();
+}
+
+PyObject* pyUnSkipRenderer(PyObject* poSelf, PyObject* poArgs)
+{
+	CApp& app = CApp::Instance();
+	app.unsetSkipRenderer();
+	return Py_BuildNone();
+}
+
+PyObject* pySyncPlayerPosition(PyObject* poSelf, PyObject* poArgs)
+{
+	CNetworkStream& net = CNetworkStream::Instance();
+	std::vector<InstanceLocalPosition> resultList;
+
+	PyObject* InstanceLst = 0;
+	if (!PyTuple_GetObject(poArgs, 0, &InstanceLst))
+		return Py_BuildException();
+
+	PyObject *iterator = PyObject_GetIter(InstanceLst);
+	PyObject* item;
+
+	if (iterator == NULL) {
+		Py_DECREF(InstanceLst);
+		return Py_BuildNone();
+		//return Py_BuildException("Argument provided is not an list");
+	}
+
+	int size = PyList_Size(InstanceLst);
+	resultList.reserve(size);
+
+	//Loop through all lists
+	while ((item = PyIter_Next(iterator))) {
+		InstanceLocalPosition pos;
+		if (!PyList_Check(item)) {
+			Py_DECREF(InstanceLst);
+			Py_DECREF(iterator);
+			Py_DECREF(item);
+			DEBUG_INFO_LEVEL_2("pySyncPlayerPosition:Argument provided must be a list of lists");
+			return Py_BuildNone();
+		}
+		if (PyList_Size(item) < 3) {
+			Py_DECREF(InstanceLst);
+			Py_DECREF(iterator);
+			Py_DECREF(item);
+			DEBUG_INFO_LEVEL_2("pySyncPlayerPosition: To few values on each row, the values of each row must be vid,x,y");
+			return Py_BuildNone();
+		}
+		PyObject* vid_py = PyList_GetItem(item, 0);
+		PyObject* x_py = PyList_GetItem(item, 1);
+		PyObject* y_py = PyList_GetItem(item, 2);
+		pos.vid = PyLong_AsLong(vid_py);
+		pos.x = PyFloat_AsDouble(x_py);
+		pos.y = PyFloat_AsDouble(y_py);
+		DEBUG_INFO_LEVEL_3("pySyncPlayerPosition: vid=%d, x=%f, y=%f", pos.vid,pos.x,pos.y);
+
+		resultList.push_back(pos);
+		Py_DECREF(item);
+	}
+	Py_DECREF(iterator);
+	Py_DECREF(InstanceLst);
+
+	DEBUG_INFO_LEVEL_3("Calling SyncPacket");
+	int result = net.SendSyncPacket(resultList);
+	return Py_BuildValue("(i)", result);
+}
+
+PyObject* pySetRecvChatCallback(PyObject* poSelf, PyObject* poArgs)
+{
+	PyObject* obj;
+	if (!PyTuple_GetObject(poArgs, 0, &obj)) {
+		return Py_BuildException();
+	}
+
+	CNetworkStream& net = CNetworkStream::Instance();
+	bool val = net.setChatCallback(obj);
+	if (val)
+		return Py_BuildNone();
+	else
+		return Py_BuildException("Fail to set chat callback");
+
+
 	return Py_BuildNone();
 }
 
@@ -1105,17 +736,158 @@ PyObject* pySendUseSkillPacket(PyObject* poSelf, PyObject* poArgs) {
 	if (!PyTuple_GetInteger(poArgs, 1, &vid))
 		return Py_BuildException();
 
-	SendUseSkillPacket(dwSkillIndex, vid);
+	CNetworkStream& net = CNetworkStream::Instance();
+	net.SendUseSkillPacket(dwSkillIndex, vid);
 	return Py_BuildNone();
 
 }
 
+PyObject* pySendUseSkillPacketBySlot(PyObject* poSelf, PyObject* poArgs)
+{
+	int vid = 0;
+	int dwSkillSlotIndex = 0;
+	if (!PyTuple_GetInteger(poArgs, 0, &dwSkillSlotIndex))
+		return Py_BuildException();
+	if (!PyTuple_GetInteger(poArgs, 1, &vid))
+		return Py_BuildException();
+
+	CNetworkStream& net = CNetworkStream::Instance();
+	net.SendUseSkillBySlot(dwSkillSlotIndex, vid);
+	return Py_BuildNone();
+}
+
+PyObject* pyGetRequest(PyObject* poSelf, PyObject* poArgs)
+{
+	char* url = 0;
+	PyObject* callback = 0;
+	if (!PyTuple_GetString(poArgs, 0, &url))
+		return Py_BuildException();
+	if (!PyTuple_GetObject(poArgs, 1, &callback)) {
+		return Py_BuildException();
+	}
+
+	if (PyCallable_Check(callback)) {
+		CCommunication& c = CCommunication::Instance();
+		int id = c.GetRequest(url, ComCallbackFunction(callback));
+		return Py_BuildValue("(i)", id);
+	}
+
+	return Py_BuildValue("(i)", -1);
+}
+
+PyObject* pyOpenWebsocket(PyObject* poSelf, PyObject* poArgs)
+{
+	char* url = 0;
+	PyObject* callback = 0;
+	if (!PyTuple_GetString(poArgs, 0, &url))
+		return Py_BuildException();
+	if (!PyTuple_GetObject(poArgs, 1, &callback)) {
+		return Py_BuildException();
+	}
+
+	if (PyCallable_Check(callback)) {
+		CCommunication& c = CCommunication::Instance();
+		int id = c.OpenWebsocket(url, ComCallbackFunction(callback));
+		if (id != -1) {
+			return Py_BuildValue("i", id);
+		}
+	}
+	else {
+		Py_XDECREF(callback);
+	}
+
+	return Py_BuildValue("i", -1);
+}
+
+PyObject* pySendWebsocket(PyObject* poSelf, PyObject* poArgs)
+{
+	int id = 0;
+	char* message;
+	if (!PyTuple_GetInteger(poArgs, 0, &id))
+		return Py_BuildException();
+	if (!PyTuple_GetString(poArgs, 1, &message)) {
+		return Py_BuildException();
+	}
+
+	
+	CCommunication& c = CCommunication::Instance();
+	bool val = c.WebsocketSend(id, message);
+	if (val) {
+		DEBUG_INFO_LEVEL_3("Websocket message sent: %s", message);
+	}
+	return Py_BuildValue("i", c.WebsocketSend(id, message));
+}
+
+PyObject* pyCloseWebsocket(PyObject* poSelf, PyObject* poArgs)
+{
+	int id = 0;
+	if (!PyTuple_GetInteger(poArgs, 0, &id))
+		return Py_BuildException();
+
+
+
+	CCommunication& c = CCommunication::Instance();
+	return Py_BuildValue("i", c.CloseWebsocket(id));
+}
+
+PyObject* pySetRecvAddGrndItem(PyObject* poSelf, PyObject* poArgs)
+{
+	PyObject* obj;
+	if (!PyTuple_GetObject(poArgs, 0, &obj)) {
+		return Py_BuildException();
+	}
+
+	CNetworkStream& net = CNetworkStream::Instance();
+	bool val = net.setRecvAddGrndItemCallback(obj);
+	if (val)
+		return Py_BuildNone();
+	else {
+		Py_XDECREF(obj);
+		return Py_BuildException("Fail to set recvAddGrndItem callback");
+	}
+
+}
+
+PyObject* pySetRecvChangeOwnershipGrndItem(PyObject* poSelf, PyObject* poArgs)
+{
+	PyObject* obj;
+	if (!PyTuple_GetObject(poArgs, 0, &obj)) {
+		return Py_BuildException();
+	}
+
+	CNetworkStream& net = CNetworkStream::Instance();
+	bool val = net.setRecvChangeOwnershipGrndItemCallback(obj);
+	if (val)
+		return Py_BuildNone();
+	else {
+		Py_XDECREF(obj);
+		return Py_BuildException("Fail to set recvChangeOwnershipGrndItemCallback callback");
+	}
+}
+
+PyObject* pySetRecvDelGrndItem(PyObject* poSelf, PyObject* poArgs)
+{
+	PyObject* obj;
+	if (!PyTuple_GetObject(poArgs, 0, &obj)) {
+		return Py_BuildException();
+	}
+
+	CNetworkStream& net = CNetworkStream::Instance();
+	bool val = net.setRecvDelGrndItemCallback(obj);
+	if (val)
+		return Py_BuildNone();
+	else {
+		Py_XDECREF(obj);
+		return Py_BuildException("Fail to set recvDelGrndItemCallback callback");
+	}
+}
 
 
 
 static PyMethodDef s_methods[] =
 {
 	{ "Get",					GetEterPacket,		METH_VARARGS },
+	{ "IsPathBlocked",			pyIsPathBlocked,	METH_VARARGS },
 	{ "IsPositionBlocked",		IsPositionBlocked,	METH_VARARGS },
 	{ "GetAttrByte",			GetAttrByte,		METH_VARARGS },
 	{ "GetCurrentPhase",		pyGetCurrentPhase,	METH_VARARGS },
@@ -1146,8 +918,8 @@ static PyMethodDef s_methods[] =
 	{ "DisableCollisions",		pyDisableCollisions,METH_VARARGS },
 	{ "RegisterNewShopCallback",pyRegisterNewShopCallback,METH_VARARGS },
 	{ "SendUseSkillPacket",		pySendUseSkillPacket,METH_VARARGS },
+	{ "SendUseSkillPacketBySlot",pySendUseSkillPacketBySlot,METH_VARARGS },
 
-	//PICKUP
 	{ "ItemGrndFilterClear",	pyItemGrndFilterClear,	METH_VARARGS },
 	{ "ItemGrndNotOnFilter",	pyItemGrndNotOnFilter,	METH_VARARGS },
 	{ "ItemGrndOnFilter",		pyItemGrndOnFilter,		METH_VARARGS },
@@ -1155,32 +927,51 @@ static PyMethodDef s_methods[] =
 	{ "ItemGrndDelFilter",		pyItemGrndDelFilter,	METH_VARARGS },
 	{ "GetCloseItemGround",		pyGetCloseItemGround,	METH_VARARGS },
 	{ "SendPickupItem",			pySendPickupItem,		METH_VARARGS },
+	{ "GetItemGrndID",			pyGetItemGrndID,		METH_VARARGS },
+	{ "ItemGrndSelectRange",	pyItemGrndSelectRange,	METH_VARARGS },
+	{ "ItemGrndNoItemFirst",	pyItemGrndNoItemFirst,	METH_VARARGS},
+	{ "ItemGrndItemFirst",		pyItemGrndItemFirst,	METH_VARARGS},
+	{ "ItemGrndInBlockedPath",		pyItemGrndIgnoreBlockedPath,	METH_VARARGS},
+	{ "ItemGrndNotInBlockedPath",		pyItemGrndNoIgnoreBlockedPath,	METH_VARARGS},
+	{ "SetRecvAddGrndItemCallback",		pySetRecvAddGrndItem,METH_VARARGS },
+	{ "SetRecvChangeOwnershipGrndItemCallback",		pySetRecvChangeOwnershipGrndItem,METH_VARARGS },
+	{ "SetRecvDelGrndItemCallback",		pySetRecvDelGrndItem,METH_VARARGS },
 
-#ifdef _DEBUG
 	{ "RegisterDigMotionCallback",	pyRecvDigMotionCallback,METH_VARARGS },
-#endif
 
+	{ "BlockAttackPackets",		pyBlockAttackPackets,		METH_VARARGS},
+	{ "UnblockAttackPackets",	pyUnblockAttackPackets,		METH_VARARGS},
 
-#ifdef METIN_GF
 	{ "SendStartFishing",		pySendStartFishing,	METH_VARARGS },
 	{ "SendStopFishing",		pySendStopFishing,	METH_VARARGS },
 	{ "BlockFishingPackets",	pyBlockFishingPackets,	METH_VARARGS },
 	{ "UnblockFishingPackets",	pyUnblockFishingPackets,METH_VARARGS },
+	{ "RecvStartFishCallback",	pyRecvStartFishCallback,METH_VARARGS},
 
-	//{ "SetKeyState",			pySetKeyState,		METH_VARARGS },
-	//{ "SetAttackKeyState",		pySetKeyState,		METH_VARARGS },
 	{ "GetPixelPosition",		GetPixelPosition,	METH_VARARGS},
 	{ "MoveToDestPosition",     moveToDestPosition, METH_VARARGS},
 	{ "SetMoveSpeedMultiplier",	pySetMoveSpeed,		METH_VARARGS},
-#endif
+
+	{ "SyncPlayerPosition", pySyncPlayerPosition ,	METH_VARARGS},
+	{ "SetRecvChatCallback", pySetRecvChatCallback ,	METH_VARARGS},
+
+	{ "GetRequest",			pyGetRequest,			METH_VARARGS},
+	{ "OpenWebsocket",		pyOpenWebsocket,		METH_VARARGS},
+	{ "SendWebsocket",		pySendWebsocket,		METH_VARARGS},
+	{ "CloseWebsocket",		pyCloseWebsocket,		METH_VARARGS},
+	{ "SkipRenderer",		pySkipRenderer ,		METH_VARARGS},
+	{ "UnskipRenderer",		pyUnSkipRenderer ,		METH_VARARGS},
+
+
 	{ NULL, NULL }
 };
 
 void initModule() {
-	packet_mod = Py_InitModule("eXLib", s_methods);
-	pyVIDList = PyDict_New();
+	
+	packet_mod = Py_InitModule("net_packet", s_methods);
+	DEBUG_INFO_LEVEL_1("net_packet module created");
 
-	PyModule_AddObject(packet_mod, "InstancesList", pyVIDList);
+	PyModule_AddObject(packet_mod, "InstancesList", CInstanceManager::Instance().getVIDList());
 	PyModule_AddStringConstant(packet_mod, "PATH", getDllPath());
 #ifdef _DEBUG
 	PyModule_AddIntConstant(packet_mod, "IS_DEBUG", 1);
@@ -1209,56 +1000,56 @@ void initModule() {
 	//FISHING
 	PyModule_AddIntConstant(packet_mod, "SUCCESS_FISHING", SUCESS_ON_FISHING);
 	PyModule_AddIntConstant(packet_mod, "UNSUCCESS_FISHING", UNSUCESS_ON_FISHING);
-
 	if (!addPathToInterpreter(getDllPath())) {
 		DEBUG_INFO_LEVEL_1("Error adding current path to intepreter!");
 		MessageBox(NULL, "Error adding current path to intepreter!", "Error", MB_OK);
-		exit();
+		CApp & i = CApp::Instance();
+		i.exit();
 		return;
 	}
-	executeScriptFromMainThread("init.py");
-	chr_mod = PyImport_ImportModule("chr");
-	player_mod = PyImport_ImportModule("player");
+
+	executePythonFile("init.py");
 }
 
-void SetChrMngrAndInstanceMap(void* classPointer)
-{
-	characterManagerClassPointer = (DWORD*)classPointer;
-
-
-	//Uses fixed offsets to obtain GetInstancePtr
-	characterManagerSubClass = (*characterManagerClassPointer + OFFSET_CLIENT_INSTANCE_PTR_1);
-	fGetInstancePointer = reinterpret_cast<tGetInstancePointer>(*(DWORD*)(*(DWORD*)characterManagerSubClass + OFFSET_CLIENT_INSTANCE_PTR_2));
-
-
-	//Not needed for now
-	/*int finalAddr = *characterManagerClassPointer + OFFSET_CLIENT_ALIVE_MAP;
-	clientInstanceMap = (std::map<DWORD, void*>*)finalAddr;
-	DEBUG_INFO_LEVEL_1("InstanceMap Address %#x", clientInstanceMap);*/
-	DEBUG_INFO_LEVEL_1("Character Manager %#x", *characterManagerClassPointer);
-	DEBUG_INFO_LEVEL_1("GetInstancePointer %#x", fGetInstancePointer);
+bool addPathToInterpreter(const char* path) {
+	PyObject* sys = PyImport_ImportModule("sys");
+	if (!sys) {
+		return false;
+	}
+	PyObject* py_path = PyObject_GetAttrString(sys, "path");
+	if (!py_path) {
+		Py_DECREF(sys);
+		return false;
+	}
+	PyList_Append(py_path, PyString_FromString(path));
+	Py_DECREF(sys);
+	Py_DECREF(py_path);
+	return true;
 }
 
-void SetMoveToDistPositionFunc(DetoursHook<tMoveToDestPosition>* hook)
-{
-	moveToDestPositionHook = hook;
-	moveToDestPositionHook->HookFunction();
-}
-
-
-void SetMoveToToDirectionFunc(DetoursHook<tMoveToDirection>* hook)
-{
-	moveToDirectionHook = hook;
-	moveToDirectionHook->HookFunction();
-}
-
-bool moveToDestPosition(DWORD vid,fPoint& pos) {
-	void* p = getInstancePtr(vid);
-	if (p) {
-		DEBUG_INFO_LEVEL_3("Moving VID %d to posititon X:%f y:%f!",vid,pos.x,pos.y);
-		return moveToDestPositionHook->originalFunction(p, pos);
+bool executePythonFile(const char* file) {
+	int result = 0;
+	char path[256] = { 0 };
+	strcpy(path, getDllPath());
+	strcat(path, file);
+	DEBUG_INFO_LEVEL_1("Executing Python file: %s", path);
+	PyObject* PyFileObject = PyFile_FromString(path, (char*)"r");
+	if (PyFileObject == NULL) {
+		DEBUG_INFO_LEVEL_1("%s  is not a File!", path);
+		goto error_code;
+	}
+	result = PyRun_SimpleFileEx(PyFile_AsFile(PyFileObject), "MyFile", 1);
+	if (result == -1) {
+		DEBUG_INFO_LEVEL_1("Error executing python script!");
+		goto error_code;
 	}
 	else {
-		return 0;
+		DEBUG_INFO_LEVEL_1("Python script execution complete!");
+		Py_DECREF(PyFileObject);
+		return true;
 	}
+
+error_code:
+	Py_DECREF(PyFileObject);
+	return 0;
 }

@@ -1,3 +1,4 @@
+#include "stdafx.h"
 #include "JMPStartFuncHook.h"
 
 #define SHELL_CODE_DEFAULT_SIZE 0x16

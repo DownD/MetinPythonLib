@@ -1,8 +1,9 @@
+#include "stdafx.h"
 #include "MapCollision.h"
+#include "Player.h"
 #include <sstream>
 #include <iomanip>
 #include "App.h"
-#include "Network.h"
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -12,7 +13,6 @@
 #define HEADER_SIZE 6
 
 
-MapCollision* currMap = 0;
 
 MapCollision::MapCollision(const char* map_name){
 	maxX = 0;
@@ -61,10 +61,6 @@ inline bool MapCollision::isBlocked(int x, int y){
 	//return map[y*maxX + x] & 0x0;
 }
 
-inline BYTE MapCollision::getByte(int x, int y)
-{
-	return map[y*maxX + x];
-}
 
 bool MapCollision::findPath(int x_start, int y_start, int x_end, int y_end, std::vector<Point>& path)
 {
@@ -160,7 +156,8 @@ bool MapCollision::constructMapFromClient()
 
 			std::string fullPath = baseFolder + x_folder.str() + y_folder.str() + "\\attr.atr";
 			if (fileExists(fullPath.c_str())) {
-				EterFile* f = CGetEter(fullPath.c_str());
+				CPlayer& player = CPlayer::Instance();
+				EterFile* f = player.CGetEter(fullPath.c_str());
 				MapPiece *p = new MapPiece(f, x, y, baseFolder + x_folder.str() + y_folder.str());
 				buffer.push_back(p);
 				//p->printToFile((x_folder.str() + y_folder.str()).c_str());
@@ -174,11 +171,12 @@ bool MapCollision::constructMapFromClient()
 			}
 		}
 	}
-	if (buffer.size() == 0) {
-#ifdef _DEBUG
+	if (buffer.size() == 0 || xPieces==0) {
 		DEBUG_INFO_LEVEL_1("No map found with name %s\n", mapName.c_str());
-#endif
 		return false;
+	}
+	else {
+		DEBUG_INFO_LEVEL_3("Map %s loaded max_X_Piece:%d max_Y_Piece:%d\n", mapName.c_str(), xPieces,largestYPiece);
 	}
 
 
@@ -208,7 +206,7 @@ bool MapCollision::constructMapFromClient()
 		}else{ map[i] = 1; }
 	}
 
-	//addObjectsCollisions(); //Need to know if it is bypassable
+
 	increaseBlockedArea();
 	return true;
 
@@ -250,11 +248,6 @@ void MapCollision::addObjectsCollisions()
 	for (auto obj : objects) {
 		setByte(0,obj.x / 100, abs(obj.y / 100));
 	}
-}
-
-inline void MapCollision::setByte(BYTE  b, int x, int y)
-{
-	map[y*maxX + x] = b;
 }
 
 void MapCollision::increaseBlockedArea()
@@ -398,7 +391,8 @@ MapCollision::MapPiece::MapPiece(EterFile * file,int x,int y,std::string path)
 	yStart = y*ATTR_HEIGHT;
 
 	std::string areaData = path + "\\areadata.txt";
-	auto eterArea = CGetEter(areaData.c_str());
+	CPlayer& player = CPlayer::Instance();
+	auto eterArea = player.CGetEter(areaData.c_str());
 	area.loadFile((char*)eterArea->data,eterArea->size);
 
 	//printf("version %d width= %d height =%d size=%d x=%d y=%d\n", version, width, height, size, xStart, yStart);
@@ -433,94 +427,6 @@ void MapCollision::MapPiece::printToFile(const char * name)
 	free(line);
 	myfile << "X_Start: " << std::to_string(xStart) << "Y_Start: " << std::to_string(yStart);
 	myfile.close();
-}
-
-bool setCurrentCollisionMap()
-{
-	std::string map_name;
-	PyObject * mod = PyImport_ImportModule("background");
-	PyObject * poArgs = Py_BuildValue("()");
-
-	if (!PyCallClassMemberFunc(mod, "GetCurrentMapName", poArgs, map_name)) {
-#ifdef _DEBUG
-		DEBUG_INFO_LEVEL_1("Error calling GetCurrenMap %s\n", map_name.c_str());
-#endif
-		Py_DECREF(mod);
-		Py_DECREF(poArgs);
-		return false;
-	}
-
-	//printf("Setting Map Collision %s\n", map_name.c_str());
-	Py_DECREF(mod);
-	Py_DECREF(poArgs);
-
-	if (currMap) {
-		if(map_name.compare(currMap->getMapName()) == 0)
-			return true;
-		delete currMap;
-	}
-	currMap = new MapCollision(map_name.c_str());
-	return true;
-}
-
-MapCollision * getCurrentCollisionMap()
-{
-	return currMap;
-}
-
-void freeCurrentMap()
-{
-	if (currMap) {
-		delete currMap;
-	}
-	currMap = 0;
-}
-
-bool isBlockedPosition(int x, int y)
-{
-	if (currMap) {
-		return currMap->isBlocked(x, y);
-	}
-
-	if (getCurrentPhase() == PHASE_GAME) {
-		setCurrentCollisionMap();
-		if (currMap == 0) {
-			return true;
-		}
-		else {
-			return currMap->isBlocked(x, y);
-		}
-	}
-	else {
-		return true;
-	}
-}
-
-BYTE getAttrByte(int x, int y)
-{
-	if (currMap)
-		return currMap->getByte(x, y);
-	return 0;
-}
-
-bool findPath(int x_start, int y_start, int x_end, int y_end, std::vector<Point>& path)
-{
-	if (currMap) {
-		return currMap->findPath(x_start, y_start, x_end, y_end, path);
-	}
-
-	if (getCurrentPhase() == PHASE_GAME) {
-		setCurrentCollisionMap();
-		if (currMap == 0) {
-			return false;
-		}
-		else {
-			return currMap->findPath(x_start, y_start, x_end, y_end, path);
-		}
-	}
-	else {
-		return false;
-	}
 }
 
 void AreaData::loadFile(char * buffer, int size)

@@ -1,17 +1,54 @@
-# MetinPythonLib V0.3.1
+# MetinPythonLib
 
-Adds some functions to the python API, and try to inject a script.py from the current directory. 
+Before everything i must emphasize, 
+I created this project JUST FOR LEARNING PURPOSES, I never used this either to gain an unfair advantage or to profit from it!
+For this reason, the patterns won't be available.
+This is an old project and I was learning while developing, thus some code parts are a bit messy and is missing function documentation. And currently my focus is on other projects so that's something i am not gonna change anytime soon.
+This project is not supported anymore.
 
-## Things that need to be checked before moving across servers:
+## Motivation
+This is probably my biggest project yet, it took more then 2 years of my free time to reach the current state and much more of learning.
+But the knowledge that i gathered from this project was like no other, thanks to this i got to learn a lot mainly on the following areas:
+- Reverse Engineering (Static analysis, dinamyc analysis)
+- C++/Python/ASM programming (and Cython based modules)
+- Software architecture
+- Sockets communication
+- Path-planning/path-finding algorithms
+- REST API's
+- Windows Operating System
+- Process security and injection vulnerabilites
+- OS Memory management
 
-- Packet Headers and structures
-- Patterns of send, recv, GetEther, SendAttackPacket, SendStatePacket and network class pointer
-- Structure of CMappedFile
-- The executed script is resposible for making sure the following functions work properly:
-  - Module app
-    - Function OpenTextFile
-    - Function IsExistFile
+I created this just for the fun of learning, testing and understanding how a game works and can be exploited.
 
+## Introduction
+This project was made for [Metin2](https://gameforge.com/en-US/play/metin2), a MMORPG game from 2007.
+It creates a DLL that will hook multiple game functions and creates Python bindings that can be used to create complex automation scripts with the game memory.
+Since the game itself already has multiple bindings to Python, this library enhances it and allows to inject python scripts into the game memory.
+
+With this library is possible to:
+- Gather information from players or instances arround
+- Find a path between points with state of the art algorithms ([ANYA](https://github.com/DownD/AnyAnglePathPlaning))
+- Send attacks
+- Move the main player
+- Walk trough walls
+- Make requests to HTTP server
+- Create Websockets
+- Pickup items with filters
+- And much more...
+
+All from a python script!
+An example of the usage of this library can be found here [MetinPythonExtension](https://github.com/DownD/MetinPythonExtension).
+
+In addition to this, it's possible to load patterns from a remote server and not include them inside the produced DLL, this was a usecase that i thought in the begging about update configuration remotely and uploading data from multiple clients into a central server, but it never took off completly.
+
+### Structure
+- MetinPythonLib -> The main DLL
+- PatternScanner -> Project that attempts to find the offsets needed by running a memory scan for specific patterns
+- PacketSniffer -> Will hook specific network functions and dump every unencrypted communication to specific files.
+
+#### Remarks
+The PacketSniffer was the last addition that i made and is the only project that doesn't make use of the ```common``` folder, because of compiler related issues, just for sake of simplicity I just copy the files directly into the project.
 
 ## Python Exports
 - Module net_packet
@@ -90,7 +127,7 @@ Adds some functions to the python API, and try to inject a script.py from the cu
 	
   - RegisterDigMotionCallback(\<callable_function\>callback)<br>
     Sets a callback function, that will be called whenever a dig motion(mining packet) is called.<br>
-	The callback function will be called with the following arguments (player_vid,ore_vid,count)<br>
+	  The callback function will be called with the following arguments (player_vid,ore_vid,count)<br>
 	
   - \<string\>PATH<br>
     Path of the location where the library was injected<br>
@@ -107,13 +144,72 @@ Adds some functions to the python API, and try to inject a script.py from the cu
     Set the character movement boosting movement speed. 
 
   - SendUseSkillPacket(\<int\> skillIndex, \<int\> vid)<br>
-    Uses a skill with a target vid.
+    Uses a skill by providing a skillIndex and a target vid without doing the animation.
+
+  - SendUseSkillPacketBySlot(\<int\> skillSlotIndex, \<int\> vid)<br>
+    The same as SendUseSkillPacket but the first argument is a slot index instead of the skill index<br>
+    And also sets the cooldown of the skill on the client.<br>
+
+  - IsPathBlocked(\<int\>x_start,\<int\>y_start,\<int\>x_end,\<int\>y_end)<br>
+    Returns false if none of the points is blocked in a straight line other, if any of the points is blocked returns true.<br>
     
+  - BlockAttackPackets()<br>
+    Blocks all attack packets sent from the client, the only attack packets allowed are the ones sent by this module.<br>
+
+  - UnblockAttackPackets()<br>
+    Unblocks all attack packets.<br>
+
+  - SkipRenderer()<br>
+    Instruct the client to skip the drawing process, this can save CPU.<br>
+
+  - UnskipRenderer()<br>
+    Instruct the client to start drawing again.<br>
+
+  - SyncPlayerPosition(\<list\>victims)<br>
+    This is part of an exploit that allows to teleport other players.<br>
+    The argument victims is a list of lists, each row containing vid victim, x coordinates and y coordinates.<br>
+    As far as analyzed, for this to work, a special state packet need to be sent with the following arguments ```net_packet.SendStatePacket(mx,my,0,3,17)```
+    where mx and my are the mob coordinates.<br>
+
+  - SetRecvChatCallback(\<function\>callbackFunction)<br>
+    Sets a callback function that will be called with the following arguments: ```int vid,int type,int empire,string msg,string locale```.<br>
+    This function will be called whenever the client recives a chat message or command from the server.
+    vid is the vid that send the message or 0 if is a command message.
+    type is the type of message and can take the following values ``` CHAT_TYPE_TALKING,CHAT_TYPE_INFO,CHAT_TYPE_NOTICE,CHAT_TYPE_PARTY,CHAT_TYPE_GUILD,CHAT_TYPE_COMMAND,CHAT_TYPE_SHOUT,CHAT_TYPE_WHISPER``` that can be found on the chat module. 
+    msg is the message content.
+    empire is the empire of the player.
+    locale is the region from the player that send the message or empty if was not a player.
+
+
+
+### Remote Communication
+Communication with the outside world.
+All functions are asynchronous.
+
+ - GetRequest(\<string\> url,\<callable_function\>callback) returns \<int\><br>
+   Sends a async GET request to the specified url.
+   The callback is called when the response arrives from the server, it will be called with 2 arguments, the ID of the request and a string message respectively.
+   If the request is successful it returns an ID of the request otherwise returns -1.
+
+
+ - OpenWebsocket(\<string\> url,\<callable_function\>callback) returns \<int\><br>
+   Opens a websocket to the specified url.
+   The callback is responsible for handling the receive messages. It will be called every time a message is received, with 2 arguments, the ID of the socket and a string containing the message respectively .
+   If the request is schedule successfully it returns an ID of the socket otherwise returns -1.
+   
+ - SendWebsocket(\<int\> id,\<string\>message) returns \<int\><br>
+   Sends a message to the socket with the specified id.
+   If the message is schedule successfully it returns 1 otherwise returns 0.
+
+ - CloseWebsocket(\<int\> id) returns \<int\><br>
+   Closes a socket with the specified id.
+   If the message is schedule successfully it returns 1 otherwise returns 0.
+
 ### Pickup Filter
 A filter o be applied when calling GetCloseItemGround, by default the filter is set to pick items not present in filter.
 
   - ItemGrndDelFilter(\<int\> index)<br>
-    Delets an item id from the filter.
+    Deletes an item id from the filter.
 
   - ItemGrndAddFilter(\<int\> index)<br>
     Adds an item id to the filter.
@@ -126,12 +222,41 @@ A filter o be applied when calling GetCloseItemGround, by default the filter is 
 
   - ItemGrndFilterClear()<br>
     Deletes every item in the filter.
-   
-  
-    
+
+  - GetItemGrndID(\<int\> VID)<br>
+    Return the ID of an item in the ground with the specified VID<br> 
+
+  - ItemGrndSelectRange(\<float\> range)<br>
+    Set's the maximum range to pick items<br> 
+
+  - ItemGrndItemFirst()<br>
+    Makes the function GetCloseItemGround return the closest item if there is no item returns the closest yang<br> 
+
+  - ItemGrndNoItemFirst()<br>
+    Makes the function GetCloseItemGround return the closest item or yang closest<br>
+
+  - ItemGrndInBlockedPath()<br>
+    Ignore items items that are in a blocked path<br> 
+
+  - ItemGrndNotInBlockedPath()<br>
+    Allow to return items that are in a blocked path<br> 
+
+  - SetRecvAddGrndItemCallback(\<function\>callbackFunction)<br>
+    Sets a callback function that will be called with the following arguments: ```int vid, int itemIndex, long x, long y, string owner```.<br>
+    This function will be called whenever the server sends a new ground item.
+
+  - SetRecvChangeOwnershipGrndItemCallback(\<function\>callbackFunction)<br>
+    Sets a callback function that will be called with the following arguments: ```int vid, string owner```.<br>
+    This function will be called whenever the server sends a change in a ground item ownership (every item that is dropped with an owner will also recive this packet after the append)
+    If the owner argument is an empty string then the item doesn't have an owner.
+
+  - SetRecvDelGrndItemCallback(\<function\>callbackFunction)<br>
+    Sets a callback function that will be called with the following arguments: ```int vid```.<br>
+    This function will be called whenever the server sends the command to delete a current item on the ground (this includes, the items being out of range and the item disappearement)
+    WARNING: If you are trying are creating a list with items on the ground it might be needed to manually clear all items on phase change (Not tested)
 
 ### Simulation of old functions
-These simulates the functions that were removed from the modules by Gameforge.
+These simulates the functions that were removed in recent versions of the game.
 
   - GetPixelPosition(\<int\>vid) returns a tupple (x,y,z)<br>
     Returns the position of the player by vid
@@ -142,9 +267,6 @@ These simulates the functions that were removed from the modules by Gameforge.
   - SetMoveSpeed(\<float\> speed)<br>
     Set the character movement speed. The client might change the speed again need to be called constantly for now.
     If speed bigger then 2.0, the client will disconnect.
-
-  - SendUseSkillPacket(\<int\> skillIndex, \<int\> vid)<br>
-    Uses a skill with a target vid.
 
 
 ### This are relative to a Packet Filter for debug purposes
@@ -189,32 +311,17 @@ By default every packet will be shown.
   - SetInFilterMode(\<int\>mode)<br>
     Changes filter mode for incoming packets, if set to 1, it will shows all packets that  correspond to the filter, if set to 0 it will show all packets that are not within the filter
 
-
-## Login GF Analisys
-
-Login is composed by two parts:
-- The more complex one is made first, after the handshake has been sucessfully done, the server sends a change phase packet
-at which the server responds with a specific AuthTicket, this ticket will be get by diferent APIs depending if it is steam or GF.
-https://gyazo.com/a309e4169927ad41009e07cab33b240e
-All this is done in the function "__AuthState_RecvPhase"
-To diferentiate both, there is a global static variable that is evaluated, if this variable is 1 it uses steam, if it is 2 uses GF.
-- - On Steam, it will query SteamAPI dll for a SessionID https://gyazo.com/5ad23d77a38d870338c98f112df2741a
-- - On GF this gets more complex, it will first create an user from psw_tnt.dll and then will call a function from the same dll, which will enventually call
-    "gfc_queryAuthorizationCode" from gameforge_api https://gyazo.com/f341f42ac6fa9ab242ba9c3aaea6f204.
-
-After this it will encrypt the packet with specific keys stored in memory, and will send it.
-
-- The second part, will simply login with the id of the account and some keys stored on memory, using function SendLoginPacket https://gyazo.com/a6cab4d1ef05feec184f4a70c56b4ece
-
-
-## Compiler Notes
+## Compiling Notes
 
 Python 2.7 (32 bits) needs to be installed in the system (C:/Python27) by default.
 
+- Dependencies using vcpkg:
+  cpprestsdk -> ```vcpkg install --recurse cpprestsdk[default-features,websockets]:x86-windows-static```<br>
+  curl -> ```vcpkg install curl[core,openssl]:x86-windows-static```<br>
+  jsoncpp -> ```vcpkg install jsoncpp:x86-windows-static```<br>
+  websocketpp -> ```vcpkg install websocketpp:x86-windows-static```<br>
+  boost -> ```vcpkg install boost:x86-windows-static```<br>
 
-# Updates
-v1.1:
-- Added SetMoveSpeedMultiplier
-- Added SendUseSkillPacket
-- Fixed some memory leaks
-- Fixed a bug where the pickup was picking wrong items
+Also the project is using [SimpleIni](https://github.com/brofield/simpleini) to parse the .ini configuration file and [Date](https://github.com/HowardHinnant/date) to format date.
+
+

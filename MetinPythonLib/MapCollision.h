@@ -1,5 +1,7 @@
 #pragma once
-#include "PythonModule.h"
+#include "stdafx.h"
+#include "../common/utils.h"
+#include "defines.h"
 #include "JPS.h"
 #include <ANYA.h>
 
@@ -29,7 +31,7 @@ public:
 
 
 	inline bool isBlocked(int x, int y);
-	inline BYTE getByte(int x, int y); //Deprecated, is equal to isBlocked function
+	inline BYTE getByte(int x, int y) { return map[y * maxX + x]; }; //Deprecated, is equal to isBlocked function
 
 	const char* getMapName() { return mapName.c_str(); }
 	bool findPath(int x_start, int y_start, int x_end, int y_end, std::vector<Point>& path);
@@ -69,7 +71,7 @@ private:
 	//Adds objects to the attr map file (impossible to know objects sizes)
 	void addObjectsCollisions();
 
-	inline void setByte(BYTE b, int x, int y);
+	inline void setByte(BYTE b, int x, int y) { map[y * maxX + x] = b; };
 
 	//Adds one extra blocked area to the edges of the map
 	void increaseBlockedArea();
@@ -91,15 +93,3 @@ private:
 	AnyAngleAlgorithm* aPathPlaning;
 	JPS::Searcher<MapCollision>* pathFinding;
 };
-
-
-
-//REAL COORDINATES FROM PYTHON FUNCTIONS NEEDS TO BE DIVIDED BY 100
-//BEFORE PASSING TO THE NEXT FUNCTIONS
-bool setCurrentCollisionMap();
-MapCollision* getCurrentCollisionMap();
-void freeCurrentMap();
-
-bool isBlockedPosition(int x, int y);
-BYTE getAttrByte(int x, int y);
-bool findPath(int x_start, int y_start, int x_end, int y_end, std::vector<Point>& path);

@@ -1,6 +1,5 @@
 #pragma once
 #include <Windows.h>
-#include "utils.h"
 #include <Psapi.h>
 #include <iostream>
 #include <Shlwapi.h>
@@ -23,6 +22,7 @@ public:
 	~Patterns();
 
 	DWORD* GetPatternAddress(Pattern* pat);
+	void* GetStartModuleAddress();
 
 
 

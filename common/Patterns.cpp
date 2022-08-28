@@ -1,4 +1,7 @@
+//#include "stdafx.h"
 #include "Patterns.h"
+#include "utils.h"
+
 
 Patterns::Patterns(HMODULE hMod, Pattern* modulePattern) : hMod(hMod){
 	if(!Init(modulePattern))
@@ -17,7 +20,6 @@ bool Patterns::Init(Pattern* modulePattern) {
 		mInfo.lpBaseOfDll = 0;
 		mInfo.SizeOfImage = 0x7FFFFFFF;
 		DWORD result = FindPattern(modulePattern->pattern, modulePattern->mask);
-		int a = 0;
 
 		if (result) {
 			MEMORY_BASIC_INFORMATION mi;
@@ -119,7 +121,7 @@ DWORD* Patterns::GetPatternAddress(Pattern* pat) {
 		return result;
 
 	}else {
-		DEBUG_INFO_LEVEL_1("ERROR FINDING PATTERN -> %s",pat->name);	
+		DEBUG_INFO_LEVEL_1("ERROR FINDING PATTERN -> %s", pat->name);
 	}
 
 	return addr;
@@ -144,7 +146,7 @@ bool Patterns::setModuleInfo()
 	if (hModule == 0)
 		return false;
 
-	printf("Scanning Module: %S\n", buffer);
+	printf("Scanning Module: %s\n", buffer);
 	GetModuleInformation(psHandle, hModule, &mInfo, sizeof(MODULEINFO));
 	mInfo.SizeOfImage = getModuleSize(mInfo.lpBaseOfDll);
 	return true;
@@ -197,4 +199,9 @@ void Patterns::printModules()
 		printf("\n     base size      = 0x%10X", module.modBaseSize);
 
 	} while (Module32Next(Snapshot, &module));
+}
+
+
+void* Patterns::GetStartModuleAddress() {
+	return mInfo.lpBaseOfDll;
 }
