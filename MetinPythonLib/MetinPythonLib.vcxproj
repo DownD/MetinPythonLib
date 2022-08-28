@@ -99,19 +99,19 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <TargetName>deXLib</TargetName>
+    <TargetName>dnet_packet</TargetName>
     <IncludePath>$(SolutionDir)External\include;$(VC_IncludePath);$(WindowsSDK_IncludePath);C:\Python27\include;</IncludePath>
     <OutDir>$(SolutionDir)..\MetinPythonBotDev\OpenBot\</OutDir>
     <LibraryPath>$(VC_LibraryPath_x86);$(WindowsSDK_LibraryPath_x86);$(SolutionDir)External\lib</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <TargetName>eXLib</TargetName>
+    <TargetName>net_packet</TargetName>
     <IncludePath>$(SolutionDir)External\include;$(VC_IncludePath);$(WindowsSDK_IncludePath);C:\Python27\include;</IncludePath>
     <OutDir>$(SolutionDir)..\MetinPythonBotDev\OpenBot\</OutDir>
     <LibraryPath>$(VC_LibraryPath_x86);$(WindowsSDK_LibraryPath_x86);$(SolutionDir)External\lib</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseL|Win32'">
-    <TargetName>dfeXLib</TargetName>
+    <TargetName>dfnet_packet</TargetName>
     <IncludePath>$(SolutionDir)External\include;$(VC_IncludePath);$(WindowsSDK_IncludePath);C:\Python27\include;</IncludePath>
     <OutDir>$(SolutionDir)..\MetinPythonBotDev\OpenBot\</OutDir>
     <LibraryPath>$(VC_LibraryPath_x86);$(WindowsSDK_LibraryPath_x86);$(SolutionDir)External\lib</LibraryPath>

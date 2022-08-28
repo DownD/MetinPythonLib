@@ -18,7 +18,8 @@ struct ExportedPacket {
 
 
 /*
-Responsible for logging the packets sent
+Responsible for logging the packets sent and recieved
+This is a Singleton class
 */
 class PacketExporter : public CSingleton<PacketExporter>
 {
@@ -28,9 +29,11 @@ public:
 	~PacketExporter();
 
 
+	//Set the name for the exported files
 	bool setFileExport(std::string& fileName);
 
 
+	//Writes the exported packet to a file
 	bool exportRecvPacket(ExportedPacket* p);
 	bool exportSendPacket(ExportedPacket* p);
 

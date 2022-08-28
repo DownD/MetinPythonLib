@@ -1,15 +1,10 @@
 #pragma once
-#include "VMProtectSDK.h"
-//#include <string>
-//#include <stdlib.h>
-#define GET_ADDRESS_FROM_SERVER
-//#define USE_BUILTIN_PATTERNS
+//#define GET_ADDRESS_FROM_SERVER
+#define USE_BUILTIN_PATTERNS
 //#define GET_ADDRESS_FROM_FILE
 
-#define WEB_SERVER_ADDRESS "https://136.244.118.103/"
-//#define WEB_SERVER_ADDRESS "https://127.0.0.1/"
+#define WEB_SERVER_ADDRESS "https://127.0.0.1/"
 #define OFFSETS_ENDPOINT "api/private/offsets"
-#define USER_ENDPOINT "api/private/premium"
 #define UPDATE_OFFSETS_ENDPOINT "api/private/update_offsets"
 
 #define DEFAULT_API_KEY "0"

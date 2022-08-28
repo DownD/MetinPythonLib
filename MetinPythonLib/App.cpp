@@ -119,16 +119,6 @@ void CApp::initPythonModules() {
 
 void CApp::exit() {
 	DEBUG_INFO_LEVEL_1("LEAVING!");
-	/*CMemory& memory = CMemory::Instance();
-	CBackground& bck = CBackground::Instance();
-	CInstanceManager& mgr = CInstanceManager::Instance();
-	CPlayer& pl = CPlayer::Instance();
-	CNetworkStream& ns = CNetworkStream::Instance();
-	memory.~CMemory();
-	bck.~CBackground();
-	mgr.~CInstanceManager();
-	pl.~CPlayer();
-	ns.~CNetworkStream();*/
 
 	fclose(stdin);
 	fclose(stdout);

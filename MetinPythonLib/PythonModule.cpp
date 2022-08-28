@@ -6,10 +6,7 @@
 #include "Background.h"
 #include "Player.h"
 #include "Communication.h"
-#include "VMProtectSDK.h"
 
-/* PyObject* playerModule;
-PyObject* getMainPlayerPosition;*/
 
 PyObject* packet_mod;
 
@@ -887,17 +884,6 @@ PyObject* pySetRecvDelGrndItem(PyObject* poSelf, PyObject* poArgs)
 
 
 
-//This methods must be the last ones on the s_methods variable
-static std::set<std::string> premium_methods = 
-{
-	std::string("GetRequest"),
-	std::string("OpenWebsocket"),
-	std::string("SendWebsocket"),
-	std::string("CloseWebsocket"),
-	std::string("SkipRenderer"),
-	std::string("UnskipRenderer")
-};
-
 static PyMethodDef s_methods[] =
 {
 	{ "Get",					GetEterPacket,		METH_VARARGS },
@@ -934,7 +920,6 @@ static PyMethodDef s_methods[] =
 	{ "SendUseSkillPacket",		pySendUseSkillPacket,METH_VARARGS },
 	{ "SendUseSkillPacketBySlot",pySendUseSkillPacketBySlot,METH_VARARGS },
 
-	//PICKUP
 	{ "ItemGrndFilterClear",	pyItemGrndFilterClear,	METH_VARARGS },
 	{ "ItemGrndNotOnFilter",	pyItemGrndNotOnFilter,	METH_VARARGS },
 	{ "ItemGrndOnFilter",		pyItemGrndOnFilter,		METH_VARARGS },
@@ -957,24 +942,19 @@ static PyMethodDef s_methods[] =
 	{ "BlockAttackPackets",		pyBlockAttackPackets,		METH_VARARGS},
 	{ "UnblockAttackPackets",	pyUnblockAttackPackets,		METH_VARARGS},
 
-//#ifdef METIN_GF
 	{ "SendStartFishing",		pySendStartFishing,	METH_VARARGS },
 	{ "SendStopFishing",		pySendStopFishing,	METH_VARARGS },
 	{ "BlockFishingPackets",	pyBlockFishingPackets,	METH_VARARGS },
 	{ "UnblockFishingPackets",	pyUnblockFishingPackets,METH_VARARGS },
 	{ "RecvStartFishCallback",	pyRecvStartFishCallback,METH_VARARGS},
 
-	//{ "SetKeyState",			pySetKeyState,		METH_VARARGS },
-	//{ "SetAttackKeyState",		pySetKeyState,		METH_VARARGS },
 	{ "GetPixelPosition",		GetPixelPosition,	METH_VARARGS},
 	{ "MoveToDestPosition",     moveToDestPosition, METH_VARARGS},
 	{ "SetMoveSpeedMultiplier",	pySetMoveSpeed,		METH_VARARGS},
-//#endif
 
 	{ "SyncPlayerPosition", pySyncPlayerPosition ,	METH_VARARGS},
 	{ "SetRecvChatCallback", pySetRecvChatCallback ,	METH_VARARGS},
 
-	//Premium
 	{ "GetRequest",			pyGetRequest,			METH_VARARGS},
 	{ "OpenWebsocket",		pyOpenWebsocket,		METH_VARARGS},
 	{ "SendWebsocket",		pySendWebsocket,		METH_VARARGS},
@@ -988,21 +968,8 @@ static PyMethodDef s_methods[] =
 
 void initModule() {
 	
-	VMProtectBeginUltra("PythonModule");
-	CCommunication& c = CCommunication::Instance();
-	bool is_premium = c.IsPremiumUser();
-	if (!is_premium) {
-		for (int i = 0; s_methods[i].ml_name != 0; i++) {
-			if (premium_methods.find(std::string(s_methods[i].ml_name)) != premium_methods.end()) { //is premium function, remove
-				DEBUG_INFO_LEVEL_1("Removing premium function %s", s_methods[i].ml_name);
-				s_methods[i] = { NULL, NULL };
-			}
-		}
-	}
-	DEBUG_INFO_LEVEL_1("Premium setup ended");
-	packet_mod = Py_InitModule("eXLib", s_methods);
-	DEBUG_INFO_LEVEL_1("eXLib module created");
-	VMProtectEnd();
+	packet_mod = Py_InitModule("net_packet", s_methods);
+	DEBUG_INFO_LEVEL_1("net_packet module created");
 
 	PyModule_AddObject(packet_mod, "InstancesList", CInstanceManager::Instance().getVIDList());
 	PyModule_AddStringConstant(packet_mod, "PATH", getDllPath());
@@ -1064,8 +1031,6 @@ bool executePythonFile(const char* file) {
 	int result = 0;
 	char path[256] = { 0 };
 	strcpy(path, getDllPath());
-	//char del = '\';
-	//strncat(path, &del, 1);
 	strcat(path, file);
 	DEBUG_INFO_LEVEL_1("Executing Python file: %s", path);
 	PyObject* PyFileObject = PyFile_FromString(path, (char*)"r");

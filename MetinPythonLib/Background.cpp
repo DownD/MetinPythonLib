@@ -35,7 +35,7 @@ bool CBackground::setCurrentCollisionMap()
 		return false;
 	}
 	DEBUG_INFO_LEVEL_2("Setting collision map name=%s",map_name.c_str());
-	//printf("Setting Map Collision %s\n", map_name.c_str());
+
 	Py_XDECREF(poArgs);
 	if (currMap) {
 		if (map_name.compare(currMap->getMapName()) == 0)

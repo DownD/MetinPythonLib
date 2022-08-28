@@ -91,7 +91,6 @@ public:
 	//Blocking requests - main server
 	int MainServerSetAuthKey(); //Handle request, and write key
 	int MainServerGetOffsets(std::map<int,DWORD>* bufferOffsets, const char* server = "GF");
-	bool IsPremiumUser();
 
 	//Once called the certificates cannot be setup again
 	void clearMemoryCertificates();
@@ -126,7 +125,7 @@ private:
 	std::map<int, WebSocketInfo> webSocketList;
 
 
-	//Exlib server authkey
+	//Server authkey
 	std::string authKey;
 };
 

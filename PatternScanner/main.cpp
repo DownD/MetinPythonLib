@@ -16,7 +16,10 @@
 #define PRINT(...); {{printf(__VA_ARGS__); printf("\n");fflush(stdout);}}
 
 
-//eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJiek9aaXVieE5TUWFQcU5VQUppQndHZ1lWS2R4TXoifQ.IOZCK89TO7b6MgwUt7NR9CHi0hdFitnXvLBSD5pbQZo
+/*
+This project serves the purpose of just testing the patterns and update them on a remote server is needed.
+In case some pattern is broken, it will display that it couldn't be find.
+*/
 
 
 HANDLE threadID;
@@ -39,9 +42,9 @@ void SetupConsole()
 }
 
 
-
+//The API key that has requeired previleges to update addresses
 void get_api_key(std::string* key) {
-	*key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJmWUFoaFJxUlRQd0dReFhVeFhYc1dtTHFHY3d3bHUifQ.rBa1hVwli9uwSNQ0b0MryndrM13T0P0iXOZBkRw3GVY";
+	*key = "api_key";
 }
 
 size_t WriteSingleThreadback(void* contents, size_t size, size_t nmemb, void* userp)
@@ -54,7 +57,6 @@ size_t WriteSingleThreadback(void* contents, size_t size, size_t nmemb, void* us
 DWORD WINAPI ThreadProc(LPVOID lpParameter)
 {
 	SetupConsole();
-	//MessageBox(NULL, "Success Loading", "SUCCESS", MB_OK);
 	Patterns* patternFinder = 0;
 	try {
 		patternFinder = new Patterns(hDll);
@@ -64,6 +66,7 @@ DWORD WINAPI ThreadProc(LPVOID lpParameter)
 		return false;
 	}
 
+	// Dumps the adresses from the current process
 	std::map<int, std::pair<int,std::string>> addresses;
 
 	for (auto & x : memPatterns) {
@@ -84,9 +87,11 @@ DWORD WINAPI ThreadProc(LPVOID lpParameter)
 	myfile.close();
 #endif
 
+
 #ifdef SEND_TO_SERVER
 
-	//Create Json
+	//Updates the addresses on a remote location
+	//Create Json in the required format
 	Json::Value root;
 	for (auto& x : addresses) {
 		Json::Value offset;
@@ -112,6 +117,7 @@ DWORD WINAPI ThreadProc(LPVOID lpParameter)
 	curl_blob sslCert;
 	curl_blob sslKey;
 
+	//Use an SSL certificate in order for the server to make sure is sent by this specific applciation
 	sslCert.data = (void*)SSL_CERTIFICATE;
 	sslCert.len = strlen(SSL_CERTIFICATE);
 	sslCert.flags = CURL_BLOB_COPY;
@@ -169,7 +175,6 @@ DWORD WINAPI ThreadProc(LPVOID lpParameter)
 
 	//Check status code
 	curl_easy_getinfo(hnd, CURLINFO_RESPONSE_CODE, &answer_code);
-
 	curl_easy_cleanup(hnd);
 	curl_slist_free_all(slist1);
 	PRINT("Curl cleaned");
@@ -227,15 +232,9 @@ BOOLEAN WINAPI DllMain(IN HINSTANCE hDllHandle,
 			setDllPath(test);
 		}
 		hDll = (HMODULE)hDllHandle;
-		//threadID = CreateThread(NULL, 0, ThreadProc, NULL, 0, NULL);
 		ThreadProc(0);
 		break;
 
-		/*case DLL_PROCESS_DETACH:
-			CApp & app = CApp::Instance();
-			PRINT("DETACHED CALLED");
-			app.exit();
-			break;*/
 	}
 
 	return true;

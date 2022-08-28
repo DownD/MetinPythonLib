@@ -8,12 +8,20 @@
 HANDLE threadID;
 HMODULE hDll;
 
-// Hook functions
+/*
+This project is a packet sniffer that will hook only network functions (After decryption by the Client)
+and will register them in a file.
+*/
+
+
+// Hooks variables
 DetoursHook<tSendPacket>* sendHook;
 DetoursHook<tCheckPacket>* checkPacketHook;
 DetoursHook<tRecvPacket>* recvHook;
 DetoursHook<tSendSequencePacket>* sendSequenceHook;
 
+
+// Helper global variables to handle some specific packets
 BYTE lastPacket;
 std::vector<ExportedPacket*> sendPacketQueue;
 
@@ -83,6 +91,9 @@ void SetupConsole()
 
 }
 
+
+// Get addresses from stored patterns
+// Set's the hooks and start them
 int main() {
 
 	SetupConsole();
@@ -122,32 +133,13 @@ BOOLEAN WINAPI DllMain(IN HINSTANCE hDllHandle,
 	IN LPVOID    Reserved)
 {
 
-
-	//  Perform global initialization.
-	char test[256] = { 0 };
-	//DLLArgs* args = (DLLArgs*)Reserved;
 	switch (nReason)
 	{
 	case DLL_PROCESS_ATTACH:
-		if (Reserved) {
-			//DLLArgs* args = (DLLArgs*)Reserved;
-			//setDllPath(args->path);
-		}
-		else {
-			GetModuleFileNameA(hDllHandle, test, 256);
-			//setDllPath(test);
-		}
 		hDll = (HMODULE)hDllHandle;
-		//threadID = CreateThread(NULL, 0, ThreadProc, NULL, 0, NULL);
 		main();
 		break;
 
-		/*case DLL_PROCESS_DETACH:
-			CApp & app = CApp::Instance();
-			PRINT("DETACHED CALLED");
-			app.exit();
-			break;*/
 	}
-
 	return true;
 }

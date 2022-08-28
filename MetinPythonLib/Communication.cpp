@@ -2,7 +2,6 @@
 #include "Communication.h"
 #include "../common/Config.h"
 #include <fstream>
-#include "VMProtectSDK.h"
 
 
 std::map<int, CCommunication::GetInstance> CCommunication::getRecvBuffer;
@@ -22,9 +21,6 @@ CCommunication::CCommunication() {
 	sslKey.data = (void*)cert_key;
 	sslKey.len = strlen(cert_key);
 	sslKey.flags = CURL_BLOB_COPY;
-
-	/*VMProtectFreeString(cert);
-	VMProtectFreeString(cert_key);*/
 }
 
 CCommunication::~CCommunication()
@@ -142,7 +138,6 @@ int CCommunication::MainServerSetAuthKey()
 
 int CCommunication::MainServerGetOffsets(std::map<int, DWORD>* bufferOffsets, const char* server)
 {
-	VMProtectBeginUltra("GetOffsets");
 	if (authKey.size() < 1) {
 		DEBUG_INFO_LEVEL_1("Missing auth key!");
 		return 0;
@@ -188,36 +183,6 @@ int CCommunication::MainServerGetOffsets(std::map<int, DWORD>* bufferOffsets, co
 	return 1;
 }
 
-bool CCommunication::IsPremiumUser()
-{
-	VMProtectBeginUltra("Premium");
-	Json::Value json_root;
-	
-	std::string url = WEB_SERVER_ADDRESS;
-	url += USER_ENDPOINT;
-
-	if (!MainServerPreformGetRequest(url, &json_root,1)) {
-		DEBUG_INFO_LEVEL_1("Error performing Getting user information");
-		return false;
-	}
-
-	try {
-		auto json_premium = json_root.get("isPremium", 0);
-		if (json_premium.asInt() == 1) {
-			DEBUG_INFO_LEVEL_1("User is premium!");
-			return true;
-		}
-		else {
-			DEBUG_INFO_LEVEL_1("User is not premium!");
-			return false;
-		}
-	}
-	catch (std::exception& e) {
-		DEBUG_INFO_LEVEL_1("Error getting premium status");
-		return false;
-	}
-}
-
 void CCommunication::clearMemoryCertificates()
 {
 	sslKey = { 0 };
@@ -233,7 +198,6 @@ int CCommunication::MainServerRequestAuthKey(std::string* key)
 
 int CCommunication::MainServerPreformRequest(std::string& url, Json::Value* json_root, Json::Value& post_fields, bool use_api_key, bool use_https)
 {
-	VMProtectBeginUltra("PreformRequest");
 	CURL* curl = curl_easy_init();
 	CURLcode res;
 

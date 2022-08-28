@@ -150,10 +150,10 @@ bool CMemory::setupPatterns(HMODULE hDll)
 		return value;
 	}
 
-	recvAddr = addrLoader.GetAddress(RECV_FUNCTION);//patternFinder->GetPatternAddress(&memory_patterns::recvFunction);
+	recvAddr = addrLoader.GetAddress(RECV_FUNCTION);
 	sendAddr = addrLoader.GetAddress(SEND_FUNCTION);
 	sendSequenceAddr = addrLoader.GetAddress(SENDSEQUENCE_FUNCTION);
-	getEtherPackAddr = addrLoader.GetAddress(GETETHER_FUNCTION);//patternFinder->GetPatternAddress(&memory_patterns::getEtherPackFunction);
+	getEtherPackAddr = addrLoader.GetAddress(GETETHER_FUNCTION);
 	statePacketAddr = addrLoader.GetAddress(SENDCHARACTERSTATE_FUNCTION);
 	netClassPointer = (void**)addrLoader.GetAddress(NETWORKCLASS_POINTER);
 	pythonPlayerPointer = (void**)addrLoader.GetAddress(PYTHONPLAYER_POINTER);

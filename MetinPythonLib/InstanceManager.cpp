@@ -43,7 +43,6 @@ void CInstanceManager::changeInstancePosition(SRcv_CharacterMovePacket& packet_m
 	auto& instance = instances[packet_move.dwVID];
 	instance.x = packet_move.lX;
 	instance.y = packet_move.lY;
-	//DEBUG_INFO("VID %d-> X:%d Y:%d", packet_move.dwVID, packet_move.lX, packet_move.lY);
 }
 
 void CInstanceManager::appendNewInstance(SRcv_PlayerCreatePacket& player)
