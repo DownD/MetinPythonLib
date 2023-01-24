@@ -1,10 +1,10 @@
 # MetinPythonLib
 
-Before everything i must emphasize, 
-I created this project JUST FOR LEARNING PURPOSES, I never used this either to gain an unfair advantage or to profit from it!
-For this reason, the patterns won't be available.
-This is an old project and I was learning while developing, thus some code parts are a bit messy and is missing function documentation. And currently my focus is on other projects so that's something i am not gonna change anytime soon.
-This project is not supported anymore.
+Before everything i must emphasize, <br>
+I created this project JUST FOR LEARNING PURPOSES, I never used this either to gain an unfair advantage or to profit from it!<br>
+For this reason, the patterns won't be available.<br>
+This is an old project and I was learning while developing, thus some code parts are a bit messy and is missing function documentation. And currently my focus is on other projects so that's something i am not gonna change anytime soon.<br>
+This project is not supported anymore.<br>
 
 ## Motivation
 This is probably my biggest project yet, it took more then 2 years of my free time to reach the current state and much more of learning.
